@@ -60,6 +60,42 @@
 
 ## Project Context
 
-- **Type**: ES Module package for Bun modules
-- **Target**: Bun runtime, ES2021+
-- **Purpose**: General-purpose Bun module development
+- **Type**: OpenCode plugin package (`@ksm0709/intent-tools`)
+- **Target**: Bun runtime, ES2021+ / ESM
+- **Purpose**: OpenCode plugin — AI coding agent 기능 확장 툴 모음
+- **Plugin API**: `@opencode-ai/plugin` (peerDep) + `@opencode-ai/sdk`
+- **Install**: `opencode.json` → `"plugin": ["@ksm0709/intent-tools"]`
+
+## Plugin Development
+
+**Skill**: 이 프로젝트에서 작업할 때 항상 `opencode-plugin-dev` 스킬을 로드.
+`.opencode/skills/opencode-plugin-dev/` — API 레퍼런스, 아키텍처 패턴, 검증된 구현 예시 포함.
+
+**Skill 업데이트 원칙**: 플러그인 개발 중 새로운 중요 내용을 발견하면, 스킬에 기재되지 않은 내용일 경우 즉시 해당 스킬 파일을 업데이트.
+- 어디에 기재할지 판단 기준:
+  - 훅 시그니처/타입 변경 → `references/api-reference.md`
+  - 구현 패턴/아키텍처 결정 → `references/patterns.md`
+  - 자주 쓰는 핵심 패턴 (3줄 이내) → `SKILL.md` 인라인
+- 업데이트 후 별도 보고 불필요. 작업 흐름에서 조용히 처리.
+
+### 핵심 규칙
+
+- `src/index.ts`에서 `export type` 만 허용. 함수/상수 named export 절대 금지
+  → OpenCode가 모든 export를 플러그인 인스턴스로 호출하기 때문
+- `export default Plugin` 필수
+- `console.log` 금지 → `client.app.log()` 사용 (ESLint `no-console` 적용)
+- `@opencode-ai/plugin` → `peerDependencies` (devDependencies에도 추가)
+
+### 파일 구조 (현재)
+
+```
+src/
+└── index.ts          ← 플러그인 진입점 (Plugin 타입 export default)
+.opencode/
+└── skills/
+    └── opencode-plugin-dev/   ← 플러그인 개발 스킬
+        ├── SKILL.md
+        └── references/
+            ├── api-reference.md   ← @opencode-ai/plugin 전체 타입
+            └── patterns.md        ← 아키텍처/상태/빌드 패턴
+```
