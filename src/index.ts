@@ -38,7 +38,9 @@ const plugin: Plugin = async ({ directory, client }) => {
       const turnEnd = readPromptFile(turnEndPath);
 
       // 4. Build knowledge index
-      const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter((s): s is string => Boolean(s));
+      const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter(
+        (s): s is string => Boolean(s)
+      );
       const entries = buildKnowledgeIndex(directory, knowledgeSources);
       const indexContent = formatKnowledgeIndex(entries);
 
