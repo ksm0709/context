@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { scaffoldIfNeeded } from './scaffold';
+import { scaffoldIfNeeded, updateScaffold } from './scaffold';
 
 describe('scaffoldIfNeeded', () => {
   let tmpDir: string;
@@ -78,5 +78,59 @@ describe('scaffoldIfNeeded', () => {
     // Files should still have custom content
     expect(readFileSync(configPath, 'utf-8')).toBe('CUSTOM CONFIG');
     expect(readFileSync(turnStartPath, 'utf-8')).toBe('CUSTOM TURN START');
+  });
+});
+
+describe('updateScaffold', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `update-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('updates outdated files and returns their paths', () => {
+    // Create scaffold first
+    scaffoldIfNeeded(tmpDir);
+
+    // Simulate outdated content by overwriting with old content
+    const turnStartPath = join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md');
+    writeFileSync(turnStartPath, 'OLD CONTENT', 'utf-8');
+
+    const updated = updateScaffold(tmpDir);
+
+    expect(updated).toContain('prompts/turn-start.md');
+    expect(readFileSync(turnStartPath, 'utf-8')).toContain('Knowledge Context');
+  });
+
+  it('returns empty array when all files are current', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    const updated = updateScaffold(tmpDir);
+
+    expect(updated).toEqual([]);
+  });
+
+  it('creates missing files', () => {
+    // Create dir but no files
+    mkdirSync(join(tmpDir, '.opencode', 'context', 'prompts'), { recursive: true });
+
+    const updated = updateScaffold(tmpDir);
+
+    expect(updated).toHaveLength(3); // config + turn-start + turn-end
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md'))).toBe(true);
+  });
+
+  it('creates scaffold directory if it does not exist', () => {
+    const updated = updateScaffold(tmpDir);
+
+    expect(updated).toHaveLength(3);
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts'))).toBe(true);
   });
 });

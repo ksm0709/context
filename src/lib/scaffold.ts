@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULTS } from '../constants';
 
@@ -69,4 +69,29 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function updateScaffold(projectDir: string): string[] {
+  const contextDir = join(projectDir, '.opencode', 'context');
+  mkdirSync(join(contextDir, 'prompts'), { recursive: true });
+
+  const templates: Record<string, string> = {
+    'config.jsonc': DEFAULT_CONFIG,
+    [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
+    [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
+  };
+
+  const updated: string[] = [];
+  for (const [path, content] of Object.entries(templates)) {
+    const filePath = join(contextDir, path);
+    try {
+      const existing = readFileSync(filePath, 'utf-8');
+      if (existing === content) continue;
+    } catch {
+      /* file missing — will create */
+    }
+    writeFileSync(filePath, content, 'utf-8');
+    updated.push(path);
+  }
+  return updated;
 }

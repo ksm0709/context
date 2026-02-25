@@ -3,7 +3,7 @@ import type { Plugin } from '@opencode-ai/plugin';
 import { loadConfig } from './lib/config.js';
 import { buildKnowledgeIndex, formatKnowledgeIndex } from './lib/knowledge-index.js';
 import { readPromptFile } from './lib/prompt-reader.js';
-import { scaffoldIfNeeded } from './lib/scaffold.js';
+import { scaffoldIfNeeded, updateScaffold } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
 
 const plugin: Plugin = async ({ directory, client }) => {
@@ -23,6 +23,26 @@ const plugin: Plugin = async ({ directory, client }) => {
   const config = loadConfig(directory);
 
   return {
+    config: async (cfg) => {
+      cfg.command ??= {};
+      cfg.command['context-update'] = {
+        template: '',
+        description: 'Update context scaffold files to latest plugin version',
+      };
+    },
+
+    'command.execute.before': async (input, output) => {
+      if (input.command !== 'context-update') return;
+
+      const updated = updateScaffold(directory);
+      if (updated.length === 0) {
+        output.parts = [{ type: 'text', text: 'All scaffold files are already up to date.' }];
+      } else {
+        const lines = updated.map((f) => `- ${f}`).join('\n');
+        output.parts = [{ type: 'text', text: `Updated ${updated.length} file(s):\n${lines}` }];
+      }
+    },
+
     'experimental.chat.system.transform': async (_input, output) => {
       // 3. Read prompt files fresh every call (hot-reload)
       const turnStartPath = join(
