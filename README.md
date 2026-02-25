@@ -1,6 +1,6 @@
-# intent-tools
+# context
 
-Intent tools for Bun
+Context plugin for Bun
 
 > A Bun module created from the [bun-module](https://github.com/zenobi-us/bun-module) template
 

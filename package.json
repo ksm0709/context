@@ -1,5 +1,5 @@
 {
-  "name": "@ksm0709/intent-tools",
+  "name": "@ksm0709/context",
   "version": "0.0.1",
   "description": "Intent tools for Bun",
   "author": {
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:ksm0709/intent-tools.git"
+    "url": "git@github.com:ksm0709/context.git"
   },
   "publishConfig": {
     "access": "public"
@@ -24,7 +24,14 @@
     "dist",
     "src/version.ts"
   ],
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.0.0"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.0.0"
+  },
   "devDependencies": {
+    "@opencode-ai/plugin": "^1.2.10",
     "@eslint/js": "^9.39.1",
     "@types/node": "^20.11.5",
     "@typescript-eslint/eslint-plugin": "8.47.0",

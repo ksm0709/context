@@ -60,11 +60,11 @@
 
 ## Project Context
 
-- **Type**: OpenCode plugin package (`@ksm0709/intent-tools`)
+- **Type**: OpenCode plugin package (`@ksm0709/context`)
 - **Target**: Bun runtime, ES2021+ / ESM
 - **Purpose**: OpenCode plugin — AI coding agent 기능 확장 툴 모음
 - **Plugin API**: `@opencode-ai/plugin` (peerDep) + `@opencode-ai/sdk`
-- **Install**: `opencode.json` → `"plugin": ["@ksm0709/intent-tools"]`
+- **Install**: `opencode.json` → `"plugin": ["@ksm0709/context"]`
 
 ## Plugin Development
 
