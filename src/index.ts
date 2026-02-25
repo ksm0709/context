@@ -38,7 +38,8 @@ const plugin: Plugin = async ({ directory, client }) => {
       const turnEnd = readPromptFile(turnEndPath);
 
       // 4. Build knowledge index
-      const entries = buildKnowledgeIndex(directory, config.knowledge.sources);
+      const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter((s): s is string => Boolean(s));
+      const entries = buildKnowledgeIndex(directory, knowledgeSources);
       const indexContent = formatKnowledgeIndex(entries);
 
       // 5. Inject into system prompt (only non-empty)

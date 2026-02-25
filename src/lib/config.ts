@@ -11,6 +11,7 @@ function getDefaultConfig(): ContextConfig {
       turnEnd: join(DEFAULTS.promptDir, DEFAULTS.turnEndFile),
     },
     knowledge: {
+      dir: DEFAULTS.knowledgeDir,
       sources: [...DEFAULTS.knowledgeSources],
     },
   };
@@ -24,6 +25,7 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
       turnEnd: partial.prompts?.turnEnd ?? defaults.prompts.turnEnd,
     },
     knowledge: {
+      dir: partial.knowledge?.dir ?? defaults.knowledge.dir,
       sources: partial.knowledge?.sources ?? defaults.knowledge.sources,
     },
   };

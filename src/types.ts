@@ -4,6 +4,7 @@ export interface ContextConfig {
     turnEnd?: string;
   };
   knowledge: {
+    dir?: string;
     sources: string[];
   };
 }

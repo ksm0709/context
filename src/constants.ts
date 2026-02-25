@@ -4,6 +4,7 @@ export const DEFAULTS = {
   turnStartFile: 'turn-start.md',
   turnEndFile: 'turn-end.md',
   knowledgeSources: ['AGENTS.md'],
+  knowledgeDir: 'docs',
 } as const;
 
 export const LIMITS = {

@@ -25,6 +25,7 @@ describe('loadConfig', () => {
     expect(config.prompts.turnEnd).toContain('.opencode/context/prompts/turn-end.md');
     expect(config.knowledge).toBeDefined();
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
+    expect(config.knowledge.dir).toBe('docs');
   });
 
   it('parses valid config.jsonc', () => {
@@ -37,6 +38,7 @@ describe('loadConfig', () => {
         turnEnd: 'custom/end.md',
       },
       knowledge: {
+        dir: 'knowledge',
         sources: ['README.md', 'docs/guide.md'],
       },
     });
@@ -47,6 +49,7 @@ describe('loadConfig', () => {
     expect(config.prompts.turnStart).toBe('custom/start.md');
     expect(config.prompts.turnEnd).toBe('custom/end.md');
     expect(config.knowledge.sources).toEqual(['README.md', 'docs/guide.md']);
+    expect(config.knowledge.dir).toBe('knowledge');
   });
 
   it('parses JSONC with comments', () => {
@@ -83,6 +86,7 @@ describe('loadConfig', () => {
     expect(config.prompts.turnStart).toContain('.opencode/context/prompts/turn-start.md');
     expect(config.prompts.turnEnd).toContain('.opencode/context/prompts/turn-end.md');
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
+    expect(config.knowledge.dir).toBe('docs');
   });
 
   it('merges partial config with defaults', () => {
@@ -106,5 +110,6 @@ describe('loadConfig', () => {
     expect(config.prompts.turnEnd).toContain('.opencode/context/prompts/turn-end.md');
     // Default knowledge sources should be used
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
+    expect(config.knowledge.dir).toBe('docs');
   });
 });

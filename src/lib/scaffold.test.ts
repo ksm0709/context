@@ -36,6 +36,7 @@ describe('scaffoldIfNeeded', () => {
     expect(content).toContain('turnStart');
     expect(content).toContain('turnEnd');
     expect(content).toContain('knowledge');
+    expect(content).toContain('"dir"');
   });
 
   it('creates turn-start.md and turn-end.md', () => {
