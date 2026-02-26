@@ -49,13 +49,8 @@ const plugin: Plugin = async ({ directory, client }) => {
         directory,
         config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
       );
-      const turnEndPath = join(
-        directory,
-        config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
-      );
 
       const turnStart = readPromptFile(turnStartPath);
-      const turnEnd = readPromptFile(turnEndPath);
 
       // 4. Build knowledge index
       const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter(
@@ -67,7 +62,44 @@ const plugin: Plugin = async ({ directory, client }) => {
       // 5. Inject into system prompt (only non-empty)
       if (turnStart) output.system.push(turnStart);
       if (indexContent) output.system.push(indexContent);
-      if (turnEnd) output.system.push(turnEnd);
+    },
+
+    'experimental.chat.messages.transform': async (_input, output) => {
+      // 6. Inject turn-end as synthetic user message (hot-reload)
+      const turnEndPath = join(
+        directory,
+        config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
+      );
+      const turnEnd = readPromptFile(turnEndPath);
+      if (!turnEnd) return;
+      if (output.messages.length === 0) return;
+
+      const lastUserMsg = output.messages.filter((m) => m.info.role === 'user').at(-1);
+      if (!lastUserMsg) return;
+
+      const msgId = `context-turn-end-${Date.now()}`;
+      output.messages.push({
+        info: {
+          id: msgId,
+          sessionID: lastUserMsg.info.sessionID,
+          role: 'user' as const,
+          time: { created: Date.now() },
+          agent: (lastUserMsg.info as { role: 'user'; agent: string }).agent,
+          model: (
+            lastUserMsg.info as { role: 'user'; model: { providerID: string; modelID: string } }
+          ).model,
+        },
+        parts: [
+          {
+            id: `context-turn-end-part-${Date.now()}`,
+            sessionID: lastUserMsg.info.sessionID,
+            messageID: msgId,
+            type: 'text' as const,
+            text: `<system-reminder>\n${turnEnd}\n</system-reminder>`,
+            synthetic: true,
+          },
+        ],
+      });
     },
   };
 };
