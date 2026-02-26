@@ -30,10 +30,9 @@ describe('context plugin', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns hooks object with experimental.chat.system.transform and messages.transform', async () => {
+  it('returns hooks object with messages.transform', async () => {
     const hooks = await plugin(createMockInput(tmpDir) as any);
     expect(hooks).toBeDefined();
-    expect(hooks['experimental.chat.system.transform']).toBeDefined();
     expect(hooks['experimental.chat.messages.transform']).toBeDefined();
   });
 
@@ -72,38 +71,34 @@ describe('context plugin', () => {
     expect(appendedPart.text).toContain('TURN START CONTENT');
   });
 
-  it('system.transform does not inject turn-start or turn-end', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
-    writeFileSync(join(promptsDir, 'turn-start.md'), 'TURN START CONTENT');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'TURN END CONTENT');
-
-    const hooks = await plugin(createMockInput(tmpDir) as any);
-    const output = { system: [] as string[] };
-    await hooks['experimental.chat.system.transform']!({} as any, output);
-
-    expect(output.system.some((s) => s.includes('TURN START CONTENT'))).toBe(false);
-    expect(output.system.some((s) => s.includes('TURN END CONTENT'))).toBe(false);
-  });
-
   it('does not crash when prompt files are missing', async () => {
-    // No prompt files, just empty dir
     mkdirSync(join(tmpDir, '.opencode', 'context', 'prompts'), { recursive: true });
     writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
 
     const hooks = await plugin(createMockInput(tmpDir) as any);
-    const output = { system: [] as string[] };
-    // Should not throw - just call and verify no error
+    const output = {
+      messages: [
+        {
+          info: {
+            id: 'msg-1',
+            sessionID: 'sess-1',
+            role: 'user' as const,
+            time: { created: Date.now() },
+            agent: 'test-agent',
+            model: { providerID: 'anthropic', modelID: 'claude-3' },
+          },
+          parts: [] as any[],
+        },
+      ],
+    };
     let error: unknown = null;
     try {
-      await hooks['experimental.chat.system.transform']!({} as any, output);
+      await hooks['experimental.chat.messages.transform']!({} as any, output as any);
     } catch (e) {
       error = e;
     }
     expect(error).toBeNull();
   });
-
   it('hot-reloads turn-start content via messages.transform', async () => {
     const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
@@ -145,12 +140,66 @@ describe('context plugin', () => {
     mkdirSync(join(tmpDir, '.opencode', 'context', 'prompts'), { recursive: true });
     writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
     writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
+    writeFileSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'), '');
+    writeFileSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md'), '');
 
     const hooks = await plugin(createMockInput(tmpDir) as any);
-    const output = { system: [] as string[] };
-    await hooks['experimental.chat.system.transform']!({} as any, output);
+    const output = {
+      messages: [
+        {
+          info: {
+            id: 'msg-1',
+            sessionID: 'sess-1',
+            role: 'user' as const,
+            time: { created: Date.now() },
+            agent: 'test-agent',
+            model: { providerID: 'anthropic', modelID: 'claude-3' },
+          },
+          parts: [] as any[],
+        },
+      ],
+    };
+    await hooks['experimental.chat.messages.transform']!({} as any, output as any);
 
-    expect(output.system.some((s) => s.includes('AGENTS.md'))).toBe(true);
+    const appendedPart = output.messages[0].parts.at(-1) as any;
+    expect(appendedPart).toBeDefined();
+    expect(appendedPart.text).toContain('AGENTS.md');
+  });
+
+  it('combines turn-start and knowledge index in one text part', async () => {
+    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(promptsDir, 'turn-start.md'), 'TURN START CONTENT');
+    writeFileSync(join(promptsDir, 'turn-end.md'), '');
+    writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide');
+
+    const hooks = await plugin(createMockInput(tmpDir) as any);
+    const output = {
+      messages: [
+        {
+          info: {
+            id: 'msg-1',
+            sessionID: 'sess-1',
+            role: 'user' as const,
+            time: { created: Date.now() },
+            agent: 'test-agent',
+            model: { providerID: 'anthropic', modelID: 'claude-3' },
+          },
+          parts: [] as any[],
+        },
+      ],
+    };
+    await hooks['experimental.chat.messages.transform']!({} as any, output as any);
+
+    const appendedPart = output.messages[0].parts.at(-1) as any;
+    expect(appendedPart).toBeDefined();
+    expect(appendedPart.text).toContain('TURN START CONTENT');
+    expect(appendedPart.text).toContain('AGENTS.md');
+    // turn-start comes before knowledge index
+    expect(appendedPart.text.indexOf('TURN START CONTENT')).toBeLessThan(
+      appendedPart.text.indexOf('AGENTS.md')
+    );
   });
 
   it('injects turn-end as real user message via messages.transform', async () => {

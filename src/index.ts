@@ -43,37 +43,33 @@ const plugin: Plugin = async ({ directory, client }) => {
       }
     },
 
-    'experimental.chat.system.transform': async (_input, output) => {
-      // 3. Build knowledge index
-      const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter(
-        (s): s is string => Boolean(s)
-      );
-      const entries = buildKnowledgeIndex(directory, knowledgeSources);
-      const indexContent = formatKnowledgeIndex(entries);
-
-      // 4. Inject into system prompt (only non-empty)
-      if (indexContent) output.system.push(indexContent);
-    },
-
     'experimental.chat.messages.transform': async (_input, output) => {
       if (output.messages.length === 0) return;
 
       const lastUserMsg = output.messages.filter((m) => m.info.role === 'user').at(-1);
       if (!lastUserMsg) return;
 
-      // 5. turn-start: append to last user message parts (hot-reload)
+      // 3. turn-start + knowledge index: combine and append to last user message (hot-reload)
       const turnStartPath = join(
         directory,
         config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
       );
       const turnStart = readPromptFile(turnStartPath);
-      if (turnStart) {
+
+      const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter(
+        (s): s is string => Boolean(s)
+      );
+      const entries = buildKnowledgeIndex(directory, knowledgeSources);
+      const indexContent = formatKnowledgeIndex(entries);
+
+      const combinedContent = [turnStart, indexContent].filter(Boolean).join('\n\n');
+      if (combinedContent) {
         lastUserMsg.parts.push({
           id: `context-turn-start-${Date.now()}`,
           sessionID: lastUserMsg.info.sessionID,
           messageID: lastUserMsg.info.id,
           type: 'text' as const,
-          text: turnStart,
+          text: combinedContent,
         });
       }
 
