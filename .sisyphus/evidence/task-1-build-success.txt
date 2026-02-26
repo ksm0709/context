@@ -1,0 +1,5 @@
+Bundled 1 module in 2ms
+
+  index.js  8 bytes  (entry point)
+
+Build exit code: 0

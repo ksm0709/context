@@ -1,0 +1,12 @@
+[setup] $ ~/repos/context/.mise/tasks/setup
+
+🍜 Setting up project
+
+bun install v1.3.2 (b131639c)
+
+Checked 212 installs across 243 packages (no changes) [6.00ms]
+
+👍 Done
+
+[build] sources up-to-date, skipping
+Finished in 15.2ms

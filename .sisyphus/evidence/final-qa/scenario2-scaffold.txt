@@ -1,0 +1,20 @@
+Scenario 2: Scaffold from Clean State
+======================================
+Command: bun -e (import scaffoldIfNeeded from source)
+Result: PASS
+
+Output:
+tmpDir: /tmp/context-qa-1772032182338
+scaffolded: true
+config exists: true
+turn-start exists: true
+turn-end exists: true
+second scaffold (should be false): false
+cleanup done
+
+Verified:
+- First call returns true (creates files)
+- config.jsonc created at .opencode/context/config.jsonc
+- turn-start.md created at .opencode/context/prompts/turn-start.md
+- turn-end.md created at .opencode/context/prompts/turn-end.md
+- Second call returns false (idempotent)

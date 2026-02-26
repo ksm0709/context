@@ -1,0 +1,10 @@
+=== Hot-reload Test Evidence ===
+
+Test: hot-reloads prompt file content on each hook call
+Status: PASS
+
+Implementation details:
+- Prompt files are read fresh on each hook call (no caching)
+- readPromptFile() is called every time experimental.chat.system.transform runs
+- This allows users to modify prompt files and see changes immediately
+- No restart of OpenCode required

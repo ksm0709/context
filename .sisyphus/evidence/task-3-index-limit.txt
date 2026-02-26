@@ -1,0 +1,4 @@
+Limit test verification: maxIndexEntries=100, maxScanDepth=3, maxSummaryLength=100
+
+Test results:
+bun test v1.3.9 (cf6cdbbb)

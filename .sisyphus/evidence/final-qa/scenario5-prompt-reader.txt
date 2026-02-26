@@ -1,0 +1,12 @@
+Scenario 5: Prompt Reader
+=========================
+Command: bun -e (import readPromptFile)
+Result: PASS
+
+Output:
+content: Hello World Prompt
+missing (should be empty): ""
+
+Verified:
+- readPromptFile reads file content correctly
+- Missing file returns empty string (graceful fallback)

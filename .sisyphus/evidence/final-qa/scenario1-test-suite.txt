@@ -1,0 +1,14 @@
+Scenario 1: Full Test Suite
+===========================
+Command: bun test
+Result: PASS
+
+Output:
+bun test v1.3.9 (cf6cdbbb)
+
+ 33 pass
+ 0 fail
+ 71 expect() calls
+Ran 33 tests across 5 files. [66.00ms]
+
+Verdict: 33/33 pass, 0 fail

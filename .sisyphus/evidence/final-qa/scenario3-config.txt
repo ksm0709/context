@@ -1,0 +1,32 @@
+Scenario 3: Config Loading
+==========================
+Command: bun -e (import loadConfig from source)
+Result: PASS
+
+Output - Custom config:
+config: {
+  "prompts": {
+    "turnStart": "custom/start.md",
+    "turnEnd": ".opencode/context/prompts/turn-end.md"
+  },
+  "knowledge": {
+    "sources": ["AGENTS.md", "docs/"]
+  }
+}
+
+Output - Default config (no file):
+default config: {
+  "prompts": {
+    "turnStart": ".opencode/context/prompts/turn-start.md",
+    "turnEnd": ".opencode/context/prompts/turn-end.md"
+  },
+  "knowledge": {
+    "sources": ["AGENTS.md"]
+  }
+}
+
+Verified:
+- Custom config merges with defaults (turnEnd preserved)
+- Custom turnStart overridden to "custom/start.md"
+- Knowledge sources correctly loaded as ["AGENTS.md", "docs/"]
+- No config file → returns full defaults

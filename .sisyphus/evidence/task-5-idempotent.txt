@@ -1,0 +1,15 @@
+Idempotency Test Evidence
+==========================
+
+Test: 'returns true on first scaffold, false when already exists (idempotent)'
+Result: PASS
+
+Test: 'does NOT overwrite existing files'
+Result: PASS
+
+Verification:
+- First scaffold returns true (created)
+- Second scaffold returns false (skipped)
+- Existing files are preserved (not overwritten)
+
+All idempotency requirements satisfied.

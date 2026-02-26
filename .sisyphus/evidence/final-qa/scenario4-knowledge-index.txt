@@ -1,0 +1,26 @@
+Scenario 4: Knowledge Index
+============================
+Command: bun -e (import buildKnowledgeIndex, formatKnowledgeIndex)
+Result: PASS
+
+Output - entries:
+[
+  {
+    "filename": "AGENTS.md",
+    "summary": "# Project Guide"
+  }
+]
+
+Output - formatted:
+## Available Knowledge
+
+- AGENTS.md — # Project Guide
+
+Edge case - non-existent source:
+with missing source, count: 1
+
+Verified:
+- buildKnowledgeIndex returns KnowledgeEntry[] with filename + summary
+- summary extracts first heading line
+- formatKnowledgeIndex returns markdown formatted string
+- Missing sources are silently skipped (graceful)

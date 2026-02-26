@@ -1,0 +1,7 @@
+[test] $ ~/repos/context/.mise/tasks/test
+bun test v1.3.2 (b131639c)
+
+ 41 pass
+ 0 fail
+ 98 expect() calls
+Ran 41 tests across 5 files. [60.00ms]

@@ -1,0 +1,7 @@
+Fallback behavior verified: loadConfig returns default config when file does not exist or is malformed.
+
+Test cases covering fallback:
+1. returns default config when file does not exist
+2. returns default config on malformed JSON
+
+bun test v1.3.9 (cf6cdbbb)

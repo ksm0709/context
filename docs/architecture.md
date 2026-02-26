@@ -6,21 +6,26 @@
 
 매 턴마다 두 개의 훅이 호출되어 컨텍스트를 주입합니다:
 
-**`experimental.chat.system.transform`** — 시스템 프롬프트에 2개 블록 주입:
+**`experimental.chat.system.transform`** — 시스템 프롬프트에 1개 블록 주입:
+[Available Knowledge] ← knowledge index (자동 생성)
 
 ```
-[기존 system prompt]
+  [기존 system prompt]
   ↓
-[turn-start.md]      ← 작업 전 지침, 지식 활용 가이드
 [Available Knowledge] ← knowledge index (자동 생성)
 ```
 
-**`experimental.chat.messages.transform`** — 대화 히스토리 끝에 synthetic user message 추가:
+**`experimental.chat.messages.transform`** — 대화 히스토리에 2가지 주입:
+1. 마지막 유저 메시지 parts에 turn-start.md 내용 append
+2. 대화 끝에 별도 유저 메시지로 turn-end.md 주입 (<system-reminder> 태그)
+
+두 주입 모두 synthetic 플래그 없음 → AI가 실제 지시사항으로 처리
 
 ```
 [기존 messages]
   ↓
-[synthetic UserMessage] ← turn-end.md 내용, <system-reminder> 태그로 감싸짐
+[마지막 UserMessage parts에 turn-start append]
+[별도 UserMessage로 turn-end 주입] ← <system-reminder> 태그
 ```
 
 비어있는 블록은 건너뜁니다. messages 배열이 비어있거나 UserMessage가 없으면 turn-end 인젝션을 건너뜁니다.
@@ -109,13 +114,12 @@ const plugin: Plugin = async ({ directory, client }) => {
   // 2. Load config once at plugin init
   return {
     'experimental.chat.system.transform': async (_input, output) => {
-      // 3. Read turn-start prompt (hot-reload)
-      // 4. Build knowledge index (dir + sources)
-      // 5. Inject turn-start + knowledge index into output.system
+      // 3. Build knowledge index (dir + sources)
+      // 4. Inject knowledge index into output.system
     },
     'experimental.chat.messages.transform': async (_input, output) => {
-      // 6. Read turn-end prompt (hot-reload)
-      // 7. Inject as synthetic UserMessage wrapped in <system-reminder> tags
+      // 5. Append turn-start to last user message parts (hot-reload)
+      // 6. Inject turn-end as separate user message (hot-reload)
     },
   };
 };
@@ -126,5 +130,10 @@ const plugin: Plugin = async ({ directory, client }) => {
 - config는 플러그인 초기화 시 1회만 로드 (변경 시 재시작 필요)
 - prompt 파일은 매 턴마다 읽음 (실시간 수정 반영)
 - knowledge index도 매 턴마다 빌드 (파일 추가/삭제 즉시 반영)
-- turn-end는 system prompt 대신 synthetic user message로 인젝트 — 에이전트 턴 종료 후 리마인더로 동작하도록 설계
-- synthetic user message는 `<system-reminder>` 태그로 감싸 모델이 시스템 지시로 인식하도록 함
+- turn-start는 마지막 유저 메시지 parts에 append — AI가 현재 턴의 지시사항으로 처리
+- turn-end는 별도 유저 메시지로 주입 (`<system-reminder>` 태그) — synthetic 플래그 없이 실제 액션 유발
+- synthetic 플래그 미사용: AI가 soft context가 아닌 실행 가능한 지시사항으로 처리하도록 설계 → [[synthetic-message-injection]] 참고
+
+## 관련 노트
+
+- [[synthetic-message-injection]] — Synthetic 메시지 주입의 한계와 대안

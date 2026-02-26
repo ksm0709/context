@@ -1,0 +1,16 @@
+export interface ContextConfig {
+export interface KnowledgeEntry {
+Types found in dist/types.d.ts
+export interface ContextConfig {
+    prompts: {
+        turnStart?: string;
+        turnEnd?: string;
+    };
+    knowledge: {
+        sources: string[];
+    };
+}
+export interface KnowledgeEntry {
+    filename: string;
+    summary: string;
+}
