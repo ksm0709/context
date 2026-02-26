@@ -88,14 +88,24 @@
 ```
 .opencode/context/
 ├── config.jsonc         ← 기본 설정
-└── prompts/
-    ├── turn-start.md    ← 지식 컨텍스트 안내
-    └── turn-end.md      ← 마무리 체크리스트
+├── prompts/
+│   ├── turn-start.md    ← 제텔카스텐 가이드 + 지식 읽기 안내
+│   └── turn-end.md      ← 마무리 체크리스트 + 8가지 템플릿 링크
+└── templates/           ← 노트 작성 템플릿 (8개)
+    ├── adr.md           ← Architecture Decision Record
+    ├── pattern.md       ← 코드 패턴/컨벤션
+    ├── bug.md           ← 버그 패턴 + 해결
+    ├── gotcha.md        ← 외부 라이브러리/API 함정
+    ├── decision.md      ← 경량 결정 로그
+    ├── context.md       ← 프로젝트/모듈 맥락
+    ├── runbook.md       ← 절차서
+    └── insight.md       ← 발견/학습
 ```
 
 - **멱등성**: `.opencode/context/` 디렉토리가 이미 존재하면 아무것도 하지 않음
 - 사용자가 수정한 파일을 덮어쓸 위험 없음
-
+- `updateScaffold()`: 11개 파일 관리 (config + 2 prompts + 8 templates) — 내용이 다를 때만 업데이트
+- 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
 ## Safety Limits (`constants.ts`)
 
 | 제한                    | 값    | 목적                           |
