@@ -132,8 +132,8 @@ const plugin: Plugin = async ({ directory, client }) => {
 - knowledge index도 매 턴마다 빌드 (파일 추가/삭제 즉시 반영)
 - turn-start는 마지막 유저 메시지 parts에 append — AI가 현재 턴의 지시사항으로 처리
 - turn-end는 별도 유저 메시지로 주입 (`<system-reminder>` 태그) — synthetic 플래그 없이 실제 액션 유발
-- synthetic 플래그 미사용: AI가 soft context가 아닌 실행 가능한 지시사항으로 처리하도록 설계 → [[synthetic-message-injection]] 참고
+- synthetic 플래그 미사용: AI가 soft context가 아닌 실행 가능한 지시사항으로 처리하도록 설계 → [[docs/synthetic-message-injection.md]] 참고
 
 ## 관련 노트
 
-- [[synthetic-message-injection]] — Synthetic 메시지 주입의 한계와 대안
+- [[synthetic-message-injection.md]] — Synthetic 메시지 주입의 한계와 대안

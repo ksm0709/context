@@ -6,6 +6,7 @@
     "turnEnd": ".opencode/context/prompts/turn-end.md"
   },
   "knowledge": {
+    "dir": "docs",
     "sources": ["AGENTS.md"]
   }
 }

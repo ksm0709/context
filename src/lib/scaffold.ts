@@ -22,7 +22,7 @@ const DEFAULT_TURN_START = `## Knowledge Context
 ### 작업 전 필수
 - 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 먼저 읽으세요
 - 지식 파일에 기록된 아키텍처 결정, 패턴, 제약사항을 반드시 따르세요
-- 문서 내 [[링크]]를 따라가며 관련 노트를 탐색하세요 — 링크를 놓치면 중요한 맥락을 잃습니다
+- 문서 내 [[relative/path/file.md]] 형태의 링크를 따라가며 관련 노트를 탐색하세요 — 링크를 놓치면 중요한 맥락을 잃습니다
 
 ### 우선순위
 - AGENTS.md의 지시사항이 항상 최우선
@@ -41,12 +41,12 @@ const DEFAULT_TURN_END = `## 작업 마무리 체크리스트
 
 ### 지식 정리 (Zettelkasten)
 - [ ] 새로운 결정/패턴/개념을 발견하면 **원자적 노트**(하나의 노트 = 하나의 주제)로 작성
-- [ ] 관련 기존 노트에 [[링크]]를 추가하여 연결 — 고립된 노트는 가치가 없습니다
+- [ ] 관련 기존 노트에 [[relative/path/file.md]] 형태로 링크를 추가하여 연결 — 고립된 노트는 가치가 없습니다
 - [ ] 기존 노트의 내용이 변경사항과 불일치하면 업데이트
 - [ ] 노트 작성 규칙:
   - 첫 줄: 명확한 제목 (# Title)
   - 핵심 내용을 자신의 언어로 간결하게 서술
-  - 관련 노트를 [[wikilink]]로 연결
+  - 관련 노트를 [[relative/path/file.md]] 형태의 wikilink로 연결
 `;
 
 export function scaffoldIfNeeded(projectDir: string): boolean {
