@@ -4,17 +4,26 @@
 
 ## Injection Flow
 
-매 턴마다 `experimental.chat.system.transform` 훅이 호출되며, 시스템 프롬프트에 3개 블록을 순서대로 주입합니다:
+매 턴마다 두 개의 훅이 호출되어 컨텍스트를 주입합니다:
+
+**`experimental.chat.system.transform`** — 시스템 프롬프트에 2개 블록 주입:
 
 ```
 [기존 system prompt]
   ↓
 [turn-start.md]      ← 작업 전 지침, 지식 활용 가이드
 [Available Knowledge] ← knowledge index (자동 생성)
-[turn-end.md]        ← 마무리 체크리스트
 ```
 
-비어있는 블록은 건너뜁니다.
+**`experimental.chat.messages.transform`** — 대화 히스토리 끝에 synthetic user message 추가:
+
+```
+[기존 messages]
+  ↓
+[synthetic UserMessage] ← turn-end.md 내용, <system-reminder> 태그로 감싸짐
+```
+
+비어있는 블록은 건너뜁니다. messages 배열이 비어있거나 UserMessage가 없으면 turn-end 인젝션을 건너뜁니다.
 
 ## 핵심 모듈
 
@@ -100,9 +109,13 @@ const plugin: Plugin = async ({ directory, client }) => {
   // 2. Load config once at plugin init
   return {
     'experimental.chat.system.transform': async (_input, output) => {
-      // 3. Read prompt files (hot-reload)
+      // 3. Read turn-start prompt (hot-reload)
       // 4. Build knowledge index (dir + sources)
-      // 5. Inject into output.system
+      // 5. Inject turn-start + knowledge index into output.system
+    },
+    'experimental.chat.messages.transform': async (_input, output) => {
+      // 6. Read turn-end prompt (hot-reload)
+      // 7. Inject as synthetic UserMessage wrapped in <system-reminder> tags
     },
   };
 };
@@ -113,3 +126,5 @@ const plugin: Plugin = async ({ directory, client }) => {
 - config는 플러그인 초기화 시 1회만 로드 (변경 시 재시작 필요)
 - prompt 파일은 매 턴마다 읽음 (실시간 수정 반영)
 - knowledge index도 매 턴마다 빌드 (파일 추가/삭제 즉시 반영)
+- turn-end는 system prompt 대신 synthetic user message로 인젝트 — 에이전트 턴 종료 후 리마인더로 동작하도록 설계
+- synthetic user message는 `<system-reminder>` 태그로 감싸 모델이 시스템 지시로 인식하도록 함
