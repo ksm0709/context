@@ -5,6 +5,7 @@ export const DEFAULTS = {
   turnEndFile: 'turn-end.md',
   knowledgeSources: ['AGENTS.md'],
   knowledgeDir: 'docs',
+  templateDir: '.opencode/context/templates',
 } as const;
 
 export const LIMITS = {

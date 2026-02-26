@@ -78,6 +78,50 @@ describe('scaffoldIfNeeded', () => {
     // Files should still have custom content
     expect(readFileSync(configPath, 'utf-8')).toBe('CUSTOM CONFIG');
     expect(readFileSync(turnStartPath, 'utf-8')).toBe('CUSTOM TURN START');
+    expect(readFileSync(turnStartPath, 'utf-8')).toBe('CUSTOM TURN START');
+  });
+
+  it('creates .opencode/context/templates/ directory', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'templates'))).toBe(true);
+  });
+
+  it('creates 8 template files in templates directory', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    const templatesDir = join(tmpDir, '.opencode', 'context', 'templates');
+    const expectedFiles = [
+      'adr.md',
+      'pattern.md',
+      'bug.md',
+      'gotcha.md',
+      'decision.md',
+      'context.md',
+      'runbook.md',
+      'insight.md',
+    ];
+    for (const file of expectedFiles) {
+      expect(existsSync(join(templatesDir, file))).toBe(true);
+    }
+  });
+
+  it('template files contain expected section headers', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    const templatesDir = join(tmpDir, '.opencode', 'context', 'templates');
+
+    const adr = readFileSync(join(templatesDir, 'adr.md'), 'utf-8');
+    expect(adr).toContain('ADR-NNN');
+
+    const pattern = readFileSync(join(templatesDir, 'pattern.md'), 'utf-8');
+    expect(pattern).toContain('Pattern:');
+
+    const bug = readFileSync(join(templatesDir, 'bug.md'), 'utf-8');
+    expect(bug).toContain('Bug:');
+
+    const insight = readFileSync(join(templatesDir, 'insight.md'), 'utf-8');
+    expect(insight).toContain('Insight:');
   });
 });
 
@@ -121,7 +165,7 @@ describe('updateScaffold', () => {
 
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(3); // config + turn-start + turn-end
+    expect(updated).toHaveLength(11); // config + turn-start + turn-end + 8 templates
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md'))).toBe(true);
@@ -130,7 +174,27 @@ describe('updateScaffold', () => {
   it('creates scaffold directory if it does not exist', () => {
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(3);
+    expect(updated).toHaveLength(11);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts'))).toBe(true);
+  });
+
+  it('creates templates directory', () => {
+    updateScaffold(tmpDir);
+
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'templates'))).toBe(true);
+  });
+
+  it('includes template files in updated paths', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    // Simulate outdated template
+    const adrPath = join(tmpDir, '.opencode', 'context', 'templates', 'adr.md');
+    writeFileSync(adrPath, 'OLD CONTENT', 'utf-8');
+
+    const updated = updateScaffold(tmpDir);
+
+    expect(updated).toContain('templates/adr.md');
+    expect(readFileSync(adrPath, 'utf-8')).toContain('ADR-NNN');
   });
 });
