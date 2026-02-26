@@ -44,38 +44,46 @@ const plugin: Plugin = async ({ directory, client }) => {
     },
 
     'experimental.chat.system.transform': async (_input, output) => {
-      // 3. Read prompt files fresh every call (hot-reload)
-      const turnStartPath = join(
-        directory,
-        config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
-      );
-
-      const turnStart = readPromptFile(turnStartPath);
-
-      // 4. Build knowledge index
+      // 3. Build knowledge index
       const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter(
         (s): s is string => Boolean(s)
       );
       const entries = buildKnowledgeIndex(directory, knowledgeSources);
       const indexContent = formatKnowledgeIndex(entries);
 
-      // 5. Inject into system prompt (only non-empty)
-      if (turnStart) output.system.push(turnStart);
+      // 4. Inject into system prompt (only non-empty)
       if (indexContent) output.system.push(indexContent);
     },
 
     'experimental.chat.messages.transform': async (_input, output) => {
-      // 6. Inject turn-end as synthetic user message (hot-reload)
+      if (output.messages.length === 0) return;
+
+      const lastUserMsg = output.messages.filter((m) => m.info.role === 'user').at(-1);
+      if (!lastUserMsg) return;
+
+      // 5. turn-start: append to last user message parts (hot-reload)
+      const turnStartPath = join(
+        directory,
+        config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
+      );
+      const turnStart = readPromptFile(turnStartPath);
+      if (turnStart) {
+        lastUserMsg.parts.push({
+          id: `context-turn-start-${Date.now()}`,
+          sessionID: lastUserMsg.info.sessionID,
+          messageID: lastUserMsg.info.id,
+          type: 'text' as const,
+          text: turnStart,
+        });
+      }
+
+      // 6. turn-end: inject as separate user message (hot-reload)
       const turnEndPath = join(
         directory,
         config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
       );
       const turnEnd = readPromptFile(turnEndPath);
       if (!turnEnd) return;
-      if (output.messages.length === 0) return;
-
-      const lastUserMsg = output.messages.filter((m) => m.info.role === 'user').at(-1);
-      if (!lastUserMsg) return;
 
       const msgId = `context-turn-end-${Date.now()}`;
       output.messages.push({
@@ -96,7 +104,6 @@ const plugin: Plugin = async ({ directory, client }) => {
             messageID: msgId,
             type: 'text' as const,
             text: `<system-reminder>\n${turnEnd}\n</system-reminder>`,
-            synthetic: true,
           },
         ],
       });
