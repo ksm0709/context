@@ -6,25 +6,18 @@
 
 매 턴마다 두 개의 훅이 호출되어 컨텍스트를 주입합니다:
 
-**`experimental.chat.system.transform`** — 시스템 프롬프트에 1개 블록 주입:
-[Available Knowledge] ← knowledge index (자동 생성)
-
-```
-  [기존 system prompt]
-  ↓
-[Available Knowledge] ← knowledge index (자동 생성)
-```
+매 턴마다 하나의 훅이 호출되어 컨텍스트를 주입합니다:
 
 **`experimental.chat.messages.transform`** — 대화 히스토리에 2가지 주입:
-1. 마지막 유저 메시지 parts에 turn-start.md 내용 append
-2. 대화 끝에 별도 유저 메시지로 turn-end.md 주입 (<system-reminder> 태그)
+1. 마지막 유저 메시지 parts에 **turn-start.md + Available Knowledge** 결합하여 append
+2. 대화 끝에 별도 유저 메시지로 turn-end.md 주입 (`<system-reminder>` 태그)
 
 두 주입 모두 synthetic 플래그 없음 → AI가 실제 지시사항으로 처리
 
 ```
 [기존 messages]
   ↓
-[마지막 UserMessage parts에 turn-start append]
+[마지막 UserMessage parts에 turn-start + Available Knowledge 결합하여 append]
 [별도 UserMessage로 turn-end 주입] ← <system-reminder> 태그
 ```
 
@@ -123,13 +116,9 @@ const plugin: Plugin = async ({ directory, client }) => {
   // 1. Scaffold on first run
   // 2. Load config once at plugin init
   return {
-    'experimental.chat.system.transform': async (_input, output) => {
-      // 3. Build knowledge index (dir + sources)
-      // 4. Inject knowledge index into output.system
-    },
     'experimental.chat.messages.transform': async (_input, output) => {
-      // 5. Append turn-start to last user message parts (hot-reload)
-      // 6. Inject turn-end as separate user message (hot-reload)
+      // 3. Read turn-start + build knowledge index → combine with \n\n → append to last user message
+      // 4. Inject turn-end as separate user message (hot-reload)
     },
   };
 };
@@ -140,9 +129,10 @@ const plugin: Plugin = async ({ directory, client }) => {
 - config는 플러그인 초기화 시 1회만 로드 (변경 시 재시작 필요)
 - prompt 파일은 매 턴마다 읽음 (실시간 수정 반영)
 - knowledge index도 매 턴마다 빌드 (파일 추가/삭제 즉시 반영)
-- turn-start는 마지막 유저 메시지 parts에 append — AI가 현재 턴의 지시사항으로 처리
+- turn-start와 knowledge index는 **같은 text part에 결합** — "아래 Available Knowledge" 공간적 참조 유지
 - turn-end는 별도 유저 메시지로 주입 (`<system-reminder>` 태그) — synthetic 플래그 없이 실제 액션 유발
 - synthetic 플래그 미사용: AI가 soft context가 아닌 실행 가능한 지시사항으로 처리하도록 설계 → [[docs/synthetic-message-injection.md]] 참고
+- 관련 버그: [[docs/bug-knowledge-index-spatial-mismatch.md]]
 
 ## 관련 노트
 

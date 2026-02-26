@@ -1,7 +1,6 @@
 {
-  "active_plan": null,
-  "completed_at": "2026-02-26T14:45:00.000Z",
-  "plan_name": "hook-content-improvement",
-  "status": "completed",
+  "active_plan": "/home/taeho/repos/context/.sisyphus/plans/knowledge-index-relocation.md",
+  "started_at": "2026-02-27T00:00:00.000Z",
+  "plan_name": "knowledge-index-relocation",
   "session_ids": ["ses_365cc97a6ffejJpO9lzNPE5Yip"]
 }
