@@ -87,7 +87,7 @@ describe('scaffoldIfNeeded', () => {
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'templates'))).toBe(true);
   });
 
-  it('creates 8 template files in templates directory', () => {
+  it('creates 9 template files in templates directory', () => {
     scaffoldIfNeeded(tmpDir);
 
     const templatesDir = join(tmpDir, '.opencode', 'context', 'templates');
@@ -100,6 +100,7 @@ describe('scaffoldIfNeeded', () => {
       'context.md',
       'runbook.md',
       'insight.md',
+      'index.md',
     ];
     for (const file of expectedFiles) {
       expect(existsSync(join(templatesDir, file))).toBe(true);
@@ -165,7 +166,7 @@ describe('updateScaffold', () => {
 
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(11); // config + turn-start + turn-end + 8 templates
+    expect(updated).toHaveLength(12); // config + turn-start + turn-end + 9 templates
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md'))).toBe(true);
@@ -174,7 +175,7 @@ describe('updateScaffold', () => {
   it('creates scaffold directory if it does not exist', () => {
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(11);
+    expect(updated).toHaveLength(12);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts'))).toBe(true);
   });

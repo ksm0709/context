@@ -1,7 +1,11 @@
 import { join } from 'node:path';
 import type { Plugin } from '@opencode-ai/plugin';
 import { loadConfig } from './lib/config.js';
-import { buildKnowledgeIndex, formatKnowledgeIndex } from './lib/knowledge-index.js';
+import {
+  buildKnowledgeIndexV2,
+  formatKnowledgeIndex,
+  formatDomainIndex,
+} from './lib/knowledge-index.js';
 import { readPromptFile } from './lib/prompt-reader.js';
 import { scaffoldIfNeeded, updateScaffold } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
@@ -56,11 +60,11 @@ const plugin: Plugin = async ({ directory, client }) => {
       );
       const turnStart = readPromptFile(turnStartPath);
 
-      const knowledgeSources = [config.knowledge.dir, ...config.knowledge.sources].filter(
-        (s): s is string => Boolean(s)
-      );
-      const entries = buildKnowledgeIndex(directory, knowledgeSources);
-      const indexContent = formatKnowledgeIndex(entries);
+      const knowledgeIndex = buildKnowledgeIndexV2(directory, config.knowledge);
+      const indexContent =
+        knowledgeIndex.mode === 'flat'
+          ? formatKnowledgeIndex(knowledgeIndex.individualFiles)
+          : formatDomainIndex(knowledgeIndex);
 
       const combinedContent = [turnStart, indexContent].filter(Boolean).join('\n\n');
       if (combinedContent) {

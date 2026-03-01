@@ -113,3 +113,63 @@ describe('loadConfig', () => {
     expect(config.knowledge.dir).toBe('docs');
   });
 });
+
+describe('loadConfig - knowledge domain fields', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `config-domain-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns default values for new optional fields when not specified', () => {
+    const config = loadConfig(tmpDir);
+    expect(config.knowledge.mode).toBe('auto');
+    expect(config.knowledge.indexFilename).toBe('INDEX.md');
+    expect(config.knowledge.maxDomainDepth).toBe(2);
+  });
+
+  it('parses custom mode, indexFilename, maxDomainDepth', () => {
+    const configDir = join(tmpDir, '.opencode', 'context');
+    mkdirSync(configDir, { recursive: true });
+
+    const configContent = JSON.stringify({
+      knowledge: {
+        dir: 'knowledge',
+        sources: ['README.md'],
+        mode: 'domain',
+        indexFilename: '_INDEX.md',
+        maxDomainDepth: 3,
+      },
+    });
+    writeFileSync(join(configDir, 'config.jsonc'), configContent);
+
+    const config = loadConfig(tmpDir);
+    expect(config.knowledge.mode).toBe('domain');
+    expect(config.knowledge.indexFilename).toBe('_INDEX.md');
+    expect(config.knowledge.maxDomainDepth).toBe(3);
+  });
+
+  it('merges partial knowledge config - only mode specified', () => {
+    const configDir = join(tmpDir, '.opencode', 'context');
+    mkdirSync(configDir, { recursive: true });
+
+    const configContent = JSON.stringify({
+      knowledge: {
+        mode: 'flat',
+      },
+    });
+    writeFileSync(join(configDir, 'config.jsonc'), configContent);
+
+    const config = loadConfig(tmpDir);
+    expect(config.knowledge.mode).toBe('flat');
+    expect(config.knowledge.indexFilename).toBe('INDEX.md');
+    expect(config.knowledge.maxDomainDepth).toBe(2);
+    expect(config.knowledge.dir).toBe('docs');
+    expect(config.knowledge.sources).toEqual(['AGENTS.md']);
+  });
+});

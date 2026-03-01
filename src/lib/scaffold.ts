@@ -29,6 +29,7 @@ const DEFAULT_TURN_START = `## Knowledge Context
 ### 작업 전 필수
 
 - 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **먼저** 읽으세요
+- 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
 - 문서 내 [[링크]]를 따라가며 관련 노트를 탐색하세요 -- 링크를 놓치면 중요한 맥락을 잃습니다
 - 지식 파일에 기록된 아키텍처 결정, 패턴, 제약사항을 반드시 따르세요
 
@@ -68,13 +69,14 @@ const DEFAULT_TURN_END = `## 작업 마무리 체크리스트
 - [ ] 위 상황에 해당하는 발견이 있었다면 노트를 작성했는가?
 - [ ] 관련 기존 노트에 [[링크]]를 추가했는가?
 - [ ] 기존 노트의 내용이 변경사항과 불일치하면 업데이트했는가?
+- [ ] 노트를 도메인 폴더에 저장했다면 해당 INDEX.md에 추가했는가?
 
 #### 노트 작성 규칙
 
 - 첫 줄: 명확한 제목 (\`# Title\`)
 - 핵심 내용을 자신의 언어로 간결하게 서술
 - 관련 노트를 \`[[relative/path/file.md]]\` 형태의 wikilink로 연결
-- knowledge 디렉토리 (기본: \`docs/\`)에 저장
+- knowledge 디렉토리 (기본: \`docs/\`)에 저장. 도메인 폴더가 있다면 적절한 도메인에 저장
 `;
 
 const DEFAULT_ADR_TEMPLATE = `# ADR-NNN: [제목]
@@ -277,6 +279,21 @@ const DEFAULT_INSIGHT_TEMPLATE = `# Insight: [발견 제목]
 - [[관련-insight.md]] / [[영향받는-패턴.md]] / [[관련-ADR.md]]
 `;
 
+const DEFAULT_INDEX_TEMPLATE = `# [Domain] Domain
+
+Overview: [1-2 sentence description of this domain]
+
+## Notes
+
+| File | Summary | Read When... |
+|------|---------|--------------|
+| [[example.md]] | Example summary | Working on X |
+
+## Related Domains
+
+- [[../other-domain/INDEX.md]] -- Description
+`;
+
 const TEMPLATE_FILES: Record<string, string> = {
   'adr.md': DEFAULT_ADR_TEMPLATE,
   'pattern.md': DEFAULT_PATTERN_TEMPLATE,
@@ -286,6 +303,7 @@ const TEMPLATE_FILES: Record<string, string> = {
   'context.md': DEFAULT_CONTEXT_TEMPLATE,
   'runbook.md': DEFAULT_RUNBOOK_TEMPLATE,
   'insight.md': DEFAULT_INSIGHT_TEMPLATE,
+  'index.md': DEFAULT_INDEX_TEMPLATE,
 };
 
 export function scaffoldIfNeeded(projectDir: string): boolean {

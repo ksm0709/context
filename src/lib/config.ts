@@ -13,6 +13,9 @@ function getDefaultConfig(): ContextConfig {
     knowledge: {
       dir: DEFAULTS.knowledgeDir,
       sources: [...DEFAULTS.knowledgeSources],
+      mode: 'auto',
+      indexFilename: DEFAULTS.indexFilename,
+      maxDomainDepth: DEFAULTS.maxDomainDepth,
     },
   };
 }
@@ -27,6 +30,9 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
     knowledge: {
       dir: partial.knowledge?.dir ?? defaults.knowledge.dir,
       sources: partial.knowledge?.sources ?? defaults.knowledge.sources,
+      mode: partial.knowledge?.mode ?? defaults.knowledge.mode,
+      indexFilename: partial.knowledge?.indexFilename ?? defaults.knowledge.indexFilename,
+      maxDomainDepth: partial.knowledge?.maxDomainDepth ?? defaults.knowledge.maxDomainDepth,
     },
   };
 }

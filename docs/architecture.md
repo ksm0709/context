@@ -47,25 +47,39 @@
 
 ### Knowledge Index Builder (`lib/knowledge-index.ts`)
 
-`knowledge.dir`과 `knowledge.sources`를 결합하여 스캔합니다:
+`knowledge.dir`과 `knowledge.sources`를 결합하여 스캔합니다. **이중 모드** 지원:
+
+#### Flat 모드 (기존 동작)
 
 1. `dir` (디렉토리) → 재귀 스캔하여 `.md` 파일 수집
 2. `sources` (파일/디렉토리) → 각각 파일이면 직접 추가, 디렉토리면 재귀 스캔
 
-**스캔 규칙:**
+#### Domain 모드 (INDEX.md 기반) — [[docs/adr-002-domain-index-knowledge-structure.md]]
 
-- `.md` 파일만 수집
-- 최대 depth: 3
-- 최대 엔트리: 100개
-- summary: 각 파일의 첫 번째 비어있지 않은 줄 (최대 100자)
+1. `dir` 하위 폴더에서 `INDEX.md` 파일을 탐색 (maxDomainDepth: 2)
+2. INDEX.md가 있는 폴더 = 도메인. INDEX.md 내용을 인라인 주입
+3. 도메인에 속하지 않는 root-level `.md` + `sources` = individual files
 
-**출력 포맷:**
+**모드 감지 (`mode: "auto"` 기본값):**
+- 하위 폴더에 INDEX.md가 1개 이상 있으면 → domain 모드
+- 없으면 → flat 모드 (100% 하위호환)
 
+**Flat 출력:**
 ```markdown
 ## Available Knowledge
-
 - AGENTS.md — # AGENTS.md
 - docs/architecture.md — # Plugin Architecture
+```
+
+**Domain 출력:**
+```markdown
+## Available Knowledge
+### Domains
+#### docs/architecture/ (3 notes)
+# Architecture Domain
+...INDEX.md 내용...
+### Individual Files
+- AGENTS.md — # AGENTS.md
 ```
 
 ### Prompt Reader (`lib/prompt-reader.ts`)
@@ -83,8 +97,8 @@
 ├── config.jsonc         ← 기본 설정
 ├── prompts/
 │   ├── turn-start.md    ← 제텔카스텐 가이드 + 지식 읽기 안내
-│   └── turn-end.md      ← 마무리 체크리스트 + 8가지 템플릿 링크
-└── templates/           ← 노트 작성 템플릿 (8개)
+│   └── turn-end.md      ← 마무리 체크리스트 + 9가지 템플릿 링크
+└── templates/           ← 노트 작성 템플릿 (9개)
     ├── adr.md           ← Architecture Decision Record
     ├── pattern.md       ← 코드 패턴/컨벤션
     ├── bug.md           ← 버그 패턴 + 해결
@@ -92,14 +106,16 @@
     ├── decision.md      ← 경량 결정 로그
     ├── context.md       ← 프로젝트/모듈 맥락
     ├── runbook.md       ← 절차서
-    └── insight.md       ← 발견/학습
+    ├── insight.md       ← 발견/학습
+    └── index.md         ← 도메인 INDEX.md 템플릿
 ```
 
 - **멱등성**: `.opencode/context/` 디렉토리가 이미 존재하면 아무것도 하지 않음
 - 사용자가 수정한 파일을 덮어쓸 위험 없음
-- `updateScaffold()`: 11개 파일 관리 (config + 2 prompts + 8 templates) — 내용이 다를 때만 업데이트
+- `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
 - 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
+- 관련 결정: [[docs/adr-002-domain-index-knowledge-structure.md]] — 도메인 폴더 + INDEX.md 기반 구조
 ## Safety Limits (`constants.ts`)
 
 | 제한                    | 값    | 목적                           |
@@ -109,6 +125,8 @@
 | `maxTotalInjectionSize` | 128KB | 전체 주입 크기 제한            |
 | `maxScanDepth`          | 3     | 디렉토리 재귀 탐색 깊이        |
 | `maxSummaryLength`      | 100자 | 엔트리 요약 길이               |
+| `maxIndexFileSize`      | 32KB  | INDEX.md 파일 크기 제한        |
+| `maxDomainDepth`        | 2     | INDEX.md 탐색 깊이             |
 
 ## Plugin Entry Point (`index.ts`)
 
