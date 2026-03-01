@@ -37,6 +37,7 @@ const DEFAULT_TURN_START = `## Knowledge Context
 
 - **TDD** (Test-Driven Development): 테스트를 먼저 작성하고(RED), 구현하여 통과시킨 뒤(GREEN), 리팩토링하세요
 - **DDD** (Domain-Driven Design): 도메인 개념을 코드 구조에 반영하세요. 타입과 모듈은 비즈니스 도메인을 기준으로 분리하세요
+- **테스트 커버리지**: 새로 작성하거나 변경한 코드는 테스트 커버리지 80% 이상을 목표로 하세요. 구현 전에 테스트부터 작성하면 자연스럽게 달성됩니다
 
 ### 우선순위
 
