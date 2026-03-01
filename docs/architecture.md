@@ -99,6 +99,7 @@
 - 사용자가 수정한 파일을 덮어쓸 위험 없음
 - `updateScaffold()`: 11개 파일 관리 (config + 2 prompts + 8 templates) — 내용이 다를 때만 업데이트
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
+- 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
 ## Safety Limits (`constants.ts`)
 
 | 제한                    | 값    | 목적                           |
