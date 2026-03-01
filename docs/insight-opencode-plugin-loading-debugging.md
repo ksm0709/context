@@ -39,16 +39,17 @@ OpenCode의 플러그인 로딩 체계:
 # 1. 새 dist 빌드
 bun build ./src/index.ts --outdir dist --target bun
 
-# 2. fallback 경로에 최신 dist 복사
-cp -r dist/* ~/.config/opencode/node_modules/@ksm0709/context/dist/
+# 2. 캐시 및 fallback 경로에 있는 기존 플러그인 폴더 완전 삭제
+rm -rf ~/.cache/opencode/node_modules/@ksm0709/context
+rm -rf ~/.config/opencode/node_modules/@ksm0709/context
 
-# 3. package.json 버전 업데이트 (fallback 경로)
-# ~/.config/opencode/node_modules/@ksm0709/context/package.json → version: "0.0.6"
+# 3. fallback 경로 재생성 및 최신 dist/package.json 복사
+mkdir -p ~/.config/opencode/node_modules/@ksm0709/context
+cp -r dist ~/.config/opencode/node_modules/@ksm0709/context/
+cp package.json ~/.config/opencode/node_modules/@ksm0709/context/
 
-# 4. 캐시 lock 업데이트
-# ~/.cache/opencode/package.json → "@ksm0709/context": "0.0.6"
-# ~/.cache/opencode/bun.lock → @ksm0709/context@0.0.3 → @ksm0709/context@0.0.6
-```
+# 4. 캐시 lock 무효화 및 재설치
+cd ~/.cache/opencode && rm -f bun.lock && bun install
 
 ## 학습
 
