@@ -9,6 +9,7 @@
 매 턴마다 하나의 훅이 호출되어 컨텍스트를 주입합니다:
 
 **`experimental.chat.messages.transform`** — 대화 히스토리에 2가지 주입:
+
 1. 마지막 유저 메시지 parts에 **turn-start.md + Available Knowledge** 결합하여 append
 2. 대화 끝에 별도 유저 메시지로 turn-end.md 주입 (`<system-reminder>` 태그)
 
@@ -61,24 +62,34 @@
 3. 도메인에 속하지 않는 root-level `.md` + `sources` = individual files
 
 **모드 감지 (`mode: "auto"` 기본값):**
+
 - 하위 폴더에 INDEX.md가 1개 이상 있으면 → domain 모드
 - 없으면 → flat 모드 (100% 하위호환)
 
 **Flat 출력:**
+
 ```markdown
 ## Available Knowledge
+
 - AGENTS.md — # AGENTS.md
 - docs/architecture.md — # Plugin Architecture
 ```
 
 **Domain 출력:**
+
 ```markdown
 ## Available Knowledge
+
 ### Domains
+
 #### docs/architecture/ (3 notes)
+
 # Architecture Domain
+
 ...INDEX.md 내용...
+
 ### Individual Files
+
 - AGENTS.md — # AGENTS.md
 ```
 
@@ -114,13 +125,14 @@
 - 사용자가 수정한 파일을 덮어쓸 위험 없음
 - `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
 - `autoUpdateTemplates()`: 플러그인 버전 변경 시 templates만 자동 갱신 (config/prompts 보존)
-- **버전 추적**: `.opencode/context/.version` 파일에 플러그인 버전 기록. 버전 불일치 시 자동 업데이트 트리거
+- **버전 추적**: `package.json`의 `version`을 빌드 타임에 직접 읽음 (`import pkg from '../../package.json'`). `.opencode/context/.version` 파일과 비교하여 불일치 시 자동 업데이트 트리거 → [[docs/decision-remove-version-ts.md]]
 - **강제 업데이트**: `bunx @ksm0709/context update` CLI 커맨드로 12개 파일 전부 업데이트 → [[docs/decision-cli-tool-over-opencode-command.md]]
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
 - 관련 결정: [[docs/decision-scaffold-auto-update-scope.md]] — templates만 자동 갱신
 - 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
 - 관련 함정: [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] — OpenCode가 최신 버전을 캐시하지 않음
 - 관련 결정: [[docs/adr-002-domain-index-knowledge-structure.md]] — 도메인 폴더 + INDEX.md 기반 구조
+
 ## Safety Limits (`constants.ts`)
 
 | 제한                    | 값    | 목적                           |
