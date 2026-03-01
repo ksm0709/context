@@ -30,8 +30,7 @@
     "lint": "eslint src --ext .ts"
   },
   "files": [
-    "dist",
-    "src/version.ts"
+    "dist"
   ],
   "peerDependencies": {
     "@opencode-ai/plugin": ">=1.0.0"

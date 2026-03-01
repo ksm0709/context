@@ -8,7 +8,7 @@ import {
   getStoredVersion,
   autoUpdateTemplates,
 } from './scaffold';
-import { PLUGIN_VERSION } from '../version';
+import pkg from '../../package.json';
 
 describe('scaffoldIfNeeded', () => {
   let tmpDir: string;
@@ -222,7 +222,7 @@ describe('version tracking', () => {
     scaffoldIfNeeded(tmpDir);
 
     const version = getStoredVersion(tmpDir);
-    expect(version).toBe(PLUGIN_VERSION);
+    expect(version).toBe(pkg.version);
   });
 
   it('updateScaffold writes version file', () => {
@@ -233,7 +233,7 @@ describe('version tracking', () => {
 
     updateScaffold(tmpDir);
 
-    expect(getStoredVersion(tmpDir)).toBe(PLUGIN_VERSION);
+    expect(getStoredVersion(tmpDir)).toBe(pkg.version);
   });
 
   it('getStoredVersion returns null when file is missing', () => {
@@ -326,7 +326,7 @@ describe('autoUpdateTemplates', () => {
 
     autoUpdateTemplates(tmpDir);
 
-    expect(getStoredVersion(tmpDir)).toBe(PLUGIN_VERSION);
+    expect(getStoredVersion(tmpDir)).toBe(pkg.version);
   });
 
   it('updates when version file is missing (pre-version installs)', () => {
@@ -342,7 +342,7 @@ describe('autoUpdateTemplates', () => {
     const updated = autoUpdateTemplates(tmpDir);
 
     expect(updated).toContain('templates/adr.md');
-    expect(getStoredVersion(tmpDir)).toBe(PLUGIN_VERSION);
+    expect(getStoredVersion(tmpDir)).toBe(pkg.version);
   });
 
   it('creates missing template files', () => {

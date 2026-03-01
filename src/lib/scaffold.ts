@@ -1,7 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULTS } from '../constants';
-import { PLUGIN_VERSION } from '../version';
+import pkg from '../../package.json';
+
+const PLUGIN_VERSION: string = pkg.version;
 
 const DEFAULT_CONFIG = `{
   // Context Plugin Configuration
