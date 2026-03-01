@@ -119,6 +119,7 @@
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
 - 관련 결정: [[docs/decision-scaffold-auto-update-scope.md]] — templates만 자동 갱신
 - 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
+- 관련 함정: [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] — OpenCode가 최신 버전을 캐시하지 않음
 - 관련 결정: [[docs/adr-002-domain-index-knowledge-structure.md]] — 도메인 폴더 + INDEX.md 기반 구조
 ## Safety Limits (`constants.ts`)
 
