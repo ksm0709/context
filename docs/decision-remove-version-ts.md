@@ -16,6 +16,9 @@ const PLUGIN_VERSION: string = pkg.version;
 
 - `package.json: 0.0.8` vs `src/version.ts: 0.0.6` → `autoUpdateTemplates()` 스킵
 - Bun 빌드 타겟에서 `package.json` import가 네이티브 지원됨 → 간접 레이어 불필요
+- **런타임 안전**: `bun build --target bun`이 빌드 타임에 버전 값을 번들에 리터럴로 인라인.
+  설치된 레포의 `package.json`을 런타임에 읽지 않으므로, 어떤 프로젝트에 플러그인을 설치해도 영향 없음.
+  (`dist/index.js`에 `"0.0.8"` 리터럴로 포함된 것 확인)
 
 ## 고려한 대안
 
