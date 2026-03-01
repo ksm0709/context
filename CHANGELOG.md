@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.7] - 2025-03-01
+
+### Fixes
+
+- **command.execute.before 타입 에러 수정**: `Part` 객체에 필수 필드 `id`, `sessionID`, `messageID` 추가
+
+## [0.0.6] - 2025-03-01
+
+All notable changes to this project will be documented in this file.
+
 ## [0.0.6] - 2025-03-01
 
 ### Features

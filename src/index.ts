@@ -55,7 +55,14 @@ const plugin: Plugin = async ({ directory, client }) => {
         updated.length === 0
           ? 'All scaffold files are already up to date.'
           : `Updated ${updated.length} file(s):\n${updated.map((f) => `- ${f}`).join('\n')}`;
-      output.parts.splice(0, output.parts.length, { type: 'text', text });
+      const now = Date.now();
+      output.parts.splice(0, output.parts.length, {
+        id: `context-update-${now}`,
+        sessionID: input.sessionID,
+        messageID: `context-update-msg-${now}`,
+        type: 'text',
+        text,
+      });
     },
 
     'experimental.chat.messages.transform': async (_input, output) => {
