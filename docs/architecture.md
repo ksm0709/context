@@ -115,7 +115,7 @@
 - `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
 - `autoUpdateTemplates()`: 플러그인 버전 변경 시 templates만 자동 갱신 (config/prompts 보존)
 - **버전 추적**: `.opencode/context/.version` 파일에 플러그인 버전 기록. 버전 불일치 시 자동 업데이트 트리거
-- **커맨드 훅 주의**: `command.execute.before`에서 `output.parts` 재할당 금지 — 뮤테이션만 가능 → [[docs/gotcha-opencode-command-hook-parts-mutation.md]]
+- **강제 업데이트**: `bunx @ksm0709/context update` CLI 커맨드로 12개 파일 전부 업데이트 → [[docs/decision-cli-tool-over-opencode-command.md]]
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
 - 관련 결정: [[docs/decision-scaffold-auto-update-scope.md]] — templates만 자동 갱신
 - 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가

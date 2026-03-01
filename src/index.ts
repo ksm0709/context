@@ -7,7 +7,7 @@ import {
   formatDomainIndex,
 } from './lib/knowledge-index.js';
 import { readPromptFile } from './lib/prompt-reader.js';
-import { scaffoldIfNeeded, updateScaffold, autoUpdateTemplates } from './lib/scaffold.js';
+import { scaffoldIfNeeded, autoUpdateTemplates } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
 
 const plugin: Plugin = async ({ directory, client }) => {
@@ -39,32 +39,6 @@ const plugin: Plugin = async ({ directory, client }) => {
   const config = loadConfig(directory);
 
   return {
-    config: async (cfg) => {
-      cfg.command ??= {};
-      cfg.command['context-update'] = {
-        template: '',
-        description: 'Update context scaffold files to latest plugin version',
-      };
-    },
-
-    'command.execute.before': async (input, output) => {
-      if (input.command !== 'context-update') return;
-
-      const updated = updateScaffold(directory);
-      const text =
-        updated.length === 0
-          ? 'All scaffold files are already up to date.'
-          : `Updated ${updated.length} file(s):\n${updated.map((f) => `- ${f}`).join('\n')}`;
-      const now = Date.now();
-      output.parts.splice(0, output.parts.length, {
-        id: `context-update-${now}`,
-        sessionID: input.sessionID,
-        messageID: `context-update-msg-${now}`,
-        type: 'text',
-        text,
-      });
-    },
-
     'experimental.chat.messages.transform': async (_input, output) => {
       if (output.messages.length === 0) return;
 
