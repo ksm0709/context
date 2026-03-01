@@ -50,5 +50,4 @@ rm -rf ~/.cache/opencode/node_modules/@ksm0709/context
 - [[docs/gotcha-opencode-status-plugin-name-dist.md]] -- file:// fallback 발생 시 /status에서 "dist" 표시됨
 - [[docs/gotcha-opencode-command-hook-parts-mutation.md]] -- 또 다른 OpenCode 함정
 - [[docs/gotcha-opencode-run-session-not-found.md]] -- opencode run 크래시
-- [[docs/gotcha-opencode-command-hook-parts-mutation.md]] -- 또 다른 OpenCode 함정
-- [[docs/gotcha-opencode-run-session-not-found.md]] -- opencode run 크래시
+- [[docs/runbook-context-plugin-release.md]] -- 플러그인 수동 갱신 방법
