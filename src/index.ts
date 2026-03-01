@@ -7,11 +7,11 @@ import {
   formatDomainIndex,
 } from './lib/knowledge-index.js';
 import { readPromptFile } from './lib/prompt-reader.js';
-import { scaffoldIfNeeded, updateScaffold } from './lib/scaffold.js';
+import { scaffoldIfNeeded, updateScaffold, autoUpdateTemplates } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
 
 const plugin: Plugin = async ({ directory, client }) => {
-  // 1. Scaffold on first run
+  // 1. Scaffold on first run, or auto-update templates on version change
   const scaffolded = scaffoldIfNeeded(directory);
   if (scaffolded) {
     await client.app.log({
@@ -21,6 +21,18 @@ const plugin: Plugin = async ({ directory, client }) => {
         message: 'Scaffold created at .opencode/context/',
       },
     });
+  } else {
+    // Auto-update templates when plugin version changes
+    const autoUpdated = autoUpdateTemplates(directory);
+    if (autoUpdated.length > 0) {
+      await client.app.log({
+        body: {
+          service: 'context',
+          level: 'info',
+          message: `Auto-updated ${autoUpdated.length} template(s): ${autoUpdated.join(', ')}`,
+        },
+      });
+    }
   }
 
   // 2. Load config once at plugin init
@@ -39,12 +51,11 @@ const plugin: Plugin = async ({ directory, client }) => {
       if (input.command !== 'context-update') return;
 
       const updated = updateScaffold(directory);
-      if (updated.length === 0) {
-        output.parts = [{ type: 'text', text: 'All scaffold files are already up to date.' }];
-      } else {
-        const lines = updated.map((f) => `- ${f}`).join('\n');
-        output.parts = [{ type: 'text', text: `Updated ${updated.length} file(s):\n${lines}` }];
-      }
+      const text =
+        updated.length === 0
+          ? 'All scaffold files are already up to date.'
+          : `Updated ${updated.length} file(s):\n${updated.map((f) => `- ${f}`).join('\n')}`;
+      output.parts.splice(0, output.parts.length, { type: 'text', text });
     },
 
     'experimental.chat.messages.transform': async (_input, output) => {

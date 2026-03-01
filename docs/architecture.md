@@ -113,7 +113,11 @@
 - **멱등성**: `.opencode/context/` 디렉토리가 이미 존재하면 아무것도 하지 않음
 - 사용자가 수정한 파일을 덮어쓸 위험 없음
 - `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
+- `autoUpdateTemplates()`: 플러그인 버전 변경 시 templates만 자동 갱신 (config/prompts 보존)
+- **버전 추적**: `.opencode/context/.version` 파일에 플러그인 버전 기록. 버전 불일치 시 자동 업데이트 트리거
+- **커맨드 훅 주의**: `command.execute.before`에서 `output.parts` 재할당 금지 — 뮤테이션만 가능 → [[docs/gotcha-opencode-command-hook-parts-mutation.md]]
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
+- 관련 결정: [[docs/decision-scaffold-auto-update-scope.md]] — templates만 자동 갱신
 - 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
 - 관련 결정: [[docs/adr-002-domain-index-knowledge-structure.md]] — 도메인 폴더 + INDEX.md 기반 구조
 ## Safety Limits (`constants.ts`)

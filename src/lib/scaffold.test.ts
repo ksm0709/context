@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { scaffoldIfNeeded, updateScaffold } from './scaffold';
+import {
+  scaffoldIfNeeded,
+  updateScaffold,
+  getStoredVersion,
+  autoUpdateTemplates,
+} from './scaffold';
+import { PLUGIN_VERSION } from '../version';
 
 describe('scaffoldIfNeeded', () => {
   let tmpDir: string;
@@ -197,5 +203,157 @@ describe('updateScaffold', () => {
 
     expect(updated).toContain('templates/adr.md');
     expect(readFileSync(adrPath, 'utf-8')).toContain('ADR-NNN');
+  });
+});
+
+describe('version tracking', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `version-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('scaffoldIfNeeded writes version file', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    const version = getStoredVersion(tmpDir);
+    expect(version).toBe(PLUGIN_VERSION);
+  });
+
+  it('updateScaffold writes version file', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    // Clear version to simulate upgrade
+    writeFileSync(join(tmpDir, '.opencode', 'context', '.version'), '0.0.0', 'utf-8');
+
+    updateScaffold(tmpDir);
+
+    expect(getStoredVersion(tmpDir)).toBe(PLUGIN_VERSION);
+  });
+
+  it('getStoredVersion returns null when file is missing', () => {
+    expect(getStoredVersion(tmpDir)).toBeNull();
+  });
+
+  it('getStoredVersion reads stored version', () => {
+    mkdirSync(join(tmpDir, '.opencode', 'context'), { recursive: true });
+    writeFileSync(join(tmpDir, '.opencode', 'context', '.version'), '1.2.3', 'utf-8');
+
+    expect(getStoredVersion(tmpDir)).toBe('1.2.3');
+  });
+});
+
+describe('autoUpdateTemplates', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `auto-update-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('skips when .opencode/context/ does not exist', () => {
+    const updated = autoUpdateTemplates(tmpDir);
+
+    expect(updated).toEqual([]);
+  });
+
+  it('skips when stored version matches current', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    const updated = autoUpdateTemplates(tmpDir);
+
+    expect(updated).toEqual([]);
+  });
+
+  it('updates templates when version differs', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    // Simulate older version
+    writeFileSync(join(tmpDir, '.opencode', 'context', '.version'), '0.0.1', 'utf-8');
+
+    // Simulate outdated template
+    writeFileSync(
+      join(tmpDir, '.opencode', 'context', 'templates', 'adr.md'),
+      'OLD CONTENT',
+      'utf-8'
+    );
+
+    const updated = autoUpdateTemplates(tmpDir);
+
+    expect(updated).toContain('templates/adr.md');
+    expect(
+      readFileSync(join(tmpDir, '.opencode', 'context', 'templates', 'adr.md'), 'utf-8')
+    ).toContain('ADR-NNN');
+  });
+
+  it('does NOT update config.jsonc or prompts', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    // Simulate older version
+    writeFileSync(join(tmpDir, '.opencode', 'context', '.version'), '0.0.1', 'utf-8');
+
+    // Modify config and prompts (user customizations)
+    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), 'CUSTOM CONFIG', 'utf-8');
+    writeFileSync(
+      join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'),
+      'CUSTOM TURN START',
+      'utf-8'
+    );
+
+    autoUpdateTemplates(tmpDir);
+
+    expect(readFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), 'utf-8')).toBe(
+      'CUSTOM CONFIG'
+    );
+    expect(
+      readFileSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'), 'utf-8')
+    ).toBe('CUSTOM TURN START');
+  });
+
+  it('writes current version after update', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    writeFileSync(join(tmpDir, '.opencode', 'context', '.version'), '0.0.1', 'utf-8');
+
+    autoUpdateTemplates(tmpDir);
+
+    expect(getStoredVersion(tmpDir)).toBe(PLUGIN_VERSION);
+  });
+
+  it('updates when version file is missing (pre-version installs)', () => {
+    // Simulate scaffold without version file (old installs)
+    mkdirSync(join(tmpDir, '.opencode', 'context', 'templates'), { recursive: true });
+    mkdirSync(join(tmpDir, '.opencode', 'context', 'prompts'), { recursive: true });
+    writeFileSync(
+      join(tmpDir, '.opencode', 'context', 'templates', 'adr.md'),
+      'OLD CONTENT',
+      'utf-8'
+    );
+
+    const updated = autoUpdateTemplates(tmpDir);
+
+    expect(updated).toContain('templates/adr.md');
+    expect(getStoredVersion(tmpDir)).toBe(PLUGIN_VERSION);
+  });
+
+  it('creates missing template files', () => {
+    // Simulate scaffold with missing templates
+    mkdirSync(join(tmpDir, '.opencode', 'context', 'templates'), { recursive: true });
+    writeFileSync(join(tmpDir, '.opencode', 'context', '.version'), '0.0.1', 'utf-8');
+
+    const updated = autoUpdateTemplates(tmpDir);
+
+    expect(updated).toHaveLength(9); // 9 template files
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'templates', 'adr.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.opencode', 'context', 'templates', 'index.md'))).toBe(true);
   });
 });

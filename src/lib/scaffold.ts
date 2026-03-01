@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULTS } from '../constants';
+import { PLUGIN_VERSION } from '../version';
 
 const DEFAULT_CONFIG = `{
   // Context Plugin Configuration
@@ -336,6 +337,8 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
       writeFileSync(join(templatesDir, filename), content, 'utf-8');
     }
 
+    writeVersion(contextDir, PLUGIN_VERSION);
+
     return true;
   } catch {
     return false;
@@ -370,5 +373,56 @@ export function updateScaffold(projectDir: string): string[] {
     writeFileSync(filePath, content, 'utf-8');
     updated.push(path);
   }
+  writeVersion(contextDir, PLUGIN_VERSION);
+  return updated;
+}
+
+/**
+ * Read stored plugin version from .opencode/context/.version.
+ * Returns null if file is missing or unreadable.
+ */
+export function getStoredVersion(projectDir: string): string | null {
+  try {
+    return readFileSync(join(projectDir, '.opencode', 'context', '.version'), 'utf-8').trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write plugin version to .opencode/context/.version.
+ */
+export function writeVersion(contextDir: string, version: string): void {
+  writeFileSync(join(contextDir, '.version'), version, 'utf-8');
+}
+
+/**
+ * Auto-update templates only when plugin version changes.
+ * Skips config.jsonc and prompts/ to preserve user customizations.
+ * Returns list of updated template paths, or empty array if nothing changed.
+ */
+export function autoUpdateTemplates(projectDir: string): string[] {
+  const contextDir = join(projectDir, '.opencode', 'context');
+  if (!existsSync(contextDir)) return [];
+
+  const stored = getStoredVersion(projectDir);
+  if (stored === PLUGIN_VERSION) return [];
+
+  mkdirSync(join(contextDir, 'templates'), { recursive: true });
+
+  const updated: string[] = [];
+  for (const [filename, content] of Object.entries(TEMPLATE_FILES)) {
+    const filePath = join(contextDir, 'templates', filename);
+    try {
+      const existing = readFileSync(filePath, 'utf-8');
+      if (existing === content) continue;
+    } catch {
+      /* file missing — will create */
+    }
+    writeFileSync(filePath, content, 'utf-8');
+    updated.push(`templates/${filename}`);
+  }
+
+  writeVersion(contextDir, PLUGIN_VERSION);
   return updated;
 }
