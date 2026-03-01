@@ -82,7 +82,7 @@ grep "context\|ksm" "$LOG" | grep -v "permission\|ruleset\|cwd="
 정상 로딩 시:
 
 ```
-INFO  service=plugin path=file://.../@ksm0709/context/dist/index.js loading plugin
+INFO  service=plugin path=@ksm0709/context@latest loading plugin
 INFO  service=context ...  ← scaffolding 또는 auto-update 메시지
 ```
 
