@@ -4,7 +4,7 @@
 
 - **Build**: `mise run build` or `bun build ./src/index.ts --outdir dist --target bun`
 - **Test**: `mise run test` or `bun test`
-- **Single Test**: `bun test BackgroundTask.test.ts` (use file glob pattern)
+- **Single Test**: `bun test config.test.ts` (use file glob pattern)
 - **Watch Mode**: `bun test --watch`
 - **Lint**: `mise run lint` (eslint)
 - **Fix Lint**: `mise run lint:fix` (eslint --fix)
@@ -30,7 +30,7 @@
 
 - **NeverNesters**: avoid deeply nested structures. Always exit early.
 - **Strict mode**: enforced (`"strict": true`)
-- **Classes**: PascalCase (e.g., `BackgroundTask`, `BackgroundTaskManager`)
+- **Interfaces**: PascalCase (e.g., `ContextConfig`, `KnowledgeEntry`)
 - **Methods/properties**: camelCase
 - **Status strings**: use union types (e.g., `'pending' | 'running' | 'completed' | 'failed' | 'cancelled'`)
 - **Explicit types**: prefer explicit type annotations over inference
@@ -62,7 +62,7 @@
 
 - **Type**: OpenCode plugin package (`@ksm0709/context`)
 - **Target**: Bun runtime, ES2021+ / ESM
-- **Purpose**: OpenCode plugin — AI coding agent 기능 확장 툴 모음
+- **Purpose**: OpenCode context plugin — Zettelkasten 기반 지식 관리 및 프롬프트 주입
 - **Plugin API**: `@opencode-ai/plugin` (peerDep) + `@opencode-ai/sdk`
 - **Install**: `opencode.json` → `"plugin": ["@ksm0709/context"]`
 
@@ -86,11 +86,28 @@
 - `console.log` 금지 → `client.app.log()` 사용 (ESLint `no-console` 적용)
 - `@opencode-ai/plugin` → `peerDependencies` (devDependencies에도 추가)
 
-### 파일 구조 (현재)
+### 파일 구조
 
 ```
 src/
-└── index.ts          ← 플러그인 진입점 (Plugin 타입 export default)
+├── index.ts              ← 플러그인 진입점 (export default plugin)
+├── types.ts              ← ContextConfig, KnowledgeEntry 인터페이스
+├── constants.ts          ← DEFAULTS (경로), LIMITS (크기 제한)
+├── index.test.ts
+└── lib/
+    ├── config.ts          ← loadConfig: JSONC 설정 파일 로드 + 기본값 병합
+    ├── config.test.ts
+    ├── knowledge-index.ts ← buildKnowledgeIndex: docs/ 스캔, formatKnowledgeIndex: 마크다운 포맷
+    ├── knowledge-index.test.ts
+    ├── prompt-reader.ts   ← readPromptFile: 파일 읽기 + 64KB 제한
+    ├── prompt-reader.test.ts
+    ├── scaffold.ts        ← scaffoldIfNeeded: 초기 생성, updateScaffold: /context-update 명령
+    └── scaffold.test.ts
+docs/                       ← Zettelkasten 지식 베이스 (knowledge index 대상)
+├── architecture.md
+├── adr-*.md              ← Architecture Decision Records
+├── bug-*.md              ← 버그 분석 노트
+└── synthetic-message-injection.md
 .opencode/
 └── skills/
     └── opencode-plugin-dev/   ← 플러그인 개발 스킬
@@ -99,3 +116,12 @@ src/
             ├── api-reference.md   ← @opencode-ai/plugin 전체 타입
             └── patterns.md        ← 아키텍처/상태/빌드 패턴
 ```
+
+### Plugin Hooks 사용
+
+| Hook | 용도 |
+| --- | --- |
+| `config` | `/context-update` 커맨드 등록 |
+| `command.execute.before` | `/context-update` 실행 시 scaffold 파일 업데이트 |
+| `experimental.chat.messages.transform` | turn-start 프롬프트 + knowledge index를 마지막 user 메시지에 주입, turn-end를 별도 user 메시지로 추가 |
+
