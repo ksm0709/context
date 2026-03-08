@@ -2,15 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.11] - 2026-03-08
+
+### Fixes
+
+- **cli**: support `--version`, help flag interception, and update `--help`
+
+## [0.0.10] - 2026-03-08
+
+### Features
+
+- **cli**: implement context update subcommands (`all`, `prompt`, `plugin`)
+- **agent**: delegate quality check and knowledge note writing to subagents in turn-end prompt
+- **cli**: replace `/context-update` command with CLI tool
+- **scaffold**: auto-update on version change + fix context-update command
+
+### Fixes
+
+- restore context-update behavior and update debugging docs
+- resolve plugin loading name issue by adding main and import exports
+
+### Refactoring
+
+- derive `PLUGIN_VERSION` from `package.json`, remove `version.ts`
+
+### Improvements
+
+- **style**: fix prettier formatting on `eslint.config.js`
+- **agent**: Update `AGENTS.md`
+
+### Docs
+
+- clarify `package.json` import is bundled at build time, not runtime
+- remove `version.ts` decision note + update `architecture.md`
+- completely rewrite runbook and update gotcha docs emphasizing `rm -rf ~/.config/opencode/node_modules`
+- cleanup duplicate related links in gotcha cache version mismatch
+- update runbook log output to match new plugin loading mechanism
+- add insight on OpenCode plugin loading debugging
+- add gotcha for OpenCode plugin cache version mismatch
+- add `CHANGELOG.md` with full version history (0.0.1–0.0.6)
+
 ## [0.0.7] - 2025-03-01
 
 ### Fixes
 
 - **command.execute.before 타입 에러 수정**: `Part` 객체에 필수 필드 `id`, `sessionID`, `messageID` 추가
-
-## [0.0.6] - 2025-03-01
-
-All notable changes to this project will be documented in this file.
 
 ## [0.0.6] - 2025-03-01
 
