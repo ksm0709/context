@@ -1,5 +1,6 @@
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { updateScaffold, updatePrompts } from '../../lib/scaffold.js';
 
 const KNOWN_SUBCOMMANDS = ['all', 'prompt', 'plugin'];
@@ -64,16 +65,36 @@ export function detectPackageManager(): string {
   return 'bun';
 }
 
+export function isGloballyInstalled(): boolean {
+  const globalBin = join(homedir(), '.bun', 'bin', 'context');
+  return existsSync(globalBin);
+}
+
 export function runUpdatePlugin(version: string): void {
-  const pm = detectPackageManager();
   const pkg = `@ksm0709/context@${version}`;
+  const globalInstalled = isGloballyInstalled();
 
-  process.stdout.write(`Updating ${pkg} using ${pm}...\n`);
-
-  const result = Bun.spawnSync([pm, 'add', pkg]);
-  if (result.exitCode !== 0) {
-    process.stderr.write(`Failed to update: ${result.stderr.toString()}\n`);
-    process.exit(1);
+  // Update global installation first if present
+  if (globalInstalled) {
+    process.stdout.write(`Updating global ${pkg}...\n`);
+    const globalResult = Bun.spawnSync(['bun', 'install', '-g', pkg]);
+    if (globalResult.exitCode !== 0) {
+      process.stderr.write(`Failed to update global: ${globalResult.stderr.toString()}\n`);
+      process.exit(1);
+      return;
+    }
+    process.stdout.write(`Successfully updated global ${pkg}.\n`);
   }
-  process.stdout.write(`Successfully updated to ${pkg}.\n`);
+
+  // Update local installation
+  const pm = detectPackageManager();
+  process.stdout.write(`Updating local ${pkg} using ${pm}...\n`);
+
+  const localResult = Bun.spawnSync([pm, 'add', pkg]);
+  if (localResult.exitCode !== 0) {
+    process.stderr.write(`Failed to update local: ${localResult.stderr.toString()}\n`);
+    process.exit(1);
+    return;
+  }
+  process.stdout.write(`Successfully updated local ${pkg}.\n`);
 }

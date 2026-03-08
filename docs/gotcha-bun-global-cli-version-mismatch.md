@@ -12,11 +12,19 @@ $ context --version
 0.0.11  # ← 왜 구버전?
 ```
 
-## 우회법
+## 우회법 (자동화됨)
 
-글로벌 패키지를 별도로 업데이트:
+**자동 해결**: `context update plugin` 커맨드가 이제 글로벌 설치를 자동 감지하여 우선 업데이트합니다. `~/.bun/bin/context` 존재 여부를 확인하고, 있으면 `bun install -g @ksm0709/context@{version}`으로 글로벌을 먼저 업데이트한 뒤 로컬을 업데이트합니다.
 
 ```bash
+# 이제 자동으로 글로벌 + 로컬 모두 업데이트됨
+context update plugin
+```
+
+**수동 우회법** (자동 해결이 안 될 때만 사용):
+
+```bash
+# 글로벌 패키지를 별도로 업데이트
 bun install -g @ksm0709/context
 ```
 
@@ -38,25 +46,22 @@ rm ~/.bun/bin/context
 
 ## 예방
 
-릴리즈 후 글로벌 패키지도 함께 업데이트:
+`context update plugin`을 사용하면 글로벌과 로컬을 함께 업데이트하므로 별도 글로벌 업데이트가 불필요합니다. 릴리즈 후에는 단순히:
 
 ```bash
-# 릴리즈 체크리스트
-npm publish
-bun install -g @ksm0709/context
+context update plugin
 ```
 
-또는 `package.json` 스크립트에 추가:
+또는 CI/CD에서 자동화:
 
-```json
-{
-  "scripts": {
-    "postpublish": "bun install -g @ksm0709/context"
-  }
-}
+```yaml
+# GitHub Actions 예시
+- run: npx @ksm0709/context update plugin
 ```
 
 ## 관련
 
 - Bun 글로벌 패키지 경로: `~/.bun/bin/`
 - [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] -- OpenCode 캐시 버전 불일치 (유사한 버전 문제)
+- [[docs/decision-cli-update-subcommands.md]] -- CLI update 서브커맨드 체계
+- [[docs/architecture.md]] -- CLI System 섹션 (자동 감지 로직)

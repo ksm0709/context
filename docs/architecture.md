@@ -144,7 +144,7 @@ src/cli/
 ├── cli.test.ts           ← CLI 통합 테스트
 └── commands/
     ├── update.ts         ← update 서브커맨드 (all/prompt/plugin)
-    └── update.test.ts    ← detectPackageManager 단위 테스트
+    └── update.test.ts    ← detectPackageManager, isGloballyInstalled, runUpdatePlugin 단위 테스트
 ```
 
 **사용법:**
@@ -157,6 +157,7 @@ src/cli/
 
 - **하위 호환**: `context update /path`는 `context update all /path`로 해석
 - **패키지 매니저 자동 감지**: lockfile 기반 (bun.lock → bun, pnpm-lock.yaml → pnpm, yarn.lock → yarn, package-lock.json → npm, 기본: bun)
+- **글로벌 우선 업데이트**: `update plugin` 실행 시 `~/.bun/bin/context` 글로벌 바이너리가 존재하면 `bun install -g`로 글로벌 먼저 업데이트한 뒤 로컬 업데이트 수행. 글로벌 바이너리가 없으면 로컬만 업데이트 → [[docs/gotcha-bun-global-cli-version-mismatch.md]]
 - 관련 결정: [[docs/decision-cli-tool-over-opencode-command.md]]
 
 ## Safety Limits (`constants.ts`)
