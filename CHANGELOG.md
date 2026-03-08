@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.12] - 2026-03-08
+
+### Features
+
+- **agent**: inject explore agent delegation prompt into turnStart
+
+### Docs
+
+- update RELEASE.md and CHANGELOG.md for version tracking
+
 ## [0.0.11] - 2026-03-08
 
 ### Fixes
