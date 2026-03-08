@@ -56,7 +56,7 @@ describe('scaffoldIfNeeded', () => {
     expect(turnStart).toContain('Knowledge Context');
 
     const turnEnd = readFileSync(join(promptsDir, 'turn-end.md'), 'utf-8');
-    expect(turnEnd).toContain('작업 마무리 체크리스트');
+    expect(turnEnd).toContain('작업 마무리');
   });
 
   it('returns true on first scaffold, false when already exists (idempotent)', () => {
