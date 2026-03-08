@@ -168,13 +168,11 @@ Critical Path: Task 1 → Task 2 → Task 3
      - AGENTS.md 외에 turn-start.md도 생성 (빈 파일이라도)
      - 검증: 마지막 유저 메시지의 마지막 part text에 'AGENTS.md' 포함 확인
 
-  **추가할 테스트:**
-  5. `'combines turn-start and knowledge index in one text part'`:
-     - turn-start.md에 'TURN START' 작성
-     - AGENTS.md 생성
-     - messages.transform 호출
-     - 마지막 유저 메시지의 part.text에 'TURN START'와 'AGENTS.md' 모두 포함 확인
-
+  **추가할 테스트:** 5. `'combines turn-start and knowledge index in one text part'`:
+  - turn-start.md에 'TURN START' 작성
+  - AGENTS.md 생성
+  - messages.transform 호출
+  - 마지막 유저 메시지의 part.text에 'TURN START'와 'AGENTS.md' 모두 포함 확인
   6. `'injects only knowledge index when turn-start.md is empty'`:
      - turn-start.md를 빈 파일로
      - AGENTS.md 생성

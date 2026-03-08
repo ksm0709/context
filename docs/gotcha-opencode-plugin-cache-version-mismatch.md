@@ -15,6 +15,7 @@ Failed to resolve latest version, using cached
 ERROR service=plugin path=/home/taeho/.cache/opencode/node_modules/@ksm0709/context
 error=ResolveMessage: Cannot find module '...' failed to load plugin
 ```
+
 ## 우회법
 
 캐시된 플러그인 디렉토리를 수동으로 삭제:

@@ -10,7 +10,11 @@ const DEFAULT_CONFIG = `{
   // See: https://github.com/ksm0709/context
   "prompts": {
     "turnStart": ".opencode/context/prompts/turn-start.md",
-    "turnEnd": ".opencode/context/prompts/turn-end.md"
+    "turnEnd": ".opencode/context/prompts/turn-end.md",
+    "subagentTurnEnd": ".opencode/context/prompts/subagent-turn-end.md"
+  },
+  "subagentConfig": {
+    "blockedToolPatterns": ["^task$", "^background_", "agent"]
   },
   "knowledge": {
     "dir": "docs",
@@ -164,6 +168,14 @@ task(
   """
 )
 \`\`\`
+`;
+
+const DEFAULT_SUBAGENT_TURN_END = `<environment-constraints>
+당신은 현재 메인 오케스트레이터가 호출한 **말단 워커(Worker) 에이전트**입니다.
+현재 당신의 실행 환경(Sandbox)에서는 네트워크 자원 보호를 위해 **다른 에이전트를 생성, 호출, 위임하는 모든 도구(예: task, background_task 등)의 권한이 시스템 레벨에서 회수**되었습니다.
+
+만약 작업 중 다른 전문가(explore, librarian 등)의 도움이 필요하다면, 직접 에이전트를 부르려 시도하지 마세요. 대신 현재까지의 분석 결과를 요약하고 "OOO 에이전트의 도움이 필요함"이라는 메시지와 함께 작업을 종료(Complete)하여 메인 에이전트에게 제어권을 반환하세요.
+</environment-constraints>
 `;
 
 const DEFAULT_ADR_TEMPLATE = `# ADR-NNN: [제목]
@@ -411,6 +423,11 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
     writeFileSync(join(contextDir, 'config.jsonc'), DEFAULT_CONFIG, 'utf-8');
     writeFileSync(join(promptsDir, DEFAULTS.turnStartFile), DEFAULT_TURN_START, 'utf-8');
     writeFileSync(join(promptsDir, DEFAULTS.turnEndFile), DEFAULT_TURN_END, 'utf-8');
+    writeFileSync(
+      join(promptsDir, DEFAULTS.subagentTurnEndFile),
+      DEFAULT_SUBAGENT_TURN_END,
+      'utf-8'
+    );
 
     for (const [filename, content] of Object.entries(TEMPLATE_FILES)) {
       writeFileSync(join(templatesDir, filename), content, 'utf-8');
@@ -437,6 +454,7 @@ export function updateScaffold(projectDir: string): string[] {
     'config.jsonc': DEFAULT_CONFIG,
     [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
     [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
+    [`prompts/${DEFAULTS.subagentTurnEndFile}`]: DEFAULT_SUBAGENT_TURN_END,
     ...templateEntries,
   };
 
@@ -513,6 +531,7 @@ export function updatePrompts(projectDir: string): string[] {
   const prompts: Record<string, string> = {
     [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
     [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
+    [`prompts/${DEFAULTS.subagentTurnEndFile}`]: DEFAULT_SUBAGENT_TURN_END,
   };
 
   const updated: string[] = [];

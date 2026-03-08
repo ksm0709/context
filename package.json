@@ -1,6 +1,6 @@
 {
   "name": "@ksm0709/context",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "author": {
     "name": "TaehoKang",
     "email": "ksm07091@gmail.com"
@@ -36,6 +36,7 @@
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "dependencies": {
+    "@ksm0709/context": "^0.0.12",
     "jsonc-parser": "^3.0.0"
   },
   "devDependencies": {

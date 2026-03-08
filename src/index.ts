@@ -39,6 +39,33 @@ const plugin: Plugin = async ({ directory, client }) => {
   const config = loadConfig(directory);
 
   return {
+    'tool.execute.before': async (input) => {
+      try {
+        const session = await client.session.get({ path: { id: input.sessionID } });
+        if (!session) return;
+
+        const isSubagent = ['explore', 'librarian', 'oracle', 'Sisyphus-Junior'].includes(
+          session.agent
+        );
+
+        if (isSubagent) {
+          const patterns =
+            config.subagentConfig?.blockedToolPatterns ?? DEFAULTS.blockedToolPatterns;
+          const isBlocked = patterns.some((pattern) => new RegExp(pattern, 'i').test(input.tool));
+
+          if (isBlocked) {
+            throw new Error(
+              `[Security] Subagents are not allowed to use orchestration tools (${input.tool}). Please return control to the main agent.`
+            );
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith('[Security]')) {
+          throw err;
+        }
+        // Ignore other errors (e.g. session fetch failure) to not break execution
+      }
+    },
     'experimental.chat.messages.transform': async (_input, output) => {
       if (output.messages.length === 0) return;
 
@@ -70,9 +97,15 @@ const plugin: Plugin = async ({ directory, client }) => {
       }
 
       // 6. turn-end: inject as separate user message (hot-reload)
+      const agentName = (lastUserMsg.info as any).agent || 'default';
+      const isSubagent = ['explore', 'librarian', 'oracle', 'Sisyphus-Junior'].includes(agentName);
+
       const turnEndPath = join(
         directory,
-        config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
+        isSubagent
+          ? (config.prompts.subagentTurnEnd ??
+              join(DEFAULTS.promptDir, DEFAULTS.subagentTurnEndFile))
+          : (config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile))
       );
       const turnEnd = readPromptFile(turnEndPath);
       if (!turnEnd) return;

@@ -1,6 +1,7 @@
 # Learnings
 
 ## [2026-02-25] Session Start
+
 - Plugin API: `experimental.chat.system.transform` 훅으로 output.system 배열에 push
 - 아키텍처: Flat (index.ts + lib/ 4개 모듈)
 - Build: bun build + tsc --emitDeclarationOnly
@@ -8,6 +9,7 @@
 - console.log 금지 → client.app.log() 사용
 
 ## [Task 1 Complete]
+
 - @opencode-ai/plugin version used: 1.2.12
 - jsonc-parser version: 3.3.1
 - src/types.ts: ContextConfig + KnowledgeEntry exported
@@ -31,6 +33,7 @@
    - Returns `undefined` on parse errors (not throws)
 
 4. **Default Config Pattern**:
+
    ```typescript
    function getDefaultConfig(): ContextConfig { ... }
    function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig { ... }
@@ -54,28 +57,31 @@
 - 17 expect() calls
 - All edge cases covered
 
-
 ## Task 4: Prompt File Reader (TDD)
 
 **Completed**: 2026-02-26
 
 ### Implementation
+
 - Created `src/lib/prompt-reader.ts` with `readPromptFile(filePath: string): string`
 - Uses `readFileSync` with UTF-8 encoding
 - Truncates content exceeding 64KB (LIMITS.maxPromptFileSize)
 - Returns empty string on file not found (no Error throw)
 
 ### Test Cases (4 tests)
+
 1. Returns file content for existing file
 2. Returns empty string when file does not exist
 3. Truncates content exceeding 64KB (65537 chars → 65536)
 4. Reads UTF-8 content correctly (Korean, Japanese, Emoji)
 
 ### Evidence
+
 - `.sisyphus/evidence/task-4-prompt-reader.txt`
 - `.sisyphus/evidence/task-4-prompt-fallback.txt`
 
 ### Key Decisions
+
 - No caching: reads fresh each time
 - No variable substitution: returns raw content
 - Silent failure: returns '' instead of throwing
@@ -85,11 +91,13 @@
 **Completed**: 2026-02-26
 
 ### Implementation
+
 - Created `src/lib/knowledge-index.ts` with `buildKnowledgeIndex()` and `formatKnowledgeIndex()`
 - `buildKnowledgeIndex(projectDir, sources)`: Scans directories recursively for .md files
 - `formatKnowledgeIndex(entries)`: Formats entries as markdown list
 
 ### Test Cases (12 tests)
+
 1. Returns empty array for non-existent source
 2. Returns empty array for empty directory
 3. Scans single .md file and returns entry with filename + summary
@@ -104,6 +112,7 @@
 12. Handles entries without summary
 
 ### Evidence
+
 - `.sisyphus/evidence/task-3-index-scan.txt`
 - `.sisyphus/evidence/task-3-index-limit.txt`
 
@@ -127,6 +136,7 @@
    - No throwing - always return valid results
 
 ### Constants Used
+
 - LIMITS.maxIndexEntries: 100
 - LIMITS.maxScanDepth: 3
 - LIMITS.maxSummaryLength: 100
@@ -136,11 +146,14 @@
 **Completed**: 2026-02-26
 
 ### Implementation
+
 WV|- Created `src/lib/scaffold.ts` with `scaffoldIfNeeded(projectDir: string): boolean`
 NX|- Creates `.opencode/context/` directory structure with prompts subdirectory
 XX|- Generates default `config.jsonc`, `turn-start.md`, `turn-end.md`
 RT|
+
 ### Test Cases (5 tests)
+
 SB|1. Creates .opencode/context/ directory structure when not exists
 XZ|2. Creates config.jsonc with valid content
 HK|3. Creates turn-start.md and turn-end.md
@@ -148,6 +161,7 @@ XJ|4. Returns true on first scaffold, false when already exists (idempotent)
 YT|5. Does NOT overwrite existing files
 
 ### Evidence
+
 QZ|- `.sisyphus/evidence/task-5-scaffold.txt`
 NS|- `.sisyphus/evidence/task-5-idempotent.txt`
 
@@ -171,4 +185,3 @@ NS|- `.sisyphus/evidence/task-5-idempotent.txt`
 4. **Constants Integration**
    - Uses DEFAULTS.turnStartFile and DEFAULTS.turnEndFile from constants
    - Maintains single source of truth for file names
-

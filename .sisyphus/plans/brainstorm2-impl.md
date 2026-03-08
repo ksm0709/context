@@ -192,7 +192,6 @@ Max Concurrent: 4 (Wave 2)
 
 ## TODOs
 
-
 - [x] 1. Project Setup + Types + Constants
 
   **What to do**:
@@ -200,23 +199,25 @@ Max Concurrent: 4 (Wave 2)
   - `jsonc-parser`를 dependencies에 추가 (JSONC config 파싱용)
   - `bun install` 실행하여 의존성 설치
   - `src/types.ts` 생성:
+
     ```typescript
     // Plugin config type
     export interface ContextConfig {
       prompts: {
-        turnStart?: string;  // 프롬프트 파일 경로 (default: .opencode/context/prompts/turn-start.md)
-        turnEnd?: string;    // 프롬프트 파일 경로 (default: .opencode/context/prompts/turn-end.md)
+        turnStart?: string; // 프롬프트 파일 경로 (default: .opencode/context/prompts/turn-start.md)
+        turnEnd?: string; // 프롬프트 파일 경로 (default: .opencode/context/prompts/turn-end.md)
       };
       knowledge: {
-        sources: string[];   // 지식 소스 경로 목록 (default: ['AGENTS.md'])
+        sources: string[]; // 지식 소스 경로 목록 (default: ['AGENTS.md'])
       };
     }
-    
+
     export interface KnowledgeEntry {
-      filename: string;    // 상대 경로
-      summary: string;     // 첫 비어있지 않은 행 (100자 truncate)
+      filename: string; // 상대 경로
+      summary: string; // 첫 비어있지 않은 행 (100자 truncate)
     }
     ```
+
   - `src/constants.ts` 생성:
     ```typescript
     export const DEFAULTS = {
@@ -226,9 +227,9 @@ Max Concurrent: 4 (Wave 2)
       turnEndFile: 'turn-end.md',
     };
     export const LIMITS = {
-      maxPromptFileSize: 64 * 1024,  // 64KB
+      maxPromptFileSize: 64 * 1024, // 64KB
       maxIndexEntries: 100,
-      maxTotalInjectionSize: 128 * 1024,  // 128KB
+      maxTotalInjectionSize: 128 * 1024, // 128KB
       maxScanDepth: 3,
       maxSummaryLength: 100,
     };
@@ -315,12 +316,13 @@ Max Concurrent: 4 (Wave 2)
     - 잘못된 JSON일 때 기본값 반환 + 에러 로그 테스트
     - config 값이 부분적일 때 기본값과 병합 테스트
   - `src/lib/config.ts` 구현:
+
     ```typescript
     import { parse as parseJsonc } from 'jsonc-parser';
     import { readFileSync } from 'node:fs';
     import type { ContextConfig } from '../types';
     import { DEFAULTS } from '../constants';
-    
+
     export function loadConfig(projectDir: string): ContextConfig {
       const configPath = path.join(projectDir, DEFAULTS.configPath);
       try {
@@ -332,6 +334,7 @@ Max Concurrent: 4 (Wave 2)
       }
     }
     ```
+
   - 에러 핸들링: 파일 없음/파싱 실패 → 기본값 반환, 로거에 경고
   - 부분 config 지원: 누락 필드는 기본값으로 채움
 
@@ -418,14 +421,12 @@ Max Concurrent: 4 (Wave 2)
     - 존재하지 않는 경로 → 빈 배열 반환 (에러 X)
     - 스캔 깊이 3레벨 제한 테스트
   - `src/lib/knowledge-index.ts` 구현:
+
     ```typescript
     import type { KnowledgeEntry } from '../types';
     import { LIMITS } from '../constants';
-    
-    export function buildKnowledgeIndex(
-      projectDir: string,
-      sources: string[]
-    ): KnowledgeEntry[] {
+
+    export function buildKnowledgeIndex(projectDir: string, sources: string[]): KnowledgeEntry[] {
       // 1. sources 배열 순회
       // 2. 각 source가 파일이면 직접 처리
       // 3. 디렉토리면 재귀적 스캔 (maxDepth=3)
@@ -433,7 +434,7 @@ Max Concurrent: 4 (Wave 2)
       // 5. 첫 비어있지 않은 행 추출, 100자 truncate
       // 6. maxIndexEntries 제한 적용
     }
-    
+
     export function formatKnowledgeIndex(entries: KnowledgeEntry[]): string {
       // 인덱스를 markdown 문자열로 포맷팅
       // 예: '- AGENTS.md — # Project Guide'
@@ -516,9 +517,10 @@ Max Concurrent: 4 (Wave 2)
     - 64KB 초과 파일 → truncate + 경고 로그
     - UTF-8 인코딩 확인
   - `src/lib/prompt-reader.ts` 구현:
+
     ```typescript
     import { LIMITS } from '../constants';
-    
+
     export function readPromptFile(filePath: string): string {
       try {
         const content = readFileSync(filePath, 'utf-8');
@@ -528,7 +530,7 @@ Max Concurrent: 4 (Wave 2)
         }
         return content;
       } catch {
-        return '';  // graceful: 파일 없으면 빈 문자열
+        return ''; // graceful: 파일 없으면 빈 문자열
       }
     }
     ```
@@ -605,64 +607,63 @@ Max Concurrent: 4 (Wave 2)
     - 생성된 파일 내용 검증 (config.jsonc, turn-start.md, turn-end.md)
     - 권한 오류 시 graceful 실패 (에러 로그만, crash X)
   - `src/lib/scaffold.ts` 구현:
+
     ```typescript
     import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
     import { DEFAULTS } from '../constants';
-    
+
     export function scaffoldIfNeeded(projectDir: string): boolean {
       const contextDir = path.join(projectDir, '.opencode/context');
-      if (existsSync(contextDir)) return false;  // 이미 존재
-      
+      if (existsSync(contextDir)) return false; // 이미 존재
+
       mkdirSync(path.join(contextDir, 'prompts'), { recursive: true });
-      writeFileSync(
-        path.join(contextDir, 'config.jsonc'),
-        DEFAULT_CONFIG_CONTENT
-      );
-      writeFileSync(
-        path.join(contextDir, 'prompts/turn-start.md'),
-        DEFAULT_TURN_START_CONTENT
-      );
-      writeFileSync(
-        path.join(contextDir, 'prompts/turn-end.md'),
-        DEFAULT_TURN_END_CONTENT
-      );
-      return true;  // scaffold 수행됨
+      writeFileSync(path.join(contextDir, 'config.jsonc'), DEFAULT_CONFIG_CONTENT);
+      writeFileSync(path.join(contextDir, 'prompts/turn-start.md'), DEFAULT_TURN_START_CONTENT);
+      writeFileSync(path.join(contextDir, 'prompts/turn-end.md'), DEFAULT_TURN_END_CONTENT);
+      return true; // scaffold 수행됨
     }
     ```
+
   - 기본 config.jsonc 내용:
     ```jsonc
     {
       // Context Plugin Configuration
       "prompts": {
         "turnStart": ".opencode/context/prompts/turn-start.md",
-        "turnEnd": ".opencode/context/prompts/turn-end.md"
+        "turnEnd": ".opencode/context/prompts/turn-end.md",
       },
       "knowledge": {
-        "sources": ["AGENTS.md"]
-      }
+        "sources": ["AGENTS.md"],
+      },
     }
     ```
   - 기본 turn-start.md 내용:
+
     ```markdown
     ## Knowledge Context
-    
+
     이 프로젝트의 지식 베이스를 참고하여 작업하세요.
+
     - 작업과 관련된 지식 파일이 있으면 먼저 읽고 참조하세요
     - 지식 간 [[링크]]를 따라가며 관련 컨텍스트를 파악하세요
     - AGENTS.md의 지시사항을 준수하세요
     ```
+
   - 기본 turn-end.md 내용:
+
     ```markdown
     ## 작업 마무리 체크리스트
-    
+
     작업을 완료하기 전에 반드시:
-    
+
     ### 퀄리티 보장
+
     - [ ] 변경한 코드에 대해 lint 실행
     - [ ] 타입 에러 확인
     - [ ] 기존 테스트 통과 확인
-    
+
     ### 지식 정리
+
     - [ ] 새로 알게 된 중요한 패턴/결정이 있으면 지식 파일로 정리
     ```
 
@@ -743,6 +744,7 @@ Max Concurrent: 4 (Wave 2)
     - 에러 상황 (config 없음, 프롬프트 없음) → crash 없이 동작
     - 총 인젝션 128KB 초과 시 truncation
   - `src/index.ts` 구현:
+
     ```typescript
     import type { Plugin } from '@opencode-ai/plugin';
     import { loadConfig } from './lib/config';
@@ -750,34 +752,43 @@ Max Concurrent: 4 (Wave 2)
     import { readPromptFile } from './lib/prompt-reader';
     import { scaffoldIfNeeded } from './lib/scaffold';
     import { DEFAULTS, LIMITS } from './constants';
-    
+
     const plugin: Plugin = async ({ directory, client }) => {
       // 1. Scaffold if first run
       const scaffolded = scaffoldIfNeeded(directory);
       if (scaffolded) {
-        client.app.log({ body: {
-          service: 'context', level: 'info',
-          message: 'Scaffold created at .opencode/context/'
-        }});
+        client.app.log({
+          body: {
+            service: 'context',
+            level: 'info',
+            message: 'Scaffold created at .opencode/context/',
+          },
+        });
       }
-      
+
       // 2. Load config
       const config = loadConfig(directory);
-      
+
       return {
         'experimental.chat.system.transform': async (_input, output) => {
           // 3. Read prompt files (fresh every call = hot-reload)
           const turnStart = readPromptFile(
-            path.resolve(directory, config.prompts.turnStart ?? DEFAULTS.promptDir + '/' + DEFAULTS.turnStartFile)
+            path.resolve(
+              directory,
+              config.prompts.turnStart ?? DEFAULTS.promptDir + '/' + DEFAULTS.turnStartFile
+            )
           );
           const turnEnd = readPromptFile(
-            path.resolve(directory, config.prompts.turnEnd ?? DEFAULTS.promptDir + '/' + DEFAULTS.turnEndFile)
+            path.resolve(
+              directory,
+              config.prompts.turnEnd ?? DEFAULTS.promptDir + '/' + DEFAULTS.turnEndFile
+            )
           );
-          
+
           // 4. Build knowledge index
           const entries = buildKnowledgeIndex(directory, config.knowledge.sources);
           const indexContent = formatKnowledgeIndex(entries);
-          
+
           // 5. Inject into system prompt
           if (turnStart) output.system.push(turnStart);
           if (indexContent) output.system.push(indexContent);
@@ -785,9 +796,10 @@ Max Concurrent: 4 (Wave 2)
         },
       };
     };
-    
+
     export default plugin;
     ```
+
   - **주의**: `src/index.ts`에서 `export default plugin`만. 함수/상수 named export 금지 (AGENTS.md 규칙)
   - **주의**: `console.log` 대신 `client.app.log()` 사용 (AGENTS.md 규칙)
 

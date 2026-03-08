@@ -249,7 +249,6 @@ Wave FINAL (After ALL tasks — verification):
   - 테스트 패턴(44-71행): 기존 테스트 스타일과 일관성 유지 필요
 
   **Acceptance Criteria**:
-
   - [ ] `bun test src/index.test.ts` → 모든 테스트 통과 (기존 + 신규 4개)
   - [ ] `mise run lint` → 에러 없음
   - [ ] turn-end 콘텐츠가 `output.system`에 포함되지 않음 (테스트로 검증)

@@ -3,10 +3,10 @@
   // See: https://github.com/ksm0709/context
   "prompts": {
     "turnStart": ".opencode/context/prompts/turn-start.md",
-    "turnEnd": ".opencode/context/prompts/turn-end.md"
+    "turnEnd": ".opencode/context/prompts/turn-end.md",
   },
   "knowledge": {
     "dir": "docs",
-    "sources": ["AGENTS.md"]
-  }
+    "sources": ["AGENTS.md"],
+  },
 }

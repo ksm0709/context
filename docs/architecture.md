@@ -149,11 +149,11 @@ src/cli/
 
 **사용법:**
 
-| 커맨드 | 동작 |
-| --- | --- |
+| 커맨드                                         | 동작                                                        |
+| ---------------------------------------------- | ----------------------------------------------------------- |
 | `context update` / `context update all [path]` | 12개 파일 전부 강제 업데이트 (config + prompts + templates) |
-| `context update prompt [path]` | prompts 2개 파일만 업데이트 (config/templates 보존) |
-| `context update plugin [version]` | @ksm0709/context 패키지 자체를 업데이트 (기본: latest) |
+| `context update prompt [path]`                 | prompts 2개 파일만 업데이트 (config/templates 보존)         |
+| `context update plugin [version]`              | @ksm0709/context 패키지 자체를 업데이트 (기본: latest)      |
 
 - **하위 호환**: `context update /path`는 `context update all /path`로 해석
 - **패키지 매니저 자동 감지**: lockfile 기반 (bun.lock → bun, pnpm-lock.yaml → pnpm, yarn.lock → yarn, package-lock.json → npm, 기본: bun)
