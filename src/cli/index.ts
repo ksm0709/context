@@ -1,9 +1,13 @@
 #!/usr/bin/env bun
 import { runUpdate } from './commands/update.js';
+import pkg from '../../package.json';
+
+const PLUGIN_VERSION = pkg.version;
 
 export function printHelp(out?: (s: string) => void): void {
   const write = out ?? ((s: string) => process.stdout.write(s));
-  write('Usage: context <command>\n\n');
+  write(`Context Plugin CLI v${PLUGIN_VERSION}\n\n`);
+  write('Usage: context <command> [options]\n\n');
   write('Commands:\n');
   write('  update [all] [path]        Force-update all scaffold files\n');
   write('  update prompt [path]       Force-update prompt files only\n');
@@ -14,9 +18,18 @@ export function printHelp(out?: (s: string) => void): void {
 export function runCli(argv: string[]): void {
   const [command, ...rest] = argv;
 
+  if (argv.includes('--help') || argv.includes('-h')) {
+    printHelp();
+    return;
+  }
+
   switch (command) {
     case 'update':
       runUpdate(rest);
+      break;
+    case '--version':
+    case '-v':
+      process.stdout.write(`${PLUGIN_VERSION}\n`);
       break;
     case undefined:
     case '--help':
