@@ -357,3 +357,95 @@ describe('autoUpdateTemplates', () => {
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'templates', 'index.md'))).toBe(true);
   });
 });
+
+describe('updatePrompts', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `scaffold-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('creates prompt files when they do not exist', async () => {
+    // Import dynamically to get fresh module
+    const { updatePrompts } = await import('./scaffold.js');
+    const updated = updatePrompts(tmpDir);
+
+    expect(updated).toContain('prompts/turn-start.md');
+    expect(updated).toContain('prompts/turn-end.md');
+    expect(updated).toHaveLength(2);
+
+    // Verify files were actually created
+    const turnStart = readFileSync(
+      join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'),
+      'utf-8'
+    );
+    const turnEnd = readFileSync(
+      join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md'),
+      'utf-8'
+    );
+    expect(turnStart.length).toBeGreaterThan(0);
+    expect(turnEnd.length).toBeGreaterThan(0);
+  });
+
+  it('returns empty array when prompts are already up to date', async () => {
+    const { updatePrompts } = await import('./scaffold.js');
+    // First call creates them
+    updatePrompts(tmpDir);
+    // Second call should find them up to date
+    const updated = updatePrompts(tmpDir);
+    expect(updated).toHaveLength(0);
+  });
+
+  it('overwrites customized prompts with defaults', async () => {
+    const { updatePrompts } = await import('./scaffold.js');
+    // Create scaffold first
+    updatePrompts(tmpDir);
+
+    // User customizes the prompt
+    const promptPath = join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md');
+    writeFileSync(promptPath, 'Custom content', 'utf-8');
+
+    // Update should overwrite
+    const updated = updatePrompts(tmpDir);
+    expect(updated).toContain('prompts/turn-start.md');
+
+    const content = readFileSync(promptPath, 'utf-8');
+    expect(content).not.toBe('Custom content');
+  });
+
+  it('does NOT update config.jsonc or template files', async () => {
+    const { scaffoldIfNeeded, updatePrompts } = await import('./scaffold.js');
+    scaffoldIfNeeded(tmpDir);
+
+    // Customize config and a template
+    const configPath = join(tmpDir, '.opencode', 'context', 'config.jsonc');
+    const templatePath = join(tmpDir, '.opencode', 'context', 'templates', 'adr.md');
+    writeFileSync(configPath, 'custom config', 'utf-8');
+    writeFileSync(templatePath, 'custom template', 'utf-8');
+
+    updatePrompts(tmpDir);
+
+    // Config and template should remain untouched
+    expect(readFileSync(configPath, 'utf-8')).toBe('custom config');
+    expect(readFileSync(templatePath, 'utf-8')).toBe('custom template');
+  });
+
+  it('does NOT update .version file', async () => {
+    const { scaffoldIfNeeded, updatePrompts, getStoredVersion } = await import('./scaffold.js');
+    scaffoldIfNeeded(tmpDir);
+
+    // Manually change version
+    const versionPath = join(tmpDir, '.opencode', 'context', '.version');
+    writeFileSync(versionPath, '0.0.1', 'utf-8');
+
+    updatePrompts(tmpDir);
+
+    // Version should remain unchanged
+    expect(getStoredVersion(tmpDir)).toBe('0.0.1');
+  });
+});

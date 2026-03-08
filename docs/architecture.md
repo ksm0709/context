@@ -124,14 +124,40 @@
 - **멱등성**: `.opencode/context/` 디렉토리가 이미 존재하면 아무것도 하지 않음
 - 사용자가 수정한 파일을 덮어쓸 위험 없음
 - `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
+- `updatePrompts()`: prompts 2개 파일만 업데이트 (config/templates 보존) — 사용자 명시적 요청용
 - `autoUpdateTemplates()`: 플러그인 버전 변경 시 templates만 자동 갱신 (config/prompts 보존)
 - **버전 추적**: `package.json`의 `version`을 빌드 타임에 직접 읽음 (`import pkg from '../../package.json'`). `.opencode/context/.version` 파일과 비교하여 불일치 시 자동 업데이트 트리거 → [[docs/decision-remove-version-ts.md]]
-- **강제 업데이트**: `bunx @ksm0709/context update` CLI 커맨드로 12개 파일 전부 업데이트 → [[docs/decision-cli-tool-over-opencode-command.md]]
+- **CLI 업데이트 커맨드**: `context update [all|prompt|plugin]` — 아래 CLI System 섹션 참고
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
 - 관련 결정: [[docs/decision-scaffold-auto-update-scope.md]] — templates만 자동 갱신
 - 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
 - 관련 함정: [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] — OpenCode가 최신 버전을 캐시하지 않음
 - 관련 결정: [[docs/adr-002-domain-index-knowledge-structure.md]] — 도메인 폴더 + INDEX.md 기반 구조
+
+### CLI System (`cli/`)
+
+플러그인과 독립적으로 실행되는 CLI 도구. 순수 파일시스템 작업만 수행하며, OpenCode 컨텍스트가 필요 없습니다.
+
+```
+src/cli/
+├── index.ts              ← 진입점 (process.argv 파싱, 커맨드 라우팅)
+├── cli.test.ts           ← CLI 통합 테스트
+└── commands/
+    ├── update.ts         ← update 서브커맨드 (all/prompt/plugin)
+    └── update.test.ts    ← detectPackageManager 단위 테스트
+```
+
+**사용법:**
+
+| 커맨드 | 동작 |
+| --- | --- |
+| `context update` / `context update all [path]` | 12개 파일 전부 강제 업데이트 (config + prompts + templates) |
+| `context update prompt [path]` | prompts 2개 파일만 업데이트 (config/templates 보존) |
+| `context update plugin [version]` | @ksm0709/context 패키지 자체를 업데이트 (기본: latest) |
+
+- **하위 호환**: `context update /path`는 `context update all /path`로 해석
+- **패키지 매니저 자동 감지**: lockfile 기반 (bun.lock → bun, pnpm-lock.yaml → pnpm, yarn.lock → yarn, package-lock.json → npm, 기본: bun)
+- 관련 결정: [[docs/decision-cli-tool-over-opencode-command.md]]
 
 ## Safety Limits (`constants.ts`)
 

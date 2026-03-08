@@ -468,3 +468,27 @@ export function autoUpdateTemplates(projectDir: string): string[] {
   writeVersion(contextDir, PLUGIN_VERSION);
   return updated;
 }
+
+export function updatePrompts(projectDir: string): string[] {
+  const contextDir = join(projectDir, '.opencode', 'context');
+  mkdirSync(join(contextDir, 'prompts'), { recursive: true });
+
+  const prompts: Record<string, string> = {
+    [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
+    [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
+  };
+
+  const updated: string[] = [];
+  for (const [path, content] of Object.entries(prompts)) {
+    const filePath = join(contextDir, path);
+    try {
+      const existing = readFileSync(filePath, 'utf-8');
+      if (existing === content) continue;
+    } catch {
+      /* file missing — will create */
+    }
+    writeFileSync(filePath, content, 'utf-8');
+    updated.push(path);
+  }
+  return updated;
+}

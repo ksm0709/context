@@ -1,28 +1,22 @@
 #!/usr/bin/env bun
-import { resolve } from 'node:path';
 import { runUpdate } from './commands/update.js';
-
-export const COMMANDS: Record<string, string> = {
-  update: 'Force-update scaffold files to latest plugin version',
-};
 
 export function printHelp(out?: (s: string) => void): void {
   const write = out ?? ((s: string) => process.stdout.write(s));
   write('Usage: context <command>\n\n');
   write('Commands:\n');
-  for (const [name, desc] of Object.entries(COMMANDS)) {
-    write(`  ${name.padEnd(12)}${desc}\n`);
-  }
+  write('  update [all] [path]        Force-update all scaffold files\n');
+  write('  update prompt [path]       Force-update prompt files only\n');
+  write('  update plugin [version]    Update @ksm0709/context package\n');
   write('\n');
 }
 
 export function runCli(argv: string[]): void {
   const [command, ...rest] = argv;
-  const projectDir = resolve(rest[0] ?? process.cwd());
 
   switch (command) {
     case 'update':
-      runUpdate(projectDir);
+      runUpdate(rest);
       break;
     case undefined:
     case '--help':
