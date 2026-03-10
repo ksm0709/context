@@ -112,6 +112,10 @@ describe('loadConfig', () => {
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
   });
+  it('does not include subagentTurnEnd in default config', () => {
+    const config = loadConfig(tmpDir);
+    expect((config.prompts as Record<string, unknown>).subagentTurnEnd).toBeUndefined();
+  });
 });
 
 describe('loadConfig - knowledge domain fields', () => {

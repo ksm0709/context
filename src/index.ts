@@ -9,6 +9,8 @@ import {
 import { readPromptFile } from './lib/prompt-reader.js';
 import { scaffoldIfNeeded, autoUpdateTemplates } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
+import { filterByAgentType } from './lib/prompt-filter.js';
+import { isSubagentSession } from './lib/subagent-detector.js';
 
 const plugin: Plugin = async ({ directory, client }) => {
   // 1. Scaffold on first run, or auto-update templates on version change
@@ -37,18 +39,14 @@ const plugin: Plugin = async ({ directory, client }) => {
 
   // 2. Load config once at plugin init
   const config = loadConfig(directory);
-
+  const subagentCache = new Map<string, boolean>();
+  const getSession = (id: string) => client.session.get({ path: { id } });
   return {
     'tool.execute.before': async (input) => {
       try {
-        const session = await client.session.get({ path: { id: input.sessionID } });
-        if (!session) return;
+        const subagent = await isSubagentSession(getSession, input.sessionID, subagentCache);
 
-        const isSubagent = ['explore', 'librarian', 'oracle', 'Sisyphus-Junior'].includes(
-          session.agent
-        );
-
-        if (isSubagent) {
+        if (subagent) {
           const patterns =
             config.subagentConfig?.blockedToolPatterns ?? DEFAULTS.blockedToolPatterns;
           const isBlocked = patterns.some((pattern) => new RegExp(pattern, 'i').test(input.tool));
@@ -77,7 +75,9 @@ const plugin: Plugin = async ({ directory, client }) => {
         directory,
         config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
       );
-      const turnStart = readPromptFile(turnStartPath);
+      const sessionID = lastUserMsg.info.sessionID;
+      const subagent = await isSubagentSession(getSession, sessionID, subagentCache);
+      const turnStart = filterByAgentType(readPromptFile(turnStartPath) ?? '', subagent);
 
       const knowledgeIndex = buildKnowledgeIndexV2(directory, config.knowledge);
       const indexContent =
@@ -97,17 +97,12 @@ const plugin: Plugin = async ({ directory, client }) => {
       }
 
       // 6. turn-end: inject as separate user message (hot-reload)
-      const agentName = (lastUserMsg.info as any).agent || 'default';
-      const isSubagent = ['explore', 'librarian', 'oracle', 'Sisyphus-Junior'].includes(agentName);
-
       const turnEndPath = join(
         directory,
-        isSubagent
-          ? (config.prompts.subagentTurnEnd ??
-              join(DEFAULTS.promptDir, DEFAULTS.subagentTurnEndFile))
-          : (config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile))
+        config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
       );
-      const turnEnd = readPromptFile(turnEndPath);
+      const rawTurnEnd = readPromptFile(turnEndPath);
+      const turnEnd = rawTurnEnd ? filterByAgentType(rawTurnEnd, subagent) : null;
       if (!turnEnd) return;
 
       const msgId = `context-turn-end-${Date.now()}`;

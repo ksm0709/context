@@ -2,7 +2,6 @@ export interface ContextConfig {
   prompts: {
     turnStart?: string;
     turnEnd?: string;
-    subagentTurnEnd?: string;
   };
   subagentConfig: {
     blockedToolPatterns: string[];

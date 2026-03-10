@@ -3,7 +3,6 @@ export const DEFAULTS = {
   promptDir: '.opencode/context/prompts',
   turnStartFile: 'turn-start.md',
   turnEndFile: 'turn-end.md',
-  subagentTurnEndFile: 'subagent-turn-end.md',
   blockedToolPatterns: ['^task$', '^background_', 'agent'],
   knowledgeSources: ['AGENTS.md'],
   templateDir: '.opencode/context/templates',

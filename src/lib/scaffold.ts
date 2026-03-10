@@ -10,8 +10,7 @@ const DEFAULT_CONFIG = `{
   // See: https://github.com/ksm0709/context
   "prompts": {
     "turnStart": ".opencode/context/prompts/turn-start.md",
-    "turnEnd": ".opencode/context/prompts/turn-end.md",
-    "subagentTurnEnd": ".opencode/context/prompts/subagent-turn-end.md"
+    "turnEnd": ".opencode/context/prompts/turn-end.md"
   },
   "subagentConfig": {
     "blockedToolPatterns": ["^task$", "^background_", "agent"]
@@ -36,11 +35,17 @@ const DEFAULT_TURN_START = `## Knowledge Context
 ### 작업 전 필수
 
 - 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **먼저** 읽으세요
+${'<'}!-- primary-only -->
 - 직접 읽기 전에 아래와 같이 **서브에이전트(explore)에 위임**하여, 연관된 노트를 집중 탐색하고 작업에 필요한 내용을 요약하도록 지시하세요.
+${'<'}!-- /primary-only -->
+${'<'}!-- subagent-only -->
+- 관련 문서를 직접 읽고 작업에 적용하세요. 서브에이전트를 호출하지 마세요.
+${'<'}!-- /subagent-only -->
 - 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
 - 문서 내 [[링크]]를 따라가며 관련 노트를 탐색하세요 -- 링크를 놓치면 중요한 맥락을 잃습니다
 - 지식 파일에 기록된 아키텍처 결정, 패턴, 제약사항을 반드시 따르세요
 
+${'<'}!-- primary-only -->
 ### 지식 탐색 (서브에이전트 위임)
 
 현재 작업과 관련된 지식 노트를 읽고 요약하는 작업을 **서브에이전트에 위임**하여 컨텍스트 파악을 효율화하세요.
@@ -71,6 +76,8 @@ task(
 )
 \`\`\`
 
+${'<'}!-- /primary-only -->
+
 
 - 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **먼저** 읽으세요
 - 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
@@ -87,10 +94,13 @@ task(
 
 - AGENTS.md의 지시사항이 항상 최우선
 - 지식 노트의 결정사항 > 일반적 관행
+${'<'}!-- primary-only -->
 - 지식 노트에 없는 새로운 결정은 작업 완료 시 서브에이전트에 위임하여 기록하세요
+${'<'}!-- /primary-only -->
 `;
 
-const DEFAULT_TURN_END = `## 작업 마무리
+const DEFAULT_TURN_END = `${'<'}!-- primary-only -->
+## 작업 마무리
 
 작업이 완료되면, 아래 두 가지를 **서브에이전트에 위임**하세요.
 메인 에이전트가 직접 수행하지 마세요.
@@ -168,14 +178,16 @@ task(
   """
 )
 \`\`\`
-`;
 
-const DEFAULT_SUBAGENT_TURN_END = `<environment-constraints>
+${'<'}!-- /primary-only -->
+${'<'}!-- subagent-only -->
+<environment-constraints>
 당신은 현재 메인 오케스트레이터가 호출한 **말단 워커(Worker) 에이전트**입니다.
 현재 당신의 실행 환경(Sandbox)에서는 네트워크 자원 보호를 위해 **다른 에이전트를 생성, 호출, 위임하는 모든 도구(예: task, background_task 등)의 권한이 시스템 레벨에서 회수**되었습니다.
 
 만약 작업 중 다른 전문가(explore, librarian 등)의 도움이 필요하다면, 직접 에이전트를 부르려 시도하지 마세요. 대신 현재까지의 분석 결과를 요약하고 "OOO 에이전트의 도움이 필요함"이라는 메시지와 함께 작업을 종료(Complete)하여 메인 에이전트에게 제어권을 반환하세요.
 </environment-constraints>
+${'<'}!-- /subagent-only -->
 `;
 
 const DEFAULT_ADR_TEMPLATE = `# ADR-NNN: [제목]
@@ -423,11 +435,6 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
     writeFileSync(join(contextDir, 'config.jsonc'), DEFAULT_CONFIG, 'utf-8');
     writeFileSync(join(promptsDir, DEFAULTS.turnStartFile), DEFAULT_TURN_START, 'utf-8');
     writeFileSync(join(promptsDir, DEFAULTS.turnEndFile), DEFAULT_TURN_END, 'utf-8');
-    writeFileSync(
-      join(promptsDir, DEFAULTS.subagentTurnEndFile),
-      DEFAULT_SUBAGENT_TURN_END,
-      'utf-8'
-    );
 
     for (const [filename, content] of Object.entries(TEMPLATE_FILES)) {
       writeFileSync(join(templatesDir, filename), content, 'utf-8');
@@ -454,7 +461,6 @@ export function updateScaffold(projectDir: string): string[] {
     'config.jsonc': DEFAULT_CONFIG,
     [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
     [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
-    [`prompts/${DEFAULTS.subagentTurnEndFile}`]: DEFAULT_SUBAGENT_TURN_END,
     ...templateEntries,
   };
 
@@ -531,7 +537,6 @@ export function updatePrompts(projectDir: string): string[] {
   const prompts: Record<string, string> = {
     [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
     [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
-    [`prompts/${DEFAULTS.subagentTurnEndFile}`]: DEFAULT_SUBAGENT_TURN_END,
   };
 
   const updated: string[] = [];

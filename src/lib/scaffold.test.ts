@@ -172,7 +172,7 @@ describe('updateScaffold', () => {
 
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(13); // config + turn-start + turn-end + subagent-turn-end + 9 templates
+    expect(updated).toHaveLength(12); // config + turn-start + turn-end + 9 templates
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md'))).toBe(true);
@@ -181,7 +181,7 @@ describe('updateScaffold', () => {
   it('creates scaffold directory if it does not exist', () => {
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(13);
+    expect(updated).toHaveLength(12);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts'))).toBe(true);
     expect(existsSync(join(tmpDir, '.opencode', 'context', 'prompts'))).toBe(true);
   });
@@ -377,7 +377,7 @@ describe('updatePrompts', () => {
 
     expect(updated).toContain('prompts/turn-start.md');
     expect(updated).toContain('prompts/turn-end.md');
-    expect(updated).toHaveLength(3);
+    expect(updated).toHaveLength(2);
 
     // Verify files were actually created
     const turnStart = readFileSync(
