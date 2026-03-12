@@ -3,9 +3,9 @@
 ## Build & Test Commands
 
 - **Build**: `mise run build` or `bun build ./src/index.ts --outdir dist --target bun`
-- **Test**: `mise run test` or `bun test`
-- **Single Test**: `bun test config.test.ts` (use file glob pattern)
-- **Watch Mode**: `bun test --watch`
+- **Test**: `mise run test` or `npx vitest run` (⚠️ `bun test` 사용 금지 — [[docs/gotcha-bun-test-vitest-api-incompatibility.md]])
+- **Single Test**: `npx vitest run config.test.ts` (use file glob pattern)
+- **Watch Mode**: `npx vitest --watch`
 - **Lint**: `mise run lint` (eslint)
 - **Fix Lint**: `mise run lint:fix` (eslint --fix)
 - **Format**: `mise run format` (prettier)

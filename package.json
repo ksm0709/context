@@ -1,6 +1,6 @@
 {
   "name": "@ksm0709/context",
-  "version": "0.0.14",
+  "version": "0.0.17",
   "author": {
     "name": "TaehoKang",
     "email": "ksm07091@gmail.com"
@@ -27,7 +27,8 @@
   "scripts": {
     "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun",
     "test": "vitest run",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun"
   },
   "files": [
     "dist"
@@ -36,7 +37,7 @@
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "dependencies": {
-    "@ksm0709/context": "^0.0.12",
+    "@ksm0709/context": "^0.0.17",
     "jsonc-parser": "^3.0.0"
   },
   "devDependencies": {

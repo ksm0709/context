@@ -43,7 +43,10 @@ export function runCli(argv: string[]): void {
   }
 }
 
+const isBunRuntime = typeof Bun !== 'undefined';
+const isMainModule = isBunRuntime && import.meta.path === globalThis.Bun?.main;
+
 // Entry point — only runs when executed directly, not when imported in tests
-if (import.meta.path === Bun.main) {
+if (isMainModule) {
   runCli(process.argv.slice(2));
 }
