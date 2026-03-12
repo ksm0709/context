@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0](https://github.com/ksm0709/context/compare/v0.0.14...v0.1.0) (2026-03-12)
+
+
+### Features
+
+* harden subagent prompts and CLI plugin update flow ([64acab5](https://github.com/ksm0709/context/commit/64acab52dd47b26f26ee09d3c78afa78bbe14805))
+* **lib:** add prompt filter and subagent detector utilities ([a716746](https://github.com/ksm0709/context/commit/a716746a24780d702c76e1decf0d52c63a05389a))
+
 ## [0.0.12] - 2026-03-08
 
 ### Features
