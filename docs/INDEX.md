@@ -2,16 +2,14 @@
 
 ## Decisions
 
-- [[docs/decision-subagent-session-detection.md]] — 서브에이전트 세션 감지를 위한 parentID 기반 유틸리티 도입
-- [[docs/decision-subagent-infinite-loop-prevention.md]] — 서브에이전트 무한루프 방지를 위한 하이브리드 차단 도입
-- [[docs/decision-remove-subagent-turn-end.md]] — subagentTurnEnd 설정 제거 및 코드 간소화
 - [[docs/decision-remove-version-ts.md]] — src/version.ts 제거 → package.json에서 직접 읽기
 - [[docs/decision-cli-tool-over-opencode-command.md]] — /context-update 커맨드 제거 → CLI 도구로 대체
-- [[docs/decision-turn-start-subagent-delegation.md]] — turnStart 프롬프트에 지식 노트 탐색을 서브에이전트에 위임
 - [[docs/decision-cli-update-subcommands.md]] — CLI update 커맨드 서브커맨드 체계 도입
 - [[docs/decision-scaffold-auto-update-scope.md]] — 스캐폴드 자동 업데이트 시 templates만 갱신
+- [[docs/decision-remove-subagent-delegation.md]] — Decision: Remove Subagent Delegation from Prompt Flow
 
 ## Gotchas
+
 - [[docs/gotcha-bun-global-reference-error.md]] — Bun -- 테스트 환경에서 전역 객체 Bun 직접 참조 시 ReferenceError
 
 - [[docs/gotcha-bun-vitest-esm-spy-error.md]] — Vitest -- ESM 모듈의 함수 모킹 시 Module namespace 에러
@@ -30,6 +28,8 @@
 - [[docs/gotcha-npm-unpublish-dependent-packages.md]] — npm -- unpublish 차단 (dependent packages)
 
 ## Patterns
+
+- [[docs/pattern-bun-vitest-esm-mocking.md]] — Bun/Vitest ESM Mocking
 
 - [[docs/pattern-d8-prompt-markers.md]] — D8 Prompt Markers
 
@@ -52,5 +52,6 @@
 ## Runbooks
 
 - [[docs/runbook-context-plugin-release.md]] — @ksm0709/context 릴리즈 후 캐시 동기화
-- [[gotcha-bun-vitest-mocking.md]]
-- [[decision-update-test-mocking.md]]
+- [[docs/runbook-github-actions-trusted-publishing.md]] — GitHub Actions Trusted Publishing 설정 및 활용
+- [[docs/gotcha-bun-vitest-mocking.md]]
+- [[docs/decision-update-test-mocking.md]]

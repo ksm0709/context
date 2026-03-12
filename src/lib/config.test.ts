@@ -20,6 +20,7 @@ describe('loadConfig', () => {
     const config = loadConfig(tmpDir);
 
     expect(config).toBeDefined();
+    expect(Object.keys(config)).toEqual(['prompts', 'knowledge']);
     expect(config.prompts).toBeDefined();
     expect(config.prompts.turnStart).toContain('.opencode/context/prompts/turn-start.md');
     expect(config.prompts.turnEnd).toContain('.opencode/context/prompts/turn-end.md');
@@ -112,9 +113,9 @@ describe('loadConfig', () => {
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
   });
-  it('does not include subagentTurnEnd in default config', () => {
+  it('returns only turnStart and turnEnd prompt defaults', () => {
     const config = loadConfig(tmpDir);
-    expect((config.prompts as Record<string, unknown>).subagentTurnEnd).toBeUndefined();
+    expect(Object.keys(config.prompts)).toEqual(['turnStart', 'turnEnd']);
   });
 });
 

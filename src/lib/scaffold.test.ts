@@ -54,9 +54,24 @@ describe('scaffoldIfNeeded', () => {
 
     const turnStart = readFileSync(join(promptsDir, 'turn-start.md'), 'utf-8');
     expect(turnStart).toContain('Knowledge Context');
+    expect(turnStart).toContain(
+      '메인 에이전트가 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **직접 먼저** 읽으세요'
+    );
+    expect(turnStart).toContain('읽은 지식을 현재 작업의 설계, 구현, 검증에 직접 반영하세요');
+    expect(turnStart).not.toContain('subagent');
+    expect(turnStart).not.toContain('task(');
+    expect(turnStart).not.toContain('primary-only');
+    expect(turnStart).not.toContain('subagent-only');
 
     const turnEnd = readFileSync(join(promptsDir, 'turn-end.md'), 'utf-8');
     expect(turnEnd).toContain('작업 마무리');
+    expect(turnEnd).toContain('메인 에이전트가 직접 확인하세요');
+    expect(turnEnd).toContain('작업이 끝났다고 판단하기 전에 위 검증 결과를 직접 다시 확인하세요');
+    expect(turnEnd).toContain('context update prompt');
+    expect(turnEnd).not.toContain('subagent');
+    expect(turnEnd).not.toContain('task(');
+    expect(turnEnd).not.toContain('primary-only');
+    expect(turnEnd).not.toContain('subagent-only');
   });
 
   it('returns true on first scaffold, false when already exists (idempotent)', () => {
@@ -416,6 +431,33 @@ describe('updatePrompts', () => {
 
     const content = readFileSync(promptPath, 'utf-8');
     expect(content).not.toBe('Custom content');
+    expect(content).toContain('읽은 지식을 현재 작업의 설계, 구현, 검증에 직접 반영하세요');
+    expect(content).toContain(
+      '메인 에이전트가 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **직접 먼저** 읽으세요'
+    );
+    expect(content).not.toContain('subagent');
+    expect(content).not.toContain('task(');
+  });
+
+  it('refreshes existing installs to the latest prompt wording only through updatePrompts', async () => {
+    const { scaffoldIfNeeded, autoUpdateTemplates, updatePrompts } = await import('./scaffold.js');
+    scaffoldIfNeeded(tmpDir);
+
+    const turnEndPath = join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md');
+    writeFileSync(turnEndPath, 'LEGACY PROMPT WITH subagent task(', 'utf-8');
+    writeFileSync(join(tmpDir, '.opencode', 'context', '.version'), '0.0.1', 'utf-8');
+
+    autoUpdateTemplates(tmpDir);
+    expect(readFileSync(turnEndPath, 'utf-8')).toBe('LEGACY PROMPT WITH subagent task(');
+
+    const updated = updatePrompts(tmpDir);
+    expect(updated).toContain('prompts/turn-end.md');
+    expect(readFileSync(turnEndPath, 'utf-8')).toContain('context update prompt');
+    expect(readFileSync(turnEndPath, 'utf-8')).toContain(
+      '작업이 끝났다고 판단하기 전에 위 검증 결과를 직접 다시 확인하세요'
+    );
+    expect(readFileSync(turnEndPath, 'utf-8')).not.toContain('subagent');
+    expect(readFileSync(turnEndPath, 'utf-8')).not.toContain('task(');
   });
 
   it('does NOT update config.jsonc or template files', async () => {

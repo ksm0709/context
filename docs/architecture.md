@@ -126,6 +126,7 @@
 - `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
 - `updatePrompts()`: prompts 2개 파일만 업데이트 (config/templates 보존) — 사용자 명시적 요청용
 - `autoUpdateTemplates()`: 플러그인 버전 변경 시 templates만 자동 갱신 (config/prompts 보존)
+- 기존 설치의 `prompts/*.md`는 자동 재작성되지 않음 — 새 기본 프롬프트를 적용하려면 사용자가 `context update prompt`를 직접 실행해야 함
 - **버전 추적**: `package.json`의 `version`을 빌드 타임에 직접 읽음 (`import pkg from '../../package.json'`). `.opencode/context/.version` 파일과 비교하여 불일치 시 자동 업데이트 트리거 → [[docs/decision-remove-version-ts.md]]
 - **CLI 업데이트 커맨드**: `context update [all|prompt|plugin]` — 아래 CLI System 섹션 참고
 - 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]

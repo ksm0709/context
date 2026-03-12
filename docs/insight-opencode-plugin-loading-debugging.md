@@ -66,4 +66,12 @@ cd ~/.cache/opencode && rm -f bun.lock && bun install
 - [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] -- 캐시 버전 불일치 원인
 - [[docs/gotcha-opencode-command-hook-parts-mutation.md]] -- 커맨드 훅 함정
 - [[docs/runbook-context-plugin-release.md]] -- 릴리즈 후 캐시 동기화 절차
+- [[docs/gotcha-opencode-run-session-not-found.md]] -- opencode run 크래시
+
+## 최신 발견 (2026-03-12)
+
+1. **로딩 경로**: 캐시 정리 후 OpenCode는 `file:///home/bear1130/.config/opencode/node_modules/@ksm0709/context/dist/index.js`에서 플러그인을 로드함.
+2. **캐시 상태**: `~/.cache/opencode/package.json`은 플러그인 디렉토리 삭제 후에도 여전히 구버전(0.0.8)으로 고정되어 있어, 캐시 매니페스트가 stale 상태로 남을 수 있음 (참고: [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]]).
+3. **재현 패턴**: 설치된 플러그인 빌드를 import하고 `client.session.get`이 에러를 반환하도록 강제하면, `'Failed to detect subagent session; falling back to primary handling.'` 경고 로그가 발생하며 primary-only 프롬프트 내용이 보존됨.
+4. **주의**: `opencode run`은 여전히 [[docs/gotcha-opencode-run-session-not-found.md]] 이슈로 인해 사용을 피해야 함.
 ```

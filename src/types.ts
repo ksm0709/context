@@ -3,9 +3,6 @@ export interface ContextConfig {
     turnStart?: string;
     turnEnd?: string;
   };
-  subagentConfig: {
-    blockedToolPatterns: string[];
-  };
   knowledge: {
     dir?: string;
     sources: string[];

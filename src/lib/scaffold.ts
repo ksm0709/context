@@ -12,9 +12,6 @@ const DEFAULT_CONFIG = `{
     "turnStart": ".opencode/context/prompts/turn-start.md",
     "turnEnd": ".opencode/context/prompts/turn-end.md"
   },
-  "subagentConfig": {
-    "blockedToolPatterns": ["^task$", "^background_", "agent"]
-  },
   "knowledge": {
     "dir": "docs",
     "sources": ["AGENTS.md"]
@@ -34,55 +31,11 @@ const DEFAULT_TURN_START = `## Knowledge Context
 
 ### 작업 전 필수
 
-- 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **먼저** 읽으세요
-${'<'}!-- primary-only -->
-- 직접 읽기 전에 아래와 같이 **서브에이전트(explore)에 위임**하여, 연관된 노트를 집중 탐색하고 작업에 필요한 내용을 요약하도록 지시하세요.
-${'<'}!-- /primary-only -->
-${'<'}!-- subagent-only -->
-- 관련 문서를 직접 읽고 작업에 적용하세요. 서브에이전트를 호출하지 마세요.
-${'<'}!-- /subagent-only -->
+- 메인 에이전트가 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **직접 먼저** 읽으세요
 - 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
 - 문서 내 [[링크]]를 따라가며 관련 노트를 탐색하세요 -- 링크를 놓치면 중요한 맥락을 잃습니다
 - 지식 파일에 기록된 아키텍처 결정, 패턴, 제약사항을 반드시 따르세요
-
-${'<'}!-- primary-only -->
-### 지식 탐색 (서브에이전트 위임)
-
-현재 작업과 관련된 지식 노트를 읽고 요약하는 작업을 **서브에이전트에 위임**하여 컨텍스트 파악을 효율화하세요.
-메인 에이전트는 서브에이전트가 요약해준 내용을 바탕으로 작업을 진행하세요.
-
-\`\`\`
-task(
-  subagent_type="explore",
-  load_skills=[],
-  description="Analyze and summarize related knowledge notes",
-  run_in_background=false,
-  prompt="""
-  TASK: 사용자의 작업 요청과 'Available Knowledge' 목록을 분석하여, 이번 작업에 직접적으로 필요한 지식 노트를 탐색하고 핵심을 요약하세요.
-  EXPECTED OUTCOME: 작업에 적용해야 할 핵심 제약사항, 아키텍처 결정, 코드 패턴, 주의사항(Gotchas) 요약 리포트
-  REQUIRED TOOLS: Read (지식 노트 읽기), Glob/Grep (필요 시 연관 지식 검색)
-  MUST DO:
-    - 작업과 관련성이 높은 노트만 선별적으로 읽기
-    - 도메인 폴더 구조인 경우 INDEX.md를 우선 읽고 필요한 세부 노트 탐색
-    - 읽은 노트 내의 [[wikilink]]를 따라가며 중요한 연관 맥락 파악
-    - 복사-붙여넣기가 아닌, 이번 작업에 어떻게 적용할지 명확히 요약
-  MUST NOT DO:
-    - 코드를 직접 수정하거나 작성하지 마세요 (탐색 및 요약만 수행)
-    - 작업과 무관한 노트까지 불필요하게 탐색하지 마세요
-  CONTEXT:
-  - 현재 작업: [사용자의 작업 요청 내용 요약]
-  - 참고할 지식 목록: [메인 프롬프트 하단의 Available Knowledge 목록 참고]
-  """
-)
-\`\`\`
-
-${'<'}!-- /primary-only -->
-
-
-- 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **먼저** 읽으세요
-- 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
-- 문서 내 [[링크]]를 따라가며 관련 노트를 탐색하세요 -- 링크를 놓치면 중요한 맥락을 잃습니다
-- 지식 파일에 기록된 아키텍처 결정, 패턴, 제약사항을 반드시 따르세요
+- 읽은 지식을 현재 작업의 설계, 구현, 검증에 직접 반영하세요
 
 ### 개발 원칙
 
@@ -94,50 +47,24 @@ ${'<'}!-- /primary-only -->
 
 - AGENTS.md의 지시사항이 항상 최우선
 - 지식 노트의 결정사항 > 일반적 관행
-${'<'}!-- primary-only -->
-- 지식 노트에 없는 새로운 결정은 작업 완료 시 서브에이전트에 위임하여 기록하세요
-${'<'}!-- /primary-only -->
+- 지식 노트에 없는 새로운 결정이나 반복 가치가 있는 발견은 작업 메모나 지식 노트 후보로 기록하세요
 `;
 
-const DEFAULT_TURN_END = `${'<'}!-- primary-only -->
-## 작업 마무리
+const DEFAULT_TURN_END = `## 작업 마무리
 
-작업이 완료되면, 아래 두 가지를 **서브에이전트에 위임**하세요.
-메인 에이전트가 직접 수행하지 마세요.
+작업이 완료되면 아래 항목을 메인 에이전트가 직접 확인하세요.
 
-### 1. 퀄리티 체크 (서브에이전트 위임)
+### 1. 퀄리티 체크
 
-변경한 코드의 품질을 검증하는 서브에이전트를 실행하세요.
+- 변경한 코드에 대해 필요한 lint, format, test, build 검증을 직접 실행하세요
+- 새로 작성하거나 변경한 코드의 커버리지 기대치를 확인하세요
+- 변경 범위를 검토하여 요청과 무관한 파일을 건드리지 않았는지 확인하세요
+- 실패 항목이 있으면 원인, 에러 메시지, 관련 파일 위치를 정리한 뒤 직접 수정하세요
+- 작업이 끝났다고 판단하기 전에 위 검증 결과를 직접 다시 확인하세요
 
-\`\`\`
-task(
-  category="quick",
-  load_skills=[],
-  description="Quality check for changed files",
-  prompt="""
-  TASK: 변경된 파일들에 대해 퀄리티 체크를 수행하세요.
-  EXPECTED OUTCOME: 모든 체크 통과 또는 실패 항목 목록
-  REQUIRED TOOLS: Bash (lint, format, test 실행)
-  MUST DO:
-    - 변경한 코드에 대해 lint 실행
-    - 변경한 코드에 대해 formatter 실행 (lint와 별개)
-    - 기존 테스트 통과 확인
-    - 새로 작성/변경한 코드의 테스트 커버리지 80% 이상 확인
-    - 변경 범위 확인: 요청과 무관한 파일을 건드리지 않았는지 검증
-    - 실패 항목이 있으면 구체적인 에러 메시지와 파일 위치를 보고
-  MUST NOT DO:
-    - 코드를 직접 수정하지 마세요 (보고만)
-    - 테스트를 삭제하거나 스킵하지 마세요
-  CONTEXT: [변경한 파일 목록과 변경 내용 요약을 여기에 포함]
-  """
-)
-\`\`\`
+### 2. 지식 정리
 
-퀄리티 체크 실패 시: 서브에이전트 보고를 바탕으로 직접 수정한 뒤, 다시 위임하세요.
-
-### 2. 지식 정리 (서브에이전트 위임)
-
-작업 중 기록할 만한 발견이 있었다면, 지식 노트 작성을 서브에이전트에 위임하세요.
+작업 중 기록할 만한 발견이 있었다면 직접 정리하세요.
 
 **기록 대상 판단 기준:**
 
@@ -154,40 +81,12 @@ task(
 
 해당 사항이 없으면 이 단계는 건너뛰세요.
 
-\`\`\`
-task(
-  category="quick",
-  load_skills=[],
-  description="Write Zettelkasten knowledge note",
-  prompt="""
-  TASK: 아래 내용을 바탕으로 Zettelkasten 지식 노트를 작성하세요.
-  EXPECTED OUTCOME: 템플릿에 맞는 노트 파일 생성, 관련 노트 링크 연결
-  REQUIRED TOOLS: Read (템플릿 읽기), Write (노트 작성), Edit (기존 노트 링크 추가)
-  MUST DO:
-    - 해당 템플릿 파일을 읽고 그 구조에 맞춰 노트 작성
-    - 노트 첫 줄: 명확한 제목 (# Title)
-    - 핵심 내용을 자기 언어로 간결하게 서술 (복사-붙여넣기 금지)
-    - 관련 노트를 [[relative/path/file.md]] 형태의 wikilink로 연결
-    - knowledge 디렉토리 (기본: docs/)에 저장. 도메인 폴더가 있다면 적절한 도메인에 저장
-    - 기존 노트의 내용이 변경사항과 불일치하면 업데이트
-    - 도메인 폴더에 저장했다면 해당 INDEX.md에 항목 추가
-  MUST NOT DO:
-    - 소스 코드를 수정하지 마세요 (노트만 작성)
-    - 노트에 여러 주제를 섞지 마세요 (원자성 원칙)
-  CONTEXT: [기록할 발견 내용, 해당하는 템플릿 종류, 관련 기존 노트 목록을 여기에 포함]
-  """
-)
-\`\`\`
+- 관련 템플릿 파일을 읽고 그 구조에 맞춰 내용을 정리하세요
+- 노트 첫 줄은 명확한 제목(\`# Title\`)으로 시작하세요
+- 핵심 내용을 자기 언어로 간결하게 서술하고, 관련 노트는 \`[[relative/path/file.md]]\` 형태로 연결하세요
+- knowledge 디렉토리(기본: \`docs/\`) 또는 적절한 도메인 폴더에 저장하고, 필요한 경우 기존 INDEX.md나 관련 노트를 함께 갱신하세요
 
-${'<'}!-- /primary-only -->
-${'<'}!-- subagent-only -->
-<environment-constraints>
-당신은 현재 메인 오케스트레이터가 호출한 **말단 워커(Worker) 에이전트**입니다.
-현재 당신의 실행 환경(Sandbox)에서는 네트워크 자원 보호를 위해 **다른 에이전트를 생성, 호출, 위임하는 모든 도구(예: task, background_task 등)의 권한이 시스템 레벨에서 회수**되었습니다.
-
-만약 작업 중 다른 전문가(explore, librarian 등)의 도움이 필요하다면, 직접 에이전트를 부르려 시도하지 마세요. 대신 현재까지의 분석 결과를 요약하고 "OOO 에이전트의 도움이 필요함"이라는 메시지와 함께 작업을 종료(Complete)하여 메인 에이전트에게 제어권을 반환하세요.
-</environment-constraints>
-${'<'}!-- /subagent-only -->
+기존 설치의 사용자 프롬프트 파일은 자동으로 바뀌지 않습니다. 새 기본 프롬프트가 필요하면 \`context update prompt\`로 명시적으로 새로고침하세요.
 `;
 
 const DEFAULT_ADR_TEMPLATE = `# ADR-NNN: [제목]

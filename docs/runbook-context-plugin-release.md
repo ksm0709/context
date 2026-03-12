@@ -78,3 +78,4 @@ INFO  service=context ...  ← scaffolding 또는 auto-update 메시지
 - [[docs/insight-opencode-plugin-loading-debugging.md]] -- 근본 원인 분석
 - [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] -- 캐시 버전 불일치 패턴
 - [[docs/gotcha-npm-unpublish-dependent-packages.md]]
+- [[docs/runbook-github-actions-trusted-publishing.md]] -- GitHub Actions Trusted Publishing 설정

@@ -10,9 +10,6 @@ function getDefaultConfig(): ContextConfig {
       turnStart: join(DEFAULTS.promptDir, DEFAULTS.turnStartFile),
       turnEnd: join(DEFAULTS.promptDir, DEFAULTS.turnEndFile),
     },
-    subagentConfig: {
-      blockedToolPatterns: [...DEFAULTS.blockedToolPatterns],
-    },
     knowledge: {
       dir: 'docs',
       sources: [...DEFAULTS.knowledgeSources],
@@ -29,10 +26,6 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
     prompts: {
       turnStart: partial.prompts?.turnStart ?? defaults.prompts.turnStart,
       turnEnd: partial.prompts?.turnEnd ?? defaults.prompts.turnEnd,
-    },
-    subagentConfig: {
-      blockedToolPatterns:
-        partial.subagentConfig?.blockedToolPatterns ?? defaults.subagentConfig.blockedToolPatterns,
     },
     knowledge: {
       dir: partial.knowledge?.dir ?? defaults.knowledge.dir,

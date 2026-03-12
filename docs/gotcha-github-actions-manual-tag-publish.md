@@ -29,3 +29,4 @@
 
 - [[docs/runbook-context-plugin-release.md]] -- 릴리즈 후 캐시 동기화 절차
 - [[RELEASE.md]] -- 프로젝트 릴리즈 가이드
+- [[docs/runbook-github-actions-trusted-publishing.md]] -- GitHub Actions Trusted Publishing 설정

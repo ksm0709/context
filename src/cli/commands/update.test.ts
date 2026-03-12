@@ -54,16 +54,20 @@ describe('isGloballyInstalled', () => {
 });
 
 describe('runUpdatePlugin', () => {
-  let originalSpawnSync: any;
-
   const stdout: string[] = [];
   const stderr: string[] = [];
 
   beforeEach(() => {
-    (globalThis as any).Bun = { spawnSync: vi.fn() };
+    (globalThis as any).Bun = {
+      spawnSync: vi.fn().mockImplementation((args) => {
+        if (args[0] === 'which') {
+          return { exitCode: 1, stdout: Buffer.from('') };
+        }
+        return { exitCode: 0, stdout: Buffer.from('') };
+      }),
+    };
     stdout.length = 0;
     stderr.length = 0;
-    originalSpawnSync = (globalThis as any).Bun.spawnSync;
     vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
       stdout.push(String(s));
       return true;
@@ -76,7 +80,11 @@ describe('runUpdatePlugin', () => {
   });
 
   afterEach(() => {
-    (globalThis as any).Bun.spawnSync = originalSpawnSync;
     vi.restoreAllMocks();
+  });
+
+  it('calls spawnSync with correct arguments', () => {
+    runUpdatePlugin('latest');
+    expect((globalThis as any).Bun.spawnSync).toHaveBeenCalled();
   });
 });
