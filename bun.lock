@@ -5,7 +5,7 @@
     "": {
       "name": "context",
       "dependencies": {
-        "@ksm0709/context": "^0.0.17",
+        "@ksm0709/context": "^0.0.18",
         "jsonc-parser": "^3.0.0",
       },
       "devDependencies": {
@@ -131,7 +131,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@ksm0709/context": ["@ksm0709/context@0.0.17", "", { "dependencies": { "@ksm0709/context": "0.0.17", "jsonc-parser": "^3.0.0" }, "peerDependencies": { "@opencode-ai/plugin": ">=1.0.0" }, "bin": { "context": "dist/cli/index.js" } }, "sha512-80GYQJ7yE8+YG5ngdY+Ql6Gf94+y68bc+KVrmclrSwfoRHyryuyUu4r2wtwOg8kGMd/wte4zXOwcas7qJ8GKDg=="],
+    "@ksm0709/context": ["@ksm0709/context@0.0.18", "", { "dependencies": { "@ksm0709/context": "^0.0.17", "jsonc-parser": "^3.0.0" }, "peerDependencies": { "@opencode-ai/plugin": ">=1.0.0" }, "bin": { "context": "dist/cli/index.js" } }, "sha512-fghchapTIKjx5Tv1DMWE+8lre5+1bWqU4Bxijyh2X0IZuDAha2yanMU8pn77mAQby7OrcftuSA2Nw0AT/Ez5ww=="],
 
     "@nodelib/fs.scandir": ["@nodelib/fs.scandir@2.1.5", "", { "dependencies": { "@nodelib/fs.stat": "2.0.5", "run-parallel": "^1.1.9" } }, "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g=="],
 
@@ -562,6 +562,8 @@
     "@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, "sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag=="],
 
     "@eslint/eslintrc/ignore": ["ignore@5.3.2", "", {}, "sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g=="],
+
+    "@ksm0709/context/@ksm0709/context": ["@ksm0709/context@0.0.17", "", { "dependencies": { "@ksm0709/context": "0.0.17", "jsonc-parser": "^3.0.0" }, "peerDependencies": { "@opencode-ai/plugin": ">=1.0.0" }, "bin": { "context": "dist/cli/index.js" } }, "sha512-80GYQJ7yE8+YG5ngdY+Ql6Gf94+y68bc+KVrmclrSwfoRHyryuyUu4r2wtwOg8kGMd/wte4zXOwcas7qJ8GKDg=="],
 
     "@typescript-eslint/project-service/@typescript-eslint/tsconfig-utils": ["@typescript-eslint/tsconfig-utils@8.56.0", "", { "peerDependencies": { "typescript": ">=4.8.4 <6.0.0" } }, "sha512-bSJoIIt4o3lKXD3xmDh9chZcjCz5Lk8xS7Rxn+6l5/pKrDpkCwtQNQQwZ2qRPk7TkUYhrq3WPIHXOXlbXP0itg=="],
 

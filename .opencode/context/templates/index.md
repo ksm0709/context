@@ -4,8 +4,8 @@ Overview: [1-2 sentence description of this domain]
 
 ## Notes
 
-| File           | Summary         | Read When... |
-| -------------- | --------------- | ------------ |
+| File | Summary | Read When... |
+|------|---------|--------------|
 | [[example.md]] | Example summary | Working on X |
 
 ## Related Domains
