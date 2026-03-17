@@ -30,8 +30,8 @@
 ## Patterns
 
 - [[docs/pattern-bun-vitest-esm-mocking.md]] — Bun/Vitest ESM Mocking
-
 - [[docs/pattern-d8-prompt-markers.md]] — D8 Prompt Markers
+- [[docs/pattern-prompt-template-variables.md]] — 프롬프트 파일에 {{변수}} 플레이스홀더 → 런타임 config 값으로 치환
 
 ## Architecture
 
