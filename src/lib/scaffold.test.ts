@@ -145,6 +145,25 @@ describe('scaffoldIfNeeded', () => {
     const insight = readFileSync(join(templatesDir, 'insight.md'), 'utf-8');
     expect(insight).toContain('Insight:');
   });
+
+  it('DEFAULT_TURN_END contains {{knowledgeDir}} placeholder', () => {
+    scaffoldIfNeeded(tmpDir);
+    const turnEnd = readFileSync(
+      join(tmpDir, '.opencode', 'context', 'prompts', 'turn-end.md'),
+      'utf-8'
+    );
+    expect(turnEnd).toContain('{{knowledgeDir}}');
+    expect(turnEnd).not.toContain('`docs/`');
+  });
+
+  it('DEFAULT_TURN_START does not contain {{knowledgeDir}}', () => {
+    scaffoldIfNeeded(tmpDir);
+    const turnStart = readFileSync(
+      join(tmpDir, '.opencode', 'context', 'prompts', 'turn-start.md'),
+      'utf-8'
+    );
+    expect(turnStart).not.toContain('{{knowledgeDir}}');
+  });
 });
 
 describe('updateScaffold', () => {
