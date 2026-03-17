@@ -7,6 +7,7 @@ export const DEFAULTS = {
   templateDir: '.opencode/context/templates',
   indexFilename: 'INDEX.md',
   maxDomainDepth: 2,
+  knowledgeDir: 'docs',
 } as const;
 
 export const LIMITS = {

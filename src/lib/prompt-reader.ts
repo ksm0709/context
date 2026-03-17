@@ -12,3 +12,12 @@ export function readPromptFile(filePath: string): string {
     return '';
   }
 }
+
+export interface PromptVariables {
+  knowledgeDir: string;
+}
+
+export function resolvePromptVariables(content: string, vars: PromptVariables): string {
+  const normalized = (vars.knowledgeDir || 'docs').replace(/\\/g, '/').replace(/\/+$/, '');
+  return content.replaceAll('{{knowledgeDir}}', normalized);
+}

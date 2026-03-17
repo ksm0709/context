@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { readPromptFile } from './prompt-reader';
+import { readPromptFile, resolvePromptVariables } from './prompt-reader';
 
 describe('readPromptFile', () => {
   let tmpDir: string;
@@ -53,5 +53,48 @@ describe('readPromptFile', () => {
     const result = readPromptFile(filePath);
 
     expect(result).toBe(content);
+  });
+});
+
+describe('resolvePromptVariables', () => {
+  it('replaces {{knowledgeDir}} with provided value', () => {
+    const content = 'Read files from {{knowledgeDir}}/architecture.md';
+    const result = resolvePromptVariables(content, { knowledgeDir: 'docs' });
+    expect(result).toBe('Read files from docs/architecture.md');
+  });
+
+  it('replaces multiple {{knowledgeDir}} placeholders in same string', () => {
+    const content = '{{knowledgeDir}}/a.md and {{knowledgeDir}}/b.md';
+    const result = resolvePromptVariables(content, { knowledgeDir: 'notes' });
+    expect(result).toBe('notes/a.md and notes/b.md');
+  });
+
+  it('returns string unchanged when no placeholders', () => {
+    const content = 'Plain text without variables';
+    const result = resolvePromptVariables(content, { knowledgeDir: 'docs' });
+    expect(result).toBe('Plain text without variables');
+  });
+
+  it('returns empty string for empty input', () => {
+    const result = resolvePromptVariables('', { knowledgeDir: 'docs' });
+    expect(result).toBe('');
+  });
+
+  it('uses docs fallback when knowledgeDir is empty string', () => {
+    const content = 'Path: {{knowledgeDir}}/file.md';
+    const result = resolvePromptVariables(content, { knowledgeDir: '' });
+    expect(result).toBe('Path: docs/file.md');
+  });
+
+  it('removes trailing slash from knowledgeDir', () => {
+    const content = '{{knowledgeDir}}/file.md';
+    const result = resolvePromptVariables(content, { knowledgeDir: 'notes/' });
+    expect(result).toBe('notes/file.md');
+  });
+
+  it('normalizes backslashes to forward slashes', () => {
+    const content = '{{knowledgeDir}}/file.md';
+    const result = resolvePromptVariables(content, { knowledgeDir: 'path\\to\\notes' });
+    expect(result).toBe('path/to/notes/file.md');
   });
 });
