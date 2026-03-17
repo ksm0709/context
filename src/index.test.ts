@@ -238,4 +238,58 @@ describe('context plugin', () => {
     expect(secondOutput.messages[1].parts[0]?.text).toContain('NEW CONTENT');
     expect(secondOutput.messages[1].parts[0]?.text).not.toContain('OLD CONTENT');
   });
+
+  it('resolves {{knowledgeDir}} in turn-end with custom knowledge.dir', async () => {
+    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(
+      join(tmpDir, '.opencode', 'context', 'config.jsonc'),
+      '{"knowledge": {"dir": "notes"}}'
+    );
+    writeFileSync(join(promptsDir, 'turn-start.md'), '');
+    writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const output = { messages: [createUserMessage()] };
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    const turnEndText = output.messages[1].parts[0]?.text ?? '';
+    expect(turnEndText).toContain('notes/file.md');
+    expect(turnEndText).not.toContain('{{knowledgeDir}}');
+  });
+
+  it('resolves {{knowledgeDir}} in turn-end with default docs fallback', async () => {
+    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(promptsDir, 'turn-start.md'), '');
+    writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const output = { messages: [createUserMessage()] };
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    const turnEndText = output.messages[1].parts[0]?.text ?? '';
+    expect(turnEndText).toContain('docs/file.md');
+    expect(turnEndText).not.toContain('{{knowledgeDir}}');
+  });
+
+  it('resolves {{knowledgeDir}} in turn-start with custom knowledge.dir', async () => {
+    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(
+      join(tmpDir, '.opencode', 'context', 'config.jsonc'),
+      '{"knowledge": {"dir": "notes"}}'
+    );
+    writeFileSync(join(promptsDir, 'turn-start.md'), 'Read from {{knowledgeDir}}/guide.md');
+    writeFileSync(join(promptsDir, 'turn-end.md'), '');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const output = { messages: [createUserMessage()] };
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    const turnStartText = output.messages[0].parts[0]?.text ?? '';
+    expect(turnStartText).toContain('notes/guide.md');
+    expect(turnStartText).not.toContain('{{knowledgeDir}}');
+  });
 });

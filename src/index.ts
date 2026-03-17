@@ -6,7 +6,7 @@ import {
   formatKnowledgeIndex,
   formatDomainIndex,
 } from './lib/knowledge-index.js';
-import { readPromptFile } from './lib/prompt-reader.js';
+import { readPromptFile, resolvePromptVariables } from './lib/prompt-reader.js';
 import { scaffoldIfNeeded, autoUpdateTemplates } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
 
@@ -45,12 +45,16 @@ const plugin: Plugin = async ({ directory, client }) => {
       const lastUserMsg = output.messages.filter((m) => m.info.role === 'user').at(-1);
       if (!lastUserMsg) return;
 
+      // Prepare prompt variables for template resolution
+      const promptVars = { knowledgeDir: config.knowledge.dir ?? 'docs' };
+
       // 3. turn-start + knowledge index: combine and append to last user message (hot-reload)
       const turnStartPath = join(
         directory,
         config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
       );
-      const turnStart = readPromptFile(turnStartPath) ?? '';
+      const turnStartRaw = readPromptFile(turnStartPath) ?? '';
+      const turnStart = resolvePromptVariables(turnStartRaw, promptVars);
 
       const knowledgeIndex = buildKnowledgeIndexV2(directory, config.knowledge);
       const indexContent =
@@ -74,8 +78,10 @@ const plugin: Plugin = async ({ directory, client }) => {
         directory,
         config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
       );
-      const turnEnd = readPromptFile(turnEndPath);
-      if (!turnEnd) return;
+      const turnEndRaw = readPromptFile(turnEndPath);
+      if (!turnEndRaw) return;
+
+      const turnEnd = resolvePromptVariables(turnEndRaw, promptVars);
 
       const msgId = `context-turn-end-${Date.now()}`;
       output.messages.push({
