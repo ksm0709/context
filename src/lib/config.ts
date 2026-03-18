@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ContextConfig } from '../types';
 import { DEFAULTS } from '../constants';
+import { resolveContextDir } from './context-dir';
 
 function getDefaultConfig(): ContextConfig {
   return {
@@ -38,7 +39,7 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
 }
 
 export function loadConfig(projectDir: string): ContextConfig {
-  const configPath = join(projectDir, DEFAULTS.configPath);
+  const configPath = join(projectDir, resolveContextDir(projectDir), 'config.jsonc');
   try {
     const raw = readFileSync(configPath, 'utf-8');
     const parsed = parseJsonc(raw) as Partial<ContextConfig> | undefined;

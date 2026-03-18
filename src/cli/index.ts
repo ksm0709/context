@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 import { runUpdate } from './commands/update.js';
+import { runMigrate } from './commands/migrate.js';
+import { runInstall } from './commands/install.js';
 import pkg from '../../package.json';
 
 const PLUGIN_VERSION = pkg.version;
@@ -12,6 +14,8 @@ export function printHelp(out?: (s: string) => void): void {
   write('  update [all] [path]        Force-update all scaffold files\n');
   write('  update prompt [path]       Force-update prompt files only\n');
   write('  update plugin [version]    Update @ksm0709/context package\n');
+  write('  migrate [path] [--keep]    Migrate .opencode/context/ → .context/\n');
+  write('  install omx                Install OMX hook plugin to .omx/hooks/\n');
   write('\n');
 }
 
@@ -26,6 +30,12 @@ export function runCli(argv: string[]): void {
   switch (command) {
     case 'update':
       runUpdate(rest);
+      break;
+    case 'migrate':
+      runMigrate(rest);
+      break;
+    case 'install':
+      runInstall(rest);
       break;
     case '--version':
     case '-v':

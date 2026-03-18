@@ -1,6 +1,7 @@
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import type { Plugin } from '@opencode-ai/plugin';
 import { loadConfig } from './lib/config.js';
+import { resolveContextDir } from './lib/context-dir.js';
 import {
   buildKnowledgeIndexV2,
   formatKnowledgeIndex,
@@ -10,15 +11,31 @@ import { readPromptFile, resolvePromptVariables } from './lib/prompt-reader.js';
 import { scaffoldIfNeeded, autoUpdateTemplates } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
 
+/**
+ * Resolve a prompt file path relative to the project directory.
+ * - Absolute paths are used as-is
+ * - Paths starting with '.context/' or '.opencode/' are project-root-relative
+ * - Other relative paths are resolved relative to the resolved context dir
+ */
+function resolvePromptPath(directory: string, contextDir: string, promptPath: string): string {
+  if (isAbsolute(promptPath)) return promptPath;
+  if (promptPath.startsWith('.context/') || promptPath.startsWith('.opencode/')) {
+    return join(directory, promptPath);
+  }
+  return join(directory, contextDir, promptPath);
+}
+
 const plugin: Plugin = async ({ directory, client }) => {
   // 1. Scaffold on first run, or auto-update templates on version change
   const scaffolded = scaffoldIfNeeded(directory);
+  const contextDir = resolveContextDir(directory);
+
   if (scaffolded) {
     await client.app.log({
       body: {
         service: 'context',
         level: 'info',
-        message: 'Scaffold created at .opencode/context/',
+        message: `Scaffold created at ${contextDir}/`,
       },
     });
   } else {
@@ -49,8 +66,9 @@ const plugin: Plugin = async ({ directory, client }) => {
       const promptVars = { knowledgeDir: config.knowledge.dir ?? 'docs' };
 
       // 3. turn-start + knowledge index: combine and append to last user message (hot-reload)
-      const turnStartPath = join(
+      const turnStartPath = resolvePromptPath(
         directory,
+        contextDir,
         config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
       );
       const turnStartRaw = readPromptFile(turnStartPath) ?? '';
@@ -74,8 +92,9 @@ const plugin: Plugin = async ({ directory, client }) => {
       }
 
       // 6. turn-end: inject as separate user message (hot-reload)
-      const turnEndPath = join(
+      const turnEndPath = resolvePromptPath(
         directory,
+        contextDir,
         config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
       );
       const turnEndRaw = readPromptFile(turnEndPath);

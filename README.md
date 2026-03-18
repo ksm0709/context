@@ -8,6 +8,10 @@ Context plugin for Bun
 
 <!-- Example usage code goes here -->
 
+## OMX Support
+
+This plugin supports OMX (OpenCode Managed eXtension). See [[docs/omx-setup.md]] for setup instructions.
+
 ## Installation
 
 <!-- Installation instructions go here -->

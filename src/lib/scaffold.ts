@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULTS } from '../constants';
+import { resolveContextDir } from './context-dir';
 import pkg from '../../package.json';
 
 const PLUGIN_VERSION: string = pkg.version;
@@ -9,8 +10,8 @@ const DEFAULT_CONFIG = `{
   // Context Plugin Configuration
   // See: https://github.com/ksm0709/context
   "prompts": {
-    "turnStart": ".opencode/context/prompts/turn-start.md",
-    "turnEnd": ".opencode/context/prompts/turn-end.md"
+    "turnStart": "prompts/turn-start.md",
+    "turnEnd": "prompts/turn-end.md"
   },
   "knowledge": {
     "dir": "docs",
@@ -70,14 +71,14 @@ const DEFAULT_TURN_END = `## 작업 마무리
 
 | 상황                            | 템플릿                                              | 파일명 패턴                 |
 | ------------------------------- | --------------------------------------------------- | --------------------------- |
-| 아키텍처/기술 스택 중대 결정    | [ADR](.opencode/context/templates/adr.md)           | \`adr-NNN-제목.md\`           |
-| 반복 사용할 코드 패턴 발견      | [Pattern](.opencode/context/templates/pattern.md)   | \`pattern-제목.md\`           |
-| 비자명한 버그 해결              | [Bug](.opencode/context/templates/bug.md)           | \`bug-제목.md\`               |
-| 외부 API/라이브러리 예상외 동작 | [Gotcha](.opencode/context/templates/gotcha.md)     | \`gotcha-라이브러리-제목.md\` |
-| 작은 기술적 선택                | [Decision](.opencode/context/templates/decision.md) | \`decision-제목.md\`          |
-| 모듈/프로젝트 개요 필요         | [Context](.opencode/context/templates/context.md)   | \`context-제목.md\`           |
-| 반복 가능한 프로세스 정립       | [Runbook](.opencode/context/templates/runbook.md)   | \`runbook-제목.md\`           |
-| 실험/디버깅 중 학습             | [Insight](.opencode/context/templates/insight.md)   | \`insight-제목.md\`           |
+| 아키텍처/기술 스택 중대 결정    | [ADR](.context/templates/adr.md)           | \`adr-NNN-제목.md\`           |
+| 반복 사용할 코드 패턴 발견      | [Pattern](.context/templates/pattern.md)   | \`pattern-제목.md\`           |
+| 비자명한 버그 해결              | [Bug](.context/templates/bug.md)           | \`bug-제목.md\`               |
+| 외부 API/라이브러리 예상외 동작 | [Gotcha](.context/templates/gotcha.md)     | \`gotcha-라이브러리-제목.md\` |
+| 작은 기술적 선택                | [Decision](.context/templates/decision.md) | \`decision-제목.md\`          |
+| 모듈/프로젝트 개요 필요         | [Context](.context/templates/context.md)   | \`context-제목.md\`           |
+| 반복 가능한 프로세스 정립       | [Runbook](.context/templates/runbook.md)   | \`runbook-제목.md\`           |
+| 실험/디버깅 중 학습             | [Insight](.context/templates/insight.md)   | \`insight-제목.md\`           |
 
 해당 사항이 없으면 이 단계는 건너뛰세요.
 
@@ -317,7 +318,7 @@ const TEMPLATE_FILES: Record<string, string> = {
 };
 
 export function scaffoldIfNeeded(projectDir: string): boolean {
-  const contextDir = join(projectDir, '.opencode', 'context');
+  const contextDir = join(projectDir, resolveContextDir(projectDir));
 
   // Idempotency check: if context dir exists, skip scaffolding
   if (existsSync(contextDir)) {
@@ -348,7 +349,7 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
 }
 
 export function updateScaffold(projectDir: string): string[] {
-  const contextDir = join(projectDir, '.opencode', 'context');
+  const contextDir = join(projectDir, resolveContextDir(projectDir));
   mkdirSync(join(contextDir, 'prompts'), { recursive: true });
   mkdirSync(join(contextDir, 'templates'), { recursive: true });
 
@@ -380,19 +381,22 @@ export function updateScaffold(projectDir: string): string[] {
 }
 
 /**
- * Read stored plugin version from .opencode/context/.version.
+ * Read stored plugin version from the resolved context directory.
  * Returns null if file is missing or unreadable.
  */
 export function getStoredVersion(projectDir: string): string | null {
   try {
-    return readFileSync(join(projectDir, '.opencode', 'context', '.version'), 'utf-8').trim();
+    return readFileSync(
+      join(projectDir, resolveContextDir(projectDir), '.version'),
+      'utf-8'
+    ).trim();
   } catch {
     return null;
   }
 }
 
 /**
- * Write plugin version to .opencode/context/.version.
+ * Write plugin version to the resolved context directory.
  */
 export function writeVersion(contextDir: string, version: string): void {
   writeFileSync(join(contextDir, '.version'), version, 'utf-8');
@@ -404,7 +408,7 @@ export function writeVersion(contextDir: string, version: string): void {
  * Returns list of updated template paths, or empty array if nothing changed.
  */
 export function autoUpdateTemplates(projectDir: string): string[] {
-  const contextDir = join(projectDir, '.opencode', 'context');
+  const contextDir = join(projectDir, resolveContextDir(projectDir));
   if (!existsSync(contextDir)) return [];
 
   const stored = getStoredVersion(projectDir);
@@ -430,7 +434,7 @@ export function autoUpdateTemplates(projectDir: string): string[] {
 }
 
 export function updatePrompts(projectDir: string): string[] {
-  const contextDir = join(projectDir, '.opencode', 'context');
+  const contextDir = join(projectDir, resolveContextDir(projectDir));
   mkdirSync(join(contextDir, 'prompts'), { recursive: true });
 
   const prompts: Record<string, string> = {

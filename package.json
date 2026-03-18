@@ -1,6 +1,6 @@
 {
   "name": "@ksm0709/context",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "author": {
     "name": "TaehoKang",
     "email": "ksm07091@gmail.com"
@@ -15,6 +15,11 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./omx": {
+      "import": "./dist/omx/index.mjs",
+      "types": "./dist/omx/index.d.ts",
+      "default": "./dist/omx/index.mjs"
     }
   },
   "repository": {
@@ -25,10 +30,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun",
+    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun"
+    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs"
   },
   "files": [
     "dist"
@@ -37,7 +42,6 @@
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "dependencies": {
-    "@ksm0709/context": "^0.0.18",
     "jsonc-parser": "^3.0.0"
   },
   "devDependencies": {

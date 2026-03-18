@@ -58,10 +58,10 @@ describe('context plugin', () => {
     expect(Object.keys(hooks)).toEqual(['experimental.chat.messages.transform']);
   });
 
-  it('scaffolds .opencode/context on first run', async () => {
+  it('scaffolds .context/ on first run', async () => {
     await plugin(createMockInput(tmpDir) as never);
 
-    expect(existsSync(join(tmpDir, '.opencode', 'context'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.context'))).toBe(true);
   });
 
   it('appends turn-start and colocated knowledge index to the last user message', async () => {
@@ -86,8 +86,8 @@ describe('context plugin', () => {
   });
 
   it('injects only the knowledge index when prompt files are missing', async () => {
-    mkdirSync(join(tmpDir, '.opencode', 'context', 'prompts'), { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    mkdirSync(join(tmpDir, '.context', 'prompts'), { recursive: true });
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
     writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
 
     const hooks = await plugin(createMockInput(tmpDir) as never);
@@ -129,9 +129,9 @@ describe('context plugin', () => {
   });
 
   it('skips turn-start append when prompt and knowledge content are empty', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -145,9 +145,9 @@ describe('context plugin', () => {
   });
 
   it('injects only knowledge when turn-start prompt content is empty', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
     writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
@@ -164,9 +164,9 @@ describe('context plugin', () => {
   });
 
   it('hot-reloads turn-start content between message transforms', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
     writeFileSync(join(promptsDir, 'turn-start.md'), 'OLD CONTENT');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -203,9 +203,9 @@ describe('context plugin', () => {
   });
 
   it('skips turn-end injection when turn-end prompt content is empty', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
     writeFileSync(join(promptsDir, 'turn-start.md'), 'TURN START CONTENT');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -220,9 +220,9 @@ describe('context plugin', () => {
   });
 
   it('hot-reloads turn-end content between message transforms', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), 'OLD CONTENT');
 
@@ -240,12 +240,9 @@ describe('context plugin', () => {
   });
 
   it('resolves {{knowledgeDir}} in turn-end with custom knowledge.dir', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(
-      join(tmpDir, '.opencode', 'context', 'config.jsonc'),
-      '{"knowledge": {"dir": "notes"}}'
-    );
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{"knowledge": {"dir": "notes"}}');
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
 
@@ -259,9 +256,9 @@ describe('context plugin', () => {
   });
 
   it('resolves {{knowledgeDir}} in turn-end with default docs fallback', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.opencode', 'context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
 
@@ -275,12 +272,9 @@ describe('context plugin', () => {
   });
 
   it('resolves {{knowledgeDir}} in turn-start with custom knowledge.dir', async () => {
-    const promptsDir = join(tmpDir, '.opencode', 'context', 'prompts');
+    const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(
-      join(tmpDir, '.opencode', 'context', 'config.jsonc'),
-      '{"knowledge": {"dir": "notes"}}'
-    );
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{"knowledge": {"dir": "notes"}}');
     writeFileSync(join(promptsDir, 'turn-start.md'), 'Read from {{knowledgeDir}}/guide.md');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -291,5 +285,59 @@ describe('context plugin', () => {
     const turnStartText = output.messages[0].parts[0]?.text ?? '';
     expect(turnStartText).toContain('notes/guide.md');
     expect(turnStartText).not.toContain('{{knowledgeDir}}');
+  });
+
+  it('resolves prompts from .opencode/context/ when .context/ does not exist (legacy fallback)', async () => {
+    const legacyDir = join(tmpDir, '.opencode', 'context');
+    const promptsDir = join(legacyDir, 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(
+      join(legacyDir, 'config.jsonc'),
+      JSON.stringify({
+        prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
+      })
+    );
+    writeFileSync(join(promptsDir, 'turn-start.md'), 'LEGACY TURN START');
+    writeFileSync(join(promptsDir, 'turn-end.md'), 'LEGACY TURN END');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const output = { messages: [createUserMessage()] };
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    expect(output.messages[0].parts[0]?.text).toContain('LEGACY TURN START');
+    expect(output.messages).toHaveLength(2);
+    expect(output.messages[1].parts[0]?.text).toContain('LEGACY TURN END');
+  });
+
+  it('prefers .context/ over .opencode/context/ when both exist', async () => {
+    const newDir = join(tmpDir, '.context');
+    const legacyDir = join(tmpDir, '.opencode', 'context');
+    mkdirSync(join(newDir, 'prompts'), { recursive: true });
+    mkdirSync(join(legacyDir, 'prompts'), { recursive: true });
+
+    writeFileSync(
+      join(newDir, 'config.jsonc'),
+      JSON.stringify({
+        prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
+      })
+    );
+    writeFileSync(join(newDir, 'prompts', 'turn-start.md'), 'NEW CONTEXT');
+    writeFileSync(join(newDir, 'prompts', 'turn-end.md'), '');
+
+    writeFileSync(
+      join(legacyDir, 'config.jsonc'),
+      JSON.stringify({
+        prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
+      })
+    );
+    writeFileSync(join(legacyDir, 'prompts', 'turn-start.md'), 'LEGACY CONTEXT');
+    writeFileSync(join(legacyDir, 'prompts', 'turn-end.md'), '');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const output = { messages: [createUserMessage()] };
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    expect(output.messages[0].parts[0]?.text).toContain('NEW CONTEXT');
+    expect(output.messages[0].parts[0]?.text).not.toContain('LEGACY CONTEXT');
   });
 });

@@ -28,7 +28,7 @@
 
 ### Config Loader (`lib/config.ts`)
 
-- 경로: `.opencode/context/config.jsonc`
+- 경로: `.context/config.jsonc` (fallback: `.opencode/context/config.jsonc`)
 - JSONC 포맷 (주석 허용) — `jsonc-parser` 사용
 - partial config → `mergeWithDefaults()`로 기본값과 병합
 - 파일 없거나 파싱 실패 시 기본값 반환 (graceful fallback)
@@ -36,8 +36,8 @@
 ```jsonc
 {
   "prompts": {
-    "turnStart": ".opencode/context/prompts/turn-start.md",
-    "turnEnd": ".opencode/context/prompts/turn-end.md",
+    "turnStart": ".context/prompts/turn-start.md",
+    "turnEnd": ".context/prompts/turn-end.md",
   },
   "knowledge": {
     "dir": "docs", // 지식 스캔 디렉토리 (기본: docs/)
@@ -99,85 +99,11 @@
 - 파일 없으면 빈 문자열 반환 (에러 없음)
 - 최대 파일 크기: 64KB (초과 시 truncate)
 
-### Scaffold System (`lib/scaffold.ts`)
-
-플러그인 최초 실행 시 `.opencode/context/` 구조를 자동 생성합니다:
-
-```
-.opencode/context/
-├── config.jsonc         ← 기본 설정
-├── prompts/
-│   ├── turn-start.md    ← 제텔카스텐 가이드 + 지식 읽기 안내
-│   └── turn-end.md      ← 마무리 체크리스트 + 9가지 템플릿 링크
-└── templates/           ← 노트 작성 템플릿 (9개)
-    ├── adr.md           ← Architecture Decision Record
-    ├── pattern.md       ← 코드 패턴/컨벤션
-    ├── bug.md           ← 버그 패턴 + 해결
-    ├── gotcha.md        ← 외부 라이브러리/API 함정
-    ├── decision.md      ← 경량 결정 로그
-    ├── context.md       ← 프로젝트/모듈 맥락
-    ├── runbook.md       ← 절차서
-    ├── insight.md       ← 발견/학습
-    └── index.md         ← 도메인 INDEX.md 템플릿
-```
-
-- **멱등성**: `.opencode/context/` 디렉토리가 이미 존재하면 아무것도 하지 않음
-- 사용자가 수정한 파일을 덮어쓸 위험 없음
-- `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
-- `updatePrompts()`: prompts 2개 파일만 업데이트 (config/templates 보존) — 사용자 명시적 요청용
-- `autoUpdateTemplates()`: 플러그인 버전 변경 시 templates만 자동 갱신 (config/prompts 보존)
-- 기존 설치의 `prompts/*.md`는 자동 재작성되지 않음 — 새 기본 프롬프트를 적용하려면 사용자가 `context update prompt`를 직접 실행해야 함
-- **버전 추적**: `package.json`의 `version`을 빌드 타임에 직접 읽음 (`import pkg from '../../package.json'`). `.opencode/context/.version` 파일과 비교하여 불일치 시 자동 업데이트 트리거 → [[docs/decision-remove-version-ts.md]]
-- **CLI 업데이트 커맨드**: `context update [all|prompt|plugin]` — 아래 CLI System 섹션 참고
-- 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
-- 관련 결정: [[docs/decision-scaffold-auto-update-scope.md]] — templates만 자동 갱신
-- 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
-- 관련 함정: [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] — OpenCode가 최신 버전을 캐시하지 않음
-- 관련 결정: [[docs/adr-002-domain-index-knowledge-structure.md]] — 도메인 폴더 + INDEX.md 기반 구조
-
-### CLI System (`cli/`)
-
-플러그인과 독립적으로 실행되는 CLI 도구. 순수 파일시스템 작업만 수행하며, OpenCode 컨텍스트가 필요 없습니다.
-
-```
-src/cli/
-├── index.ts              ← 진입점 (process.argv 파싱, 커맨드 라우팅)
-├── cli.test.ts           ← CLI 통합 테스트
-└── commands/
-    ├── update.ts         ← update 서브커맨드 (all/prompt/plugin)
-    └── update.test.ts    ← detectPackageManager, isGloballyInstalled, runUpdatePlugin 단위 테스트
-```
-
-**사용법:**
-
-| 커맨드                                         | 동작                                                        |
-| ---------------------------------------------- | ----------------------------------------------------------- |
-| `context update` / `context update all [path]` | 12개 파일 전부 강제 업데이트 (config + prompts + templates) |
-| `context update prompt [path]`                 | prompts 2개 파일만 업데이트 (config/templates 보존)         |
-| `context update plugin [version]`              | @ksm0709/context 패키지 자체를 업데이트 (기본: latest)      |
-
-- **하위 호환**: `context update /path`는 `context update all /path`로 해석
-- **패키지 매니저 자동 감지**: lockfile 기반 (bun.lock → bun, pnpm-lock.yaml → pnpm, yarn.lock → yarn, package-lock.json → npm, 기본: bun)
-- **글로벌 우선 업데이트**: `update plugin` 실행 시 `~/.bun/bin/context` 글로벌 바이너리가 존재하면 `bun install -g`로 글로벌 먼저 업데이트한 뒤 로컬 업데이트 수행. 글로벌 바이너리가 없으면 로컬만 업데이트 → [[docs/gotcha-bun-global-cli-version-mismatch.md]]
-- 관련 결정: [[docs/decision-cli-tool-over-opencode-command.md]]
-
-## Safety Limits (`constants.ts`)
-
-| 제한                    | 값    | 목적                           |
-| ----------------------- | ----- | ------------------------------ |
-| `maxPromptFileSize`     | 64KB  | 프롬프트 파일 크기 제한        |
-| `maxIndexEntries`       | 100개 | knowledge index 엔트리 수 제한 |
-| `maxTotalInjectionSize` | 128KB | 전체 주입 크기 제한            |
-| `maxScanDepth`          | 3     | 디렉토리 재귀 탐색 깊이        |
-| `maxSummaryLength`      | 100자 | 엔트리 요약 길이               |
-| `maxIndexFileSize`      | 32KB  | INDEX.md 파일 크기 제한        |
-| `maxDomainDepth`        | 2     | INDEX.md 탐색 깊이             |
-
 ## Plugin Entry Point (`index.ts`)
 
 ```typescript
 const plugin: Plugin = async ({ directory, client }) => {
-  // 1. Scaffold on first run
+  // 1. Scaffold on first run (supports .context/ fallback)
   // 2. Load config once at plugin init
   return {
     'experimental.chat.messages.transform': async (_input, output) => {
@@ -197,6 +123,44 @@ const plugin: Plugin = async ({ directory, client }) => {
 - turn-end는 별도 유저 메시지로 주입 (`<system-reminder>` 태그) — synthetic 플래그 없이 실제 액션 유발
 - synthetic 플래그 미사용: AI가 soft context가 아닌 실행 가능한 지시사항으로 처리하도록 설계 → [[docs/synthetic-message-injection.md]] 참고
 - 관련 버그: [[docs/bug-knowledge-index-spatial-mismatch.md]]
+- OMX 지원: `.context/` 디렉토리를 우선 탐색하며, 없을 경우 `.opencode/context/`로 fallback
+- 디렉토리 구조: `src/omx/` 추가 (OMX 관련 로직)
+
+## Scaffold System (`lib/scaffold.ts`)
+
+플러그인 최초 실행 시 `.context/` (또는 `.opencode/context/` fallback) 구조를 자동 생성합니다:
+
+```
+.context/
+├── config.jsonc         ← 기본 설정
+├── prompts/
+│   ├── turn-start.md    ← 제텔카스텐 가이드 + 지식 읽기 안내
+│   └── turn-end.md      ← 마무리 체크리스트 + 9가지 템플릿 링크
+└── templates/           ← 노트 작성 템플릿 (9개)
+    ├── adr.md           ← Architecture Decision Record
+    ├── pattern.md       ← 코드 패턴/컨벤션
+    ├── bug.md           ← 버그 패턴 + 해결
+    ├── gotcha.md        ← 외부 라이브러리/API 함정
+    ├── decision.md      ← 경량 결정 로그
+    ├── context.md       ← 프로젝트/모듈 맥락
+    ├── runbook.md       ← 절차서
+    ├── insight.md       ← 발견/학습
+    └── index.md         ← 도메인 INDEX.md 템플릿
+```
+
+- **멱등성**: 설정 디렉토리가 이미 존재하면 아무것도 하지 않음
+- 사용자가 수정한 파일을 덮어쓸 위험 없음
+- `updateScaffold()`: 12개 파일 관리 (config + 2 prompts + 9 templates) — 내용이 다를 때만 업데이트
+- `updatePrompts()`: prompts 2개 파일만 업데이트 (config/templates 보존) — 사용자 명시적 요청용
+- `autoUpdateTemplates()`: 플러그인 버전 변경 시 templates만 자동 갱신 (config/prompts 보존)
+- 기존 설치의 `prompts/*.md`는 자동 재작성되지 않음 — 새 기본 프롬프트를 적용하려면 사용자가 `context update prompt`를 직접 실행해야 함
+- **버전 추적**: `package.json`의 `version`을 빌드 타임에 직접 읽음 (`import pkg from '../../package.json'`). 설정 디렉토리 내 `.version` 파일과 비교하여 불일치 시 자동 업데이트 트리거 → [[docs/decision-remove-version-ts.md]]
+- **CLI 업데이트 커맨드**: `context update [all|prompt|plugin]` — 아래 CLI System 섹션 참고
+- 관련 결정: [[docs/adr-001-zettelkasten-hook-templates.md]]
+- 관련 결정: [[docs/decision-scaffold-auto-update-scope.md]] — templates만 자동 갱신
+- 관련 함정: [[docs/gotcha-opencode-run-session-not-found.md]] — `opencode run`으로 scaffold 검증 불가
+- 관련 함정: [[docs/gotcha-opencode-plugin-cache-version-mismatch.md]] — OpenCode가 최신 버전을 캐시하지 않음
+- 관련 결정: [[docs/adr-002-domain-index-knowledge-structure.md]] — 도메인 폴더 + INDEX.md 기반 구조
 
 ## 관련 노트
 

@@ -1,10 +1,10 @@
 export const DEFAULTS = {
-  configPath: '.opencode/context/config.jsonc',
-  promptDir: '.opencode/context/prompts',
+  configPath: '.context/config.jsonc',
+  promptDir: '.context/prompts',
   turnStartFile: 'turn-start.md',
   turnEndFile: 'turn-end.md',
   knowledgeSources: ['AGENTS.md'],
-  templateDir: '.opencode/context/templates',
+  templateDir: '.context/templates',
   indexFilename: 'INDEX.md',
   maxDomainDepth: 2,
   knowledgeDir: 'docs',
