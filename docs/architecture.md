@@ -1,6 +1,7 @@
 # Plugin Architecture
 
-`@ksm0709/context`는 OpenCode 플러그인으로, AI 코딩 에이전트의 시스템 프롬프트에 프로젝트 지식을 자동 주입합니다.
+`@ksm0709/context`는 OpenCode 플러그인과 OMX hook plugin을 함께 제공하며,
+AI 코딩 에이전트의 시스템 프롬프트에 프로젝트 지식을 자동 주입합니다.
 
 ## Injection Flow
 
@@ -125,6 +126,8 @@ const plugin: Plugin = async ({ directory, client }) => {
 - 관련 버그: [[docs/bug-knowledge-index-spatial-mismatch.md]]
 - OMX 지원: `.context/` 디렉토리를 우선 탐색하며, 없을 경우 `.opencode/context/`로 fallback
 - 디렉토리 구조: `src/omx/` 추가 (OMX 관련 로직)
+- OMX hook은 `session-start` 시 AGENTS.md에 context block을 주입하고,
+  선택적으로 `turn-complete` 시 `tmux.sendKeys`를 사용한 실험적 turn-end reminder를 전송할 수 있음
 
 ## Scaffold System (`lib/scaffold.ts`)
 

@@ -47,6 +47,8 @@
 ## Insights
 
 - [[docs/insight-opencode-plugin-loading-debugging.md]] — OpenCode 플러그인 로딩 디버깅 (완결)
+- [[docs/insight-omx-turn-end-followup-loop.md]] — OMX turn-end follow-up loop suppression
+- [[docs/insight-omx-team-worker-turn-end-guard.md]] — OMX team worker turn-end guard verification
 - [[docs/synthetic-message-injection.md]] — Synthetic 메시지 주입의 한계와 대안
 
 ## Runbooks

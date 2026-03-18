@@ -18,14 +18,14 @@
 
 | 상황                            | 템플릿                                              | 파일명 패턴                 |
 | ------------------------------- | --------------------------------------------------- | --------------------------- |
-| 아키텍처/기술 스택 중대 결정    | [ADR](.opencode/context/templates/adr.md)           | `adr-NNN-제목.md`           |
-| 반복 사용할 코드 패턴 발견      | [Pattern](.opencode/context/templates/pattern.md)   | `pattern-제목.md`           |
-| 비자명한 버그 해결              | [Bug](.opencode/context/templates/bug.md)           | `bug-제목.md`               |
-| 외부 API/라이브러리 예상외 동작 | [Gotcha](.opencode/context/templates/gotcha.md)     | `gotcha-라이브러리-제목.md` |
-| 작은 기술적 선택                | [Decision](.opencode/context/templates/decision.md) | `decision-제목.md`          |
-| 모듈/프로젝트 개요 필요         | [Context](.opencode/context/templates/context.md)   | `context-제목.md`           |
-| 반복 가능한 프로세스 정립       | [Runbook](.opencode/context/templates/runbook.md)   | `runbook-제목.md`           |
-| 실험/디버깅 중 학습             | [Insight](.opencode/context/templates/insight.md)   | `insight-제목.md`           |
+| 아키텍처/기술 스택 중대 결정    | [ADR](.context/templates/adr.md)           | `adr-NNN-제목.md`           |
+| 반복 사용할 코드 패턴 발견      | [Pattern](.context/templates/pattern.md)   | `pattern-제목.md`           |
+| 비자명한 버그 해결              | [Bug](.context/templates/bug.md)           | `bug-제목.md`               |
+| 외부 API/라이브러리 예상외 동작 | [Gotcha](.context/templates/gotcha.md)     | `gotcha-라이브러리-제목.md` |
+| 작은 기술적 선택                | [Decision](.context/templates/decision.md) | `decision-제목.md`          |
+| 모듈/프로젝트 개요 필요         | [Context](.context/templates/context.md)   | `context-제목.md`           |
+| 반복 가능한 프로세스 정립       | [Runbook](.context/templates/runbook.md)   | `runbook-제목.md`           |
+| 실험/디버깅 중 학습             | [Insight](.context/templates/insight.md)   | `insight-제목.md`           |
 
 해당 사항이 없으면 이 단계는 건너뛰세요.
 

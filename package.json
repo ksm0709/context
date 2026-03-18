@@ -8,7 +8,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "context": "./dist/cli/index.js"
+    "context": "dist/cli/index.js"
   },
   "exports": {
     ".": {
@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:ksm0709/context.git"
+    "url": "git+ssh://git@github.com/ksm0709/context.git"
   },
   "publishConfig": {
     "access": "public"

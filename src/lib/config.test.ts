@@ -20,13 +20,14 @@ describe('loadConfig', () => {
     const config = loadConfig(tmpDir);
 
     expect(config).toBeDefined();
-    expect(Object.keys(config)).toEqual(['prompts', 'knowledge']);
+    expect(Object.keys(config)).toEqual(['prompts', 'knowledge', 'omx']);
     expect(config.prompts).toBeDefined();
     expect(config.prompts.turnStart).toContain('.context/prompts/turn-start.md');
     expect(config.prompts.turnEnd).toContain('.context/prompts/turn-end.md');
     expect(config.knowledge).toBeDefined();
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
+    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
   });
 
   it('parses valid config.jsonc', () => {
@@ -51,6 +52,7 @@ describe('loadConfig', () => {
     expect(config.prompts.turnEnd).toBe('custom/end.md');
     expect(config.knowledge.sources).toEqual(['README.md', 'docs/guide.md']);
     expect(config.knowledge.dir).toBe('knowledge');
+    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
   });
 
   it('parses JSONC with comments', () => {
@@ -88,6 +90,7 @@ describe('loadConfig', () => {
     expect(config.prompts.turnEnd).toContain('.context/prompts/turn-end.md');
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
+    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
   });
 
   it('merges partial config with defaults', () => {
@@ -112,6 +115,7 @@ describe('loadConfig', () => {
     // Default knowledge sources should be used
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
+    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
   });
   it('returns only turnStart and turnEnd prompt defaults', () => {
     const config = loadConfig(tmpDir);
@@ -176,6 +180,23 @@ describe('loadConfig - knowledge domain fields', () => {
     expect(config.knowledge.maxDomainDepth).toBe(2);
     expect(config.knowledge.dir).toBe('docs');
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
+  });
+
+  it('parses custom OMX turn-end strategy', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+
+    const configContent = JSON.stringify({
+      omx: {
+        turnEnd: {
+          strategy: 'turn-complete-sendkeys',
+        },
+      },
+    });
+    writeFileSync(join(configDir, 'config.jsonc'), configContent);
+
+    const config = loadConfig(tmpDir);
+    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
   });
 });
 

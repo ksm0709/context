@@ -16,6 +16,12 @@ const DEFAULT_CONFIG = `{
   "knowledge": {
     "dir": "docs",
     "sources": ["AGENTS.md"]
+  },
+  "omx": {
+    // Inject turn-end after native turn-complete via tmux send-keys
+    "turnEnd": {
+      "strategy": "turn-complete-sendkeys"
+    }
   }
 }`;
 

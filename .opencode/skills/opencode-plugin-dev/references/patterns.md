@@ -209,6 +209,44 @@ config: async (cfg) => {
 
 ---
 
+## OMX Hook Plugin 패턴
+
+OMX의 `.omx/hooks/*.mjs` 플러그인은 OpenCode의 `experimental.chat.messages.transform`처럼
+현재 요청의 messages 배열을 직접 수정하지 못합니다.
+
+- `session-start` → `AGENTS.md` marker block 주입에 적합
+- `turn-complete` → `sdk.tmux.sendKeys()`로 **다음 턴용 후속 리마인더** 전송 가능
+- 즉, OMX의 turn-end는 “현재 턴 내부 인젝션”이 아니라 “턴 종료 직후 follow-up input” 패턴으로 설계해야 함
+
+```typescript
+export async function onHookEvent(event, sdk) {
+  if (event.event !== 'turn-complete') return;
+
+  const lastTurnID = await sdk.state.read('last_turn_end_turn_id');
+  if (lastTurnID === event.turn_id) return; // at-most-once
+
+  const result = await sdk.tmux.sendKeys({
+    sessionName: typeof event.context?.session_name === 'string' ? event.context.session_name : undefined,
+    text: '<system-reminder>...</system-reminder>',
+    submit: false, // submit은 별도 시퀀스로 제어
+  });
+
+  if (result.ok) {
+    await sendTmuxSubmitSequence(result.paneId ?? result.target);
+    await sdk.state.write('last_turn_end_turn_id', event.turn_id);
+  }
+}
+```
+
+**주의**:
+- `session-idle`는 turn-bound하지 않아 turn-end 대체로 약함
+- `needs-input`는 파생 이벤트라 항상 발생하지 않음
+- team worker에서는 sendKeys 기반 주입을 기본 비활성으로 두는 편이 안전함
+- live Codex pane에서는 SDK의 기본 `submit: true`만으로 제출이 약할 수 있으므로,
+  `submit: false` + 별도 `C-m` submit 시퀀스를 두는 편이 더 안정적일 수 있음
+
+---
+
 ## 세션 압축 커스터마이징
 
 ```typescript

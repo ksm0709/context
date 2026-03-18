@@ -10,9 +10,15 @@ export interface ContextConfig {
     indexFilename?: string;
     maxDomainDepth?: number;
   };
+  omx?: {
+    turnEnd?: {
+      strategy?: OmxTurnEndStrategy;
+    };
+  };
 }
 
 export type KnowledgeMode = 'auto' | 'domain' | 'flat';
+export type OmxTurnEndStrategy = 'off' | 'turn-complete-sendkeys';
 
 export interface DomainEntry {
   domain: string; // folder name (e.g., 'architecture')

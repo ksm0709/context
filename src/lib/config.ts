@@ -18,6 +18,11 @@ function getDefaultConfig(): ContextConfig {
       indexFilename: DEFAULTS.indexFilename,
       maxDomainDepth: DEFAULTS.maxDomainDepth,
     },
+    omx: {
+      turnEnd: {
+        strategy: 'turn-complete-sendkeys',
+      },
+    },
   };
 }
 
@@ -34,6 +39,11 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
       mode: partial.knowledge?.mode ?? defaults.knowledge.mode,
       indexFilename: partial.knowledge?.indexFilename ?? defaults.knowledge.indexFilename,
       maxDomainDepth: partial.knowledge?.maxDomainDepth ?? defaults.knowledge.maxDomainDepth,
+    },
+    omx: {
+      turnEnd: {
+        strategy: partial.omx?.turnEnd?.strategy ?? defaults.omx?.turnEnd?.strategy,
+      },
     },
   };
 }
