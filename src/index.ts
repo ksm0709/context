@@ -58,10 +58,35 @@ const plugin: Plugin = async ({ directory, client }) => {
 
   return {
     'experimental.chat.messages.transform': async (_input, output) => {
+      // OMX 환경에서는 messages.transform을 통한 주입을 건너뜁니다.
+      // (OMX는 onSessionStart에서 AGENTS.md에 주입하고, onTurnComplete에서 tmux send-keys로 turn-end를 주입합니다)
+      if (process.env.OMX_HOOK_PLUGINS) return;
+
+      // 서브에이전트 등에서 환경변수가 유실되었더라도, AGENTS.md에 이미 주입되어 있다면 OMX 환경으로 간주합니다.
+      const agentsMdPath = join(directory, 'AGENTS.md');
+      if (existsSync(agentsMdPath)) {
+        const content = readFileSync(agentsMdPath, 'utf-8');
+        if (
+          content.includes('<!-- context:start -->') &&
+          content.includes('<!-- context:end -->')
+        ) {
+          return;
+        }
+      }
+
       if (output.messages.length === 0) return;
 
       const lastUserMsg = output.messages.filter((m) => m.info.role === 'user').at(-1);
       if (!lastUserMsg) return;
+
+      // 만약 마지막 유저 메시지가 이미 turn-end 리마인더(tmux send-keys로 주입된 것)라면,
+      // turn-start를 덧붙이거나 turn-end를 중복 주입하지 않습니다.
+      const isTurnEndMessage = lastUserMsg.parts.some(
+        (p) => p.type === 'text' && p.text.includes('<system-reminder>')
+      );
+      if (isTurnEndMessage) {
+        return;
+      }
 
       // Prepare prompt variables for template resolution
       const promptVars = {

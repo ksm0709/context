@@ -298,12 +298,23 @@ async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
     return;
   }
 
-  const turnEnd = resolvePromptVariables(turnEndRaw, promptVars);
+  const turnEnd = resolvePromptVariables(turnEndRaw, promptVars).trim();
   const reminderText = `<system-reminder>\n${turnEnd}\n</system-reminder>`;
   const sessionName =
     typeof event.context?.session_name === 'string' && event.context.session_name.trim().length > 0
       ? event.context.session_name.trim()
       : undefined;
+
+  // Add a small delay to ensure terminal buffer is flushed before injecting
+  await new Promise((resolve) => globalThis.setTimeout(resolve, 500));
+
+  if (typeof sdk.tmux?.sendKeys === 'function') {
+    // We don't need to clear buffer, we just need to make sure we are not pasting.
+    // sendKeys uses `tmux send-keys -l "text"`, which shouldn't paste clipboard.
+    // Wait, the issue is that `turnEndRaw` might contain the combined content if `turnEndPath` is somehow pointing to `AGENTS.md`?
+    // No, `turnEndPath` is `.context/prompts/turn-end.md`.
+  }
+
   const result = await sdk.tmux.sendKeys({
     sessionName,
     text: reminderText,

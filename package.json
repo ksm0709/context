@@ -42,7 +42,7 @@
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "dependencies": {
-    "@ksm0709/context": "^0.0.20",
+    "@ksm0709/context": "^0.0.21",
     "jsonc-parser": "^3.0.0"
   },
   "devDependencies": {

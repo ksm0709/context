@@ -42,13 +42,21 @@ function createUserMessage() {
 
 describe('context plugin', () => {
   let tmpDir: string;
+  let originalOmxEnv: string | undefined;
 
   beforeEach(() => {
+    originalOmxEnv = process.env.OMX_HOOK_PLUGINS;
+    delete process.env.OMX_HOOK_PLUGINS;
     tmpDir = join(tmpdir(), `plugin-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(tmpDir, { recursive: true });
   });
 
   afterEach(() => {
+    if (originalOmxEnv !== undefined) {
+      process.env.OMX_HOOK_PLUGINS = originalOmxEnv;
+    } else {
+      delete process.env.OMX_HOOK_PLUGINS;
+    }
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
