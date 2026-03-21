@@ -86,6 +86,8 @@ describe('scaffoldIfNeeded', () => {
     expect(dailyNoteGuide).toContain('오늘 완료한 핵심 작업 요약');
     const noteGuide = readFileSync(join(guidesDir, 'note-guide.md'), 'utf-8');
     expect(noteGuide).toContain('제텔카스텐(Zettelkasten) 3대 원칙');
+    expect(noteGuide).toContain('기록 대상 판단 기준:');
+    expect(noteGuide).toContain('| 상황 | 템플릿 | 파일명 패턴 |');
     const completeGuide = readFileSync(join(guidesDir, 'complete-guide.md'), 'utf-8');
     expect(completeGuide).toContain('프롬프트 주입 루프를 종료시키는 트리거');
   });
@@ -210,10 +212,10 @@ describe('scaffoldIfNeeded', () => {
     expect(insight).toContain('Insight:');
   });
 
-  it('DEFAULT_TURN_START does not contain {{knowledgeDir}}', () => {
+  it('DEFAULT_TURN_START contains {{knowledgeDir}}', () => {
     scaffoldIfNeeded(tmpDir);
     const turnStart = readFileSync(join(tmpDir, '.context', 'prompts', 'turn-start.md'), 'utf-8');
-    expect(turnStart).not.toContain('{{knowledgeDir}}');
+    expect(turnStart).toContain('{{knowledgeDir}}');
   });
 });
 

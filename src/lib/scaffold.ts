@@ -38,7 +38,7 @@ const DEFAULT_TURN_START = `## Knowledge Context
 
 ### 작업 전 필수
 
-- **데일리 노트 확인**: 가장 최근의 데일리 노트(\`docs/daily/YYYY-MM-DD.md\`)를 읽고 이전 세션의 컨텍스트와 미해결 이슈를 파악하세요
+- **데일리 노트 확인**: 가장 최근의 데일리 노트(\`{{knowledgeDir}}/daily/YYYY-MM-DD.md\`)를 읽고 이전 세션의 컨텍스트와 미해결 이슈를 파악하세요
 - **작업 의도 선언**: 작업 시작 전, 현재 세션의 목표와 작업 의도를 명확히 파악하고 선언하세요 (추후 작업 경로 검증 시 기준이 됩니다)
 - 메인 에이전트가 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **직접 먼저** 읽으세요
 - 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
@@ -307,7 +307,19 @@ const DEFAULT_NOTE_GUIDE = `# 지식 노트 작성 가이드
   - [ ] 원자성: 한 노트당 한 주제
   - [ ] 연결: 고립된 노트 방지
   - [ ] 자기 언어 서술: 핵심을 이해하고 간결하게 서술
-- [ ] \`.context/templates/\` 디렉토리에 있는 8개 템플릿(ADR, Pattern, Bug, Gotcha, Decision, Context, Runbook, Insight) 중 하나를 복사하여 뼈대로 사용하세요.
+- [ ] **기록 대상 판단 기준:**
+
+| 상황 | 템플릿 | 파일명 패턴 |
+| --- | --- | --- |
+| 아키텍처/기술 스택 중대 결정 | \`.context/templates/adr.md\` | \`adr-NNN-제목.md\` |
+| 반복 사용할 코드 패턴 발견 | \`.context/templates/pattern.md\` | \`pattern-제목.md\` |
+| 비자명한 버그 해결 | \`.context/templates/bug.md\` | \`bug-제목.md\` |
+| 외부 API/라이브러리 예상외 동작 | \`.context/templates/gotcha.md\` | \`gotcha-라이브러리-제목.md\` |
+| 작은 기술적 선택 | \`.context/templates/decision.md\` | \`decision-제목.md\` |
+| 모듈/프로젝트 개요 필요 | \`.context/templates/context.md\` | \`context-제목.md\` |
+| 반복 가능한 프로세스 정립 | \`.context/templates/runbook.md\` | \`runbook-제목.md\` |
+| 실험/디버깅 중 학습 | \`.context/templates/insight.md\` | \`insight-제목.md\` |
+
 - [ ] 새로 작성한 노트는 고립되지 않도록 반드시 기존 관련 노트나 \`INDEX.md\`와 \`[[wikilink]]\`로 양방향 연결하세요.`;
 
 const DEFAULT_SEARCH_GUIDE = `# 노트/스킬 검색 및 읽기 가이드
