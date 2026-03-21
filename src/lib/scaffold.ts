@@ -289,9 +289,9 @@ Overview: [1-2 sentence description of this domain]
 
 const GUIDE_FILES: Record<string, string> = {
   'daily-note-guide.md':
-    '# 데일리 노트 기록 가이드\n\n- [ ] YYYY-MM-DD.md 데일리노트 읽기\n- [ ] 기억해야 하는 작업내용 1-2문장으로 요약하여 기록',
+    '# 데일리 노트 기록 가이드\n\n- [ ] `docs/daily/YYYY-MM-DD.md` 파일(오늘 날짜 기준)을 생성하거나 업데이트하세요.\n- [ ] **주의**: 데일리 노트의 기존 내용은 절대 수정하거나 삭제하지 마세요.\n- [ ] 파일 맨 마지막 줄에 다음과 같은 형식으로만 기록을 추가(Append)하세요:\n  `[{{currentTimestamp}}] <기억 할 내용>`\n- [ ] `<기억 할 내용>`에는 완벽한 컨텍스트 인계를 위해 오늘 완료한 핵심 작업 요약, 미해결 이슈(TODO), 중요 메모, 지식 노트 `[[wikilink]]` 등을 포함하세요.',
   'note-guide.md':
-    '# 지식 노트 작성 가이드\n\n- [ ] 주제 정의\n- [ ] 관련 노트 연결\n- [ ] 자기 언어로 서술',
+    '# 지식 노트 작성 가이드\n\n- [ ] 제텔카스텐(Zettelkasten) 3대 원칙 준수:\n  - [ ] 원자성: 한 노트당 한 주제\n  - [ ] 연결: 고립된 노트 방지\n  - [ ] 자기 언어 서술: 핵심을 이해하고 간결하게 서술\n- [ ] `.context/templates/` 디렉토리에 있는 8개 템플릿(ADR, Pattern, Bug, Gotcha, Decision, Context, Runbook, Insight) 중 하나를 복사하여 뼈대로 사용하세요.\n- [ ] 새로 작성한 노트는 고립되지 않도록 반드시 기존 관련 노트나 `INDEX.md`와 `[[wikilink]]`로 양방향 연결하세요.',
   'search-guide.md':
     '# 노트/스킬 검색 및 읽기 가이드\n\n- [ ] 관련 키워드 검색\n- [ ] INDEX.md 확인\n- [ ] 관련 노트 탐색',
   'quality-check.md':
@@ -301,7 +301,7 @@ const GUIDE_FILES: Record<string, string> = {
   'commit-guide.md':
     '# 체크포인트 커밋 가이드\n\n- [ ] 작업 내용 스테이징\n- [ ] 원자적 커밋 메시지 작성',
   'complete-guide.md':
-    '# 작업 완료 가이드\n\n- [ ] .context/.work-complete 생성\n- [ ] 세션/턴 ID 기록',
+    '# 작업 완료 가이드\n\n- [ ] 모든 커밋 및 푸시 작업 완료 후 수행하세요.\n- [ ] 프로젝트 루트에 `.context/.work-complete` 파일을 생성하거나 덮어쓰세요.\n- [ ] 파일 내용은 정확히 아래 2줄 형식이어야 합니다:\n  session_id={{sessionId}}\n  turn_id={{turnId}}\n- [ ] 이 동작은 작업 완료를 시스템에 알리고 프롬프트 주입 루프를 종료시키는 트리거입니다.',
 };
 
 const TEMPLATE_FILES: Record<string, string> = {

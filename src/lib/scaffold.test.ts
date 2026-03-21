@@ -65,15 +65,42 @@ describe('scaffoldIfNeeded', () => {
     expect(turnStart).not.toContain('subagent-only');
 
     const turnEnd = readFileSync(join(promptsDir, 'turn-end.md'), 'utf-8');
-    expect(turnEnd).toContain('작업 마무리');
+    expect(turnEnd).toContain('8. **작업 완료**:');
     expect(turnEnd).toContain('아래 메뉴 중 하나를 선택해 진행 상황에 맞게 수행하세요.');
-    expect(turnEnd).toContain('반드시 사용자의 응답을 기다리세요(STOP)');
+    expect(turnEnd).toContain('반드시 링크된 가이드를 참고하여 정확히 수행해야 합니다.');
     expect(turnEnd).toContain('.context/guides/quality-check.md');
+    expect(turnEnd).toContain('.context/guides/daily-note-guide.md');
+    expect(turnEnd).toContain('.context/guides/note-guide.md');
+    expect(turnEnd).toContain('.context/guides/complete-guide.md');
     expect(turnEnd).not.toContain('.opencode/context/templates');
     expect(turnEnd).not.toContain('subagent');
     expect(turnEnd).not.toContain('task(');
     expect(turnEnd).not.toContain('primary-only');
     expect(turnEnd).not.toContain('subagent-only');
+  });
+
+  it('creates guide files with correct content', () => {
+    scaffoldIfNeeded(tmpDir);
+    const guidesDir = join(tmpDir, '.context', 'guides');
+    const dailyNoteGuide = readFileSync(join(guidesDir, 'daily-note-guide.md'), 'utf-8');
+    expect(dailyNoteGuide).toContain('오늘 완료한 핵심 작업 요약');
+    const noteGuide = readFileSync(join(guidesDir, 'note-guide.md'), 'utf-8');
+    expect(noteGuide).toContain('제텔카스텐(Zettelkasten) 3대 원칙');
+    const completeGuide = readFileSync(join(guidesDir, 'complete-guide.md'), 'utf-8');
+    expect(completeGuide).toContain('프롬프트 주입 루프를 종료시키는 트리거');
+  });
+
+  it('refreshes existing installs to the latest prompt wording through autoUpdateTemplates', async () => {
+    const { scaffoldIfNeeded, autoUpdateTemplates } = await import('./scaffold.js');
+    scaffoldIfNeeded(tmpDir);
+
+    const turnEndPath = join(tmpDir, '.context', 'prompts', 'turn-end.md');
+    writeFileSync(turnEndPath, 'LEGACY PROMPT WITH subagent task(', 'utf-8');
+    writeFileSync(join(tmpDir, '.context', '.version'), '0.0.1', 'utf-8');
+
+    autoUpdateTemplates(tmpDir);
+    expect(readFileSync(turnEndPath, 'utf-8')).not.toBe('LEGACY PROMPT WITH subagent task(');
+    expect(readFileSync(turnEndPath, 'utf-8')).toContain('8. **작업 완료**:');
   });
 
   it('returns true on first scaffold, false when already exists (idempotent)', () => {
@@ -502,7 +529,7 @@ describe('updatePrompts', () => {
 
     autoUpdateTemplates(tmpDir);
     expect(readFileSync(turnEndPath, 'utf-8')).not.toBe('LEGACY PROMPT WITH subagent task(');
-    expect(readFileSync(turnEndPath, 'utf-8')).toContain('작업 마무리');
+    expect(readFileSync(turnEndPath, 'utf-8')).toContain('8. **작업 완료**:');
   });
 
   it('does NOT update config.jsonc or template files', async () => {
