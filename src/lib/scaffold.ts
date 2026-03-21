@@ -287,6 +287,11 @@ Overview: [1-2 sentence description of this domain]
 - [[../other-domain/INDEX.md]] -- Description
 `;
 
+const DEFAULT_WORK_COMPLETE_TEMPLATE = `timestamp={{currentTimestamp}}
+session_id={{sessionId}}
+turn_id={{turnId}}
+`;
+
 const DEFAULT_DAILY_NOTE_GUIDE = `# 데일리 노트 기록 가이드
 
 - [ ] \`docs/daily/YYYY-MM-DD.md\` 파일(오늘 날짜 기준)을 생성하거나 업데이트하세요.
@@ -331,7 +336,8 @@ const DEFAULT_COMPLETE_GUIDE = `# 작업 완료 가이드
 
 - [ ] 모든 커밋 및 푸시 작업 완료 후 수행하세요.
 - [ ] 프로젝트 루트에 \`.context/.work-complete\` 파일을 생성하거나 덮어쓰세요.
-- [ ] 파일 내용은 정확히 아래 2줄 형식이어야 합니다:
+- [ ] 파일 내용은 \`.context/templates/work-complete.txt\` 템플릿을 복사하여 작성해야 합니다. (정확히 아래 3줄 형식이어야 합니다):
+  timestamp={{currentTimestamp}}
   session_id={{sessionId}}
   turn_id={{turnId}}
 - [ ] 이 동작은 작업 완료를 시스템에 알리고 프롬프트 주입 루프를 종료시키는 트리거입니다.`;
@@ -356,6 +362,7 @@ const TEMPLATE_FILES: Record<string, string> = {
   'runbook.md': DEFAULT_RUNBOOK_TEMPLATE,
   'insight.md': DEFAULT_INSIGHT_TEMPLATE,
   'index.md': DEFAULT_INDEX_TEMPLATE,
+  'work-complete.txt': DEFAULT_WORK_COMPLETE_TEMPLATE,
 };
 
 export function scaffoldIfNeeded(projectDir: string): boolean {

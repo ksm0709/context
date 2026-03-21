@@ -202,7 +202,7 @@ describe('context plugin', () => {
 
     expect(turnEndMessage.info.role).toBe('user');
     expect(turnEndPart?.text).toContain('<system-reminder>');
-    expect(turnEndPart?.text).toContain('## 작업 마무리');
+    expect(turnEndPart?.text).toContain('## TURN END 작업 지침');
     expect(turnEndPart?.synthetic).toBeUndefined();
     expectNoDelegationWording(turnEndPart?.text ?? '');
   });
