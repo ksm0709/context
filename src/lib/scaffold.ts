@@ -311,6 +311,23 @@ Overview: [1-2 sentence description of this domain]
 - [[../other-domain/INDEX.md]] -- Description
 `;
 
+const GUIDE_FILES: Record<string, string> = {
+  'daily-note-guide.md':
+    '# 데일리 노트 기록 가이드\n\n- [ ] 오늘 작업한 내용 요약\n- [ ] 해결한 이슈 링크\n- [ ] 내일 계획',
+  'note-guide.md':
+    '# 지식 노트 작성 가이드\n\n- [ ] 주제 정의\n- [ ] 관련 노트 연결\n- [ ] 자기 언어로 서술',
+  'search-guide.md':
+    '# 노트/스킬 검색 및 읽기 가이드\n\n- [ ] 관련 키워드 검색\n- [ ] INDEX.md 확인\n- [ ] 관련 노트 탐색',
+  'quality-check.md':
+    '# 퀄리티 검증 가이드\n\n- [ ] Lint/Format 확인\n- [ ] 테스트 실행\n- [ ] 빌드 확인',
+  'scope-review.md':
+    '# 작업 경로 리뷰 가이드\n\n- [ ] 현재 작업 범위 확인\n- [ ] 스코프 이탈 여부 검토',
+  'commit-guide.md':
+    '# 체크포인트 커밋 가이드\n\n- [ ] 작업 내용 스테이징\n- [ ] 원자적 커밋 메시지 작성',
+  'complete-guide.md':
+    '# 작업 완료 가이드\n\n- [ ] .context/.work-complete 생성\n- [ ] 세션/턴 ID 기록',
+};
+
 const TEMPLATE_FILES: Record<string, string> = {
   'adr.md': DEFAULT_ADR_TEMPLATE,
   'pattern.md': DEFAULT_PATTERN_TEMPLATE,
@@ -338,12 +355,19 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
     const templatesDir = join(contextDir, 'templates');
     mkdirSync(templatesDir, { recursive: true });
 
+    const guidesDir = join(contextDir, 'guides');
+    mkdirSync(guidesDir, { recursive: true });
+
     writeFileSync(join(contextDir, 'config.jsonc'), DEFAULT_CONFIG, 'utf-8');
     writeFileSync(join(promptsDir, DEFAULTS.turnStartFile), DEFAULT_TURN_START, 'utf-8');
     writeFileSync(join(promptsDir, DEFAULTS.turnEndFile), DEFAULT_TURN_END, 'utf-8');
 
     for (const [filename, content] of Object.entries(TEMPLATE_FILES)) {
       writeFileSync(join(templatesDir, filename), content, 'utf-8');
+    }
+
+    for (const [filename, content] of Object.entries(GUIDE_FILES)) {
+      writeFileSync(join(guidesDir, filename), content, 'utf-8');
     }
 
     writeVersion(contextDir, PLUGIN_VERSION);

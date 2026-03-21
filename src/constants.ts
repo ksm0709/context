@@ -8,6 +8,8 @@ export const DEFAULTS = {
   indexFilename: 'INDEX.md',
   maxDomainDepth: 2,
   knowledgeDir: 'docs',
+  guidesDir: '.context/guides',
+  workCompleteFile: '.context/.work-complete',
 } as const;
 
 export const LIMITS = {
