@@ -38,6 +38,7 @@ const DEFAULT_TURN_START = `## Knowledge Context
 
 ### 작업 전 필수
 
+- 
 - 메인 에이전트가 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **직접 먼저** 읽으세요
 - 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
 - 문서 내 [[링크]]를 따라가며 관련 노트를 탐색하세요 -- 링크를 놓치면 중요한 맥락을 잃습니다
@@ -57,19 +58,18 @@ const DEFAULT_TURN_START = `## Knowledge Context
 - 지식 노트에 없는 새로운 결정이나 반복 가치가 있는 발견은 작업 메모나 지식 노트 후보로 기록하세요
 `;
 
-const DEFAULT_TURN_END = `## 작업 마무리
-
+const DEFAULT_TURN_END = `## TURN END 작업 지침
 아래 메뉴 중 하나를 선택해 진행 상황에 맞게 수행하세요.
-메뉴를 출력한 뒤에는 반드시 사용자의 응답을 기다리세요(STOP). 임의로 다음 단계를 진행하지 마세요.
+**반드시 링크된 가이드를 참고하여 정확히 수행해야 합니다.**
 
-1. **계속 작업** — 기존 작업이 완료되지 않았고 아직 아래 액션을 취할 단계가 아니라면 작업 속개
-2. **데일리 노트 기록**: [.context/guides/daily-note-guide.md]
-3. **지식 노트 작성**: [.context/guides/note-guide.md]
-4. **노트/스킬 검색 및 읽기**: [.context/guides/search-guide.md]
-5. **퀄리티 검증**: [.context/guides/quality-check.md]
-6. **작업 경로 리뷰**: [.context/guides/scope-review.md]
-7. **체크포인트 커밋**: [.context/guides/commit-guide.md]
-8. **작업 완료**: [.context/guides/complete-guide.md]
+1. **계속 작업**: 기존 작업이 완료되지 않았고 아직 아래 액션을 취할 단계가 아니라면 작업 속개.
+2. **데일리 노트 기록**: [.context/guides/daily-note-guide.md] 데일리 노트에 중요한 컨텍스트를 기록하여 다음 세션이나 에이전트 팀이 참고할 수 있도록 하세요. 기존 내용 수정은 불가하며, 새로운 메모를 추가 하는것만 가능합니다. 간략한 한 두 문장으로 작성하여 핵심 컨텍스트가 명확히 전달되도록 하세요.
+3. **지식 노트 작성**: [.context/guides/note-guide.md] 작업기억(데일리노트, 세션 컨텍스트)보다 오래 기억되어야 하는 중요한 결정, 패턴, 실수, 발견은 지식 노트로 기록하여 프로젝트의 집단 지식으로 남기세요.
+4. **노트/스킬 검색 및 읽기**: [.context/guides/search-guide.md] 어려움에 처했다면 현재 진행 상황에 필요한 지식이나 스킬이 있는지 확인하고, 관련 노트를 읽어보세요. 새로운 아이디어나 해결책이 떠오를 수 있습니다.
+5. **작업 경로 리뷰**: [.context/guides/scope-review.md] 사용자가 의도한 작업 범위를 벗어나지 않았는지, 작업이 너무 크거나 복잡해지지는 않았는지 검토하세요.
+6. **체크포인트 커밋**: [.context/guides/commit-guide.md] 작업이 길어질 경우, 중요한 단계마다 체크포인트 커밋을 하여 작업 내용을 안전하게 저장하고, 필요 시 이전 상태로 돌아갈 수 있도록 하세요.
+7. **퀄리티 검증**: [.context/guides/quality-check.md] **작업 완료 전에 반드시 수행하세요**. 코드 린트, 포맷터, 테스트, 빌드, 코드리뷰를 실행하여 작업 결과물이 프로젝트의 품질 기준을 충족하는지 확인하세요.
+8. **작업 완료**: [.context/guides/complete-guide.md] 모든 작업이 완료되었다면, 이 가이드를 따르세요. 이 작업 지침이 더이상 트리거되지 않을 것입니다.
 `;
 
 const DEFAULT_ADR_TEMPLATE = `# ADR-NNN: [제목]
@@ -289,13 +289,13 @@ Overview: [1-2 sentence description of this domain]
 
 const GUIDE_FILES: Record<string, string> = {
   'daily-note-guide.md':
-    '# 데일리 노트 기록 가이드\n\n- [ ] 오늘 작업한 내용 요약\n- [ ] 해결한 이슈 링크\n- [ ] 내일 계획',
+    '# 데일리 노트 기록 가이드\n\n- [ ] YYYY-MM-DD.md 데일리노트 읽기\n- [ ] 기억해야 하는 작업내용 1-2문장으로 요약하여 기록',
   'note-guide.md':
     '# 지식 노트 작성 가이드\n\n- [ ] 주제 정의\n- [ ] 관련 노트 연결\n- [ ] 자기 언어로 서술',
   'search-guide.md':
     '# 노트/스킬 검색 및 읽기 가이드\n\n- [ ] 관련 키워드 검색\n- [ ] INDEX.md 확인\n- [ ] 관련 노트 탐색',
   'quality-check.md':
-    '# 퀄리티 검증 가이드\n\n- [ ] Lint/Format 확인\n- [ ] 테스트 실행\n- [ ] 빌드 확인',
+    '# 퀄리티 검증 가이드\n\n- [ ] Lint/Format 확인\n- [ ] 테스트 실행\n- [ ] 빌드 확인\n- [ ] 코드 리뷰 요청 및 통과',
   'scope-review.md':
     '# 작업 경로 리뷰 가이드\n\n- [ ] 현재 작업 범위 확인\n- [ ] 스코프 이탈 여부 검토',
   'commit-guide.md':
