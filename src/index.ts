@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import type { Plugin } from '@opencode-ai/plugin';
 import { loadConfig } from './lib/config.js';
@@ -63,7 +64,10 @@ const plugin: Plugin = async ({ directory, client }) => {
       if (!lastUserMsg) return;
 
       // Prepare prompt variables for template resolution
-      const promptVars = { knowledgeDir: config.knowledge.dir ?? 'docs' };
+      const promptVars = {
+        knowledgeDir: config.knowledge.dir ?? 'docs',
+        sessionId: lastUserMsg.info.sessionID,
+      };
 
       // 3. turn-start + knowledge index: combine and append to last user message (hot-reload)
       const turnStartPath = resolvePromptPath(
@@ -92,6 +96,28 @@ const plugin: Plugin = async ({ directory, client }) => {
       }
 
       // 6. turn-end: inject as separate user message (hot-reload)
+      const signalPath = join(directory, DEFAULTS.workCompleteFile);
+      if (existsSync(signalPath)) {
+        const content = readFileSync(signalPath, 'utf-8');
+        const match = content.match(/^session_id=(.*)$/m);
+        const fileSessionId = match ? match[1].trim() : undefined;
+
+        if (fileSessionId && fileSessionId !== lastUserMsg.info.sessionID) {
+          // 다른 세션의 signal file — 무시
+        } else {
+          const { mtimeMs } = statSync(signalPath);
+          const userCreatedAt = lastUserMsg.info.time.created;
+
+          if (mtimeMs >= userCreatedAt) {
+            // signal file이 현재 user message 이후에 생성됨 = 아직 같은 user turn
+            return;
+          }
+
+          // 다음 user message 도착으로 stale file이 됨
+          unlinkSync(signalPath);
+        }
+      }
+
       const turnEndPath = resolvePromptPath(
         directory,
         contextDir,

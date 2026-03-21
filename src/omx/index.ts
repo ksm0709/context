@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 
 import { DEFAULTS } from '../constants.js';
@@ -66,6 +67,31 @@ const TURN_END_PENDING_SKIP_KEY = 'turn_end_pending_followup_scopes';
 interface PendingFollowupScope {
   sourceTurnId: string;
   createdAt: number;
+}
+
+function parseWorkComplete(content: string): { sessionId?: string; turnId?: string } {
+  const result: { sessionId?: string; turnId?: string } = {};
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('session_id=')) {
+      result.sessionId = trimmed.substring('session_id='.length).trim();
+    } else if (trimmed.startsWith('turn_id=')) {
+      result.turnId = trimmed.substring('turn_id='.length).trim();
+    }
+  }
+  return result;
+}
+
+function clearCurrentFollowupScope(
+  pendingScopes: Record<string, PendingFollowupScope>,
+  scopeKey: string | null
+): Record<string, PendingFollowupScope> {
+  if (!scopeKey || !pendingScopes[scopeKey]) {
+    return pendingScopes;
+  }
+  const nextScopes = { ...pendingScopes };
+  delete nextScopes[scopeKey];
+  return nextScopes;
 }
 
 function resolveProjectDir(event: OmxHookEvent): string {
@@ -169,13 +195,47 @@ async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
   }
 
   const followupScopeKey = resolveFollowupScopeKey(event);
-  const pendingFollowupScopes =
+  let pendingFollowupScopes =
     typeof sdk.state?.read === 'function'
       ? ((await sdk.state.read<Record<string, PendingFollowupScope>>(
           TURN_END_PENDING_SKIP_KEY,
           {}
         )) ?? {})
       : {};
+
+  const workCompleteFile = join(projectDir, DEFAULTS.workCompleteFile);
+  if (existsSync(workCompleteFile)) {
+    const content = readFileSync(workCompleteFile, 'utf-8');
+    const { sessionId: fileSessionId, turnId: fileTurnId } = parseWorkComplete(content);
+    const currentScopeId = event.session_id ?? event.thread_id ?? '';
+
+    if (!fileSessionId || fileSessionId === currentScopeId) {
+      pendingFollowupScopes = clearCurrentFollowupScope(pendingFollowupScopes, followupScopeKey);
+
+      if (fileTurnId === event.turn_id) {
+        if (typeof sdk.state?.write === 'function') {
+          await sdk.state.write(TURN_END_PENDING_SKIP_KEY, pendingFollowupScopes);
+        }
+        await sdk.log.info('turn_end_skipped_work_complete', {
+          event: event.event,
+          session_id: event.session_id,
+          turn_id: event.turn_id,
+        });
+        return;
+      }
+
+      unlinkSync(workCompleteFile);
+      if (typeof sdk.state?.write === 'function') {
+        await sdk.state.write(TURN_END_PENDING_SKIP_KEY, pendingFollowupScopes);
+      }
+      await sdk.log.info('turn_end_work_complete_cleared', {
+        event: event.event,
+        session_id: event.session_id,
+        turn_id: event.turn_id,
+        cleared_turn_id: fileTurnId,
+      });
+    }
+  }
 
   if (followupScopeKey && pendingFollowupScopes[followupScopeKey]) {
     const nextPendingScopes = { ...pendingFollowupScopes };
@@ -208,7 +268,11 @@ async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
     return;
   }
 
-  const promptVars = buildPromptVars(config);
+  const promptVars = {
+    ...buildPromptVars(config),
+    sessionId: event.session_id ?? event.thread_id ?? 'unknown',
+    turnId: event.turn_id ?? '',
+  };
   const turnEndPath = resolvePromptPath(
     projectDir,
     contextDir,

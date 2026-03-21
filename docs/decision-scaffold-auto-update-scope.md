@@ -1,23 +1,19 @@
-# Decision: 스캐폴드 자동 업데이트 시 templates만 갱신
+# Decision: 스캐폴드 자동 업데이트 시 templates, prompts, guides 갱신
 
 ## 결정
 
-플러그인 버전이 변경되면 `templates/*.md`만 자동 업데이트. `config.jsonc`와 `prompts/`는 자동 업데이트에서 제외.
-기존 설치에서 새 기본 프롬프트를 반영하려면 사용자가 `context update prompt`를 명시적으로 실행해야 한다.
+플러그인 버전이 변경되면 `templates/*.md`, `prompts/*.md`, `guides/*.md`를 자동 업데이트한다. `config.jsonc`는 자동 업데이트에서 제외하여 사용자 설정을 보호한다.
 
 ## 근거
 
-- `config.jsonc`: 사용자가 knowledge dir, sources 등을 커스터마이징하는 설정 파일. 덮어쓰면 사용자 설정 손실.
-- `prompts/turn-start.md`, `prompts/turn-end.md`: 사용자가 프로젝트에 맞게 프롬프트를 수정할 수 있음. 덮어쓰면 커스터마이징 손실. 따라서 기존 설치는 자동 마이그레이션하지 않고, 필요 시 `context update prompt`로 의도적으로 새로고침한다.
-- `templates/*.md`: 노트 작성 가이드로, 플러그인이 개선하는 내용. 사용자가 직접 수정할 동기가 낮음.
-
-수동 `/context-update` 커맨드는 기존대로 12개 파일 전부 업데이트 (사용자의 명시적 의도).
+- `config.jsonc`: 사용자가 knowledge dir, sources 등을 커스터마이징하는 설정 파일. 덮어쓰면 사용자 설정 손실이 발생하므로 자동 업데이트에서 제외.
+- `prompts/`, `guides/`: 플러그인 업데이트를 통해 제공되는 최신 기본값(메뉴, 가이드 등)을 사용자가 즉시 활용할 수 있도록 자동 업데이트 대상에 포함.
+- 사용자 커스터마이징 보호: 사용자가 직접 수정한 설정(config)은 유지하되, 플러그인이 제공하는 기능적 가이드와 프롬프트는 최신 상태로 유지하여 사용자 경험을 개선.
 
 ## 고려한 대안
 
-- 전부 자동 업데이트: 사용자 커스터마이징 손실 위험 → 탈락
-- templates + prompts 업데이트: prompts도 사용자가 수정할 수 있어 위험 → 탈락
-- 업데이트 안 함 (수동만): 대부분의 사용자가 `/context-update`를 모르거나 잊음 → 탈락
+- config까지 자동 업데이트: 사용자 설정 손실 위험 → 탈락.
+- prompts/guides 수동 유지: 최신 기능/가이드 전파 지연 → 탈락.
 
 ## 관련 노트
 

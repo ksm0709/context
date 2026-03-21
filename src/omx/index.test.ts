@@ -606,6 +606,216 @@ describe('onHookEvent', () => {
     );
   });
 
+  it('skips turn-end reminder and clears pending scopes when work-complete file exists for current turn', async () => {
+    const projectDir = createTempProjectDir();
+    setupProject(projectDir);
+    writeFileSync(
+      join(projectDir, '.context', 'config.jsonc'),
+      JSON.stringify({
+        omx: {
+          turnEnd: {
+            strategy: 'turn-complete-sendkeys',
+          },
+        },
+        knowledge: {
+          sources: ['AGENTS.md'],
+        },
+      }),
+      'utf-8'
+    );
+    writeFileSync(
+      join(projectDir, '.context', '.work-complete'),
+      'session_id=session-1\nturn_id=turn-1\n',
+      'utf-8'
+    );
+
+    const sdk = {
+      tmux: {
+        sendKeys: vi.fn(),
+      },
+      log: {
+        info: vi.fn(),
+      },
+      state: {
+        read: vi.fn().mockImplementation((key: string) => {
+          if (key === 'turn_end_pending_followup_scopes') {
+            return Promise.resolve({
+              'session:session-1': {
+                sourceTurnId: 'turn-0',
+                createdAt: 123,
+              },
+            });
+          }
+          return Promise.resolve(undefined);
+        }),
+        write: vi.fn(),
+      },
+    };
+
+    await onHookEvent(
+      {
+        event: 'turn-complete',
+        session_id: 'session-1',
+        turn_id: 'turn-1',
+        context: {
+          projectDir,
+        },
+      },
+      sdk
+    );
+
+    expect(sdk.tmux.sendKeys).not.toHaveBeenCalled();
+    expect(sendTmuxSubmitSequence).not.toHaveBeenCalled();
+    expect(sdk.state.write).toHaveBeenCalledWith('turn_end_pending_followup_scopes', {});
+    expect(sdk.log.info).toHaveBeenCalledWith(
+      'turn_end_skipped_work_complete',
+      expect.objectContaining({
+        session_id: 'session-1',
+        turn_id: 'turn-1',
+      })
+    );
+    expect(existsSync(join(projectDir, '.context', '.work-complete'))).toBe(true);
+  });
+
+  it('clears work-complete file and pending scopes when work-complete file is for a previous turn', async () => {
+    const projectDir = createTempProjectDir();
+    setupProject(projectDir);
+    writeFileSync(
+      join(projectDir, '.context', 'config.jsonc'),
+      JSON.stringify({
+        prompts: {
+          turnEnd: 'prompts/turn-end.md',
+        },
+        omx: {
+          turnEnd: {
+            strategy: 'turn-complete-sendkeys',
+          },
+        },
+        knowledge: {
+          sources: ['AGENTS.md'],
+        },
+      }),
+      'utf-8'
+    );
+    writeFileSync(
+      join(projectDir, '.context', '.work-complete'),
+      'session_id=session-1\nturn_id=turn-old\n',
+      'utf-8'
+    );
+
+    const sdk = {
+      tmux: {
+        sendKeys: vi.fn().mockResolvedValue({
+          ok: true,
+          reason: 'ok',
+          target: '%10',
+          paneId: '%10',
+        }),
+      },
+      log: {
+        info: vi.fn(),
+      },
+      state: {
+        read: vi.fn().mockImplementation((key: string) => {
+          if (key === 'turn_end_pending_followup_scopes') {
+            return Promise.resolve({
+              'session:session-1': {
+                sourceTurnId: 'turn-0',
+                createdAt: 123,
+              },
+            });
+          }
+          return Promise.resolve(undefined);
+        }),
+        write: vi.fn(),
+      },
+    };
+
+    await onHookEvent(
+      {
+        event: 'turn-complete',
+        session_id: 'session-1',
+        turn_id: 'turn-new',
+        context: {
+          projectDir,
+        },
+      },
+      sdk
+    );
+
+    expect(existsSync(join(projectDir, '.context', '.work-complete'))).toBe(false);
+    expect(sdk.state.write).toHaveBeenCalledWith('turn_end_pending_followup_scopes', {});
+    expect(sdk.log.info).toHaveBeenCalledWith(
+      'turn_end_work_complete_cleared',
+      expect.objectContaining({
+        session_id: 'session-1',
+        turn_id: 'turn-new',
+        cleared_turn_id: 'turn-old',
+      })
+    );
+    expect(sdk.tmux.sendKeys).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores work-complete file if session_id does not match', async () => {
+    const projectDir = createTempProjectDir();
+    setupProject(projectDir);
+    writeFileSync(
+      join(projectDir, '.context', 'config.jsonc'),
+      JSON.stringify({
+        prompts: {
+          turnEnd: 'prompts/turn-end.md',
+        },
+        omx: {
+          turnEnd: {
+            strategy: 'turn-complete-sendkeys',
+          },
+        },
+        knowledge: {
+          sources: ['AGENTS.md'],
+        },
+      }),
+      'utf-8'
+    );
+    writeFileSync(
+      join(projectDir, '.context', '.work-complete'),
+      'session_id=session-other\nturn_id=turn-1\n',
+      'utf-8'
+    );
+
+    const sdk = {
+      tmux: {
+        sendKeys: vi.fn().mockResolvedValue({
+          ok: true,
+          reason: 'ok',
+          target: '%10',
+          paneId: '%10',
+        }),
+      },
+      log: {
+        info: vi.fn(),
+      },
+      state: {
+        read: vi.fn().mockResolvedValue(undefined),
+        write: vi.fn(),
+      },
+    };
+
+    await onHookEvent(
+      {
+        event: 'turn-complete',
+        session_id: 'session-1',
+        turn_id: 'turn-1',
+        context: {
+          projectDir,
+        },
+      },
+      sdk
+    );
+
+    expect(existsSync(join(projectDir, '.context', '.work-complete'))).toBe(true);
+    expect(sdk.tmux.sendKeys).toHaveBeenCalledTimes(1);
+  });
+
   it('fails safely when extra submit sequence fails', async () => {
     vi.mocked(sendTmuxSubmitSequence).mockResolvedValue({
       ok: false,

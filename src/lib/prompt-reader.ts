@@ -15,9 +15,14 @@ export function readPromptFile(filePath: string): string {
 
 export interface PromptVariables {
   knowledgeDir: string;
+  sessionId?: string;
+  turnId?: string;
 }
 
 export function resolvePromptVariables(content: string, vars: PromptVariables): string {
   const normalized = (vars.knowledgeDir || 'docs').replace(/\\/g, '/').replace(/\/+$/, '');
-  return content.replaceAll('{{knowledgeDir}}', normalized);
+  let resolved = content.replaceAll('{{knowledgeDir}}', normalized);
+  resolved = resolved.replaceAll('{{sessionId}}', vars.sessionId ?? '');
+  resolved = resolved.replaceAll('{{turnId}}', vars.turnId ?? '');
+  return resolved;
 }

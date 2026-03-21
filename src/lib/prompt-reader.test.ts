@@ -97,4 +97,30 @@ describe('resolvePromptVariables', () => {
     const result = resolvePromptVariables(content, { knowledgeDir: 'path\\to\\notes' });
     expect(result).toBe('path/to/notes/file.md');
   });
+
+  it('replaces {{sessionId}} and {{turnId}} with provided values', () => {
+    const content = 'Session: {{sessionId}}, Turn: {{turnId}}';
+    const result = resolvePromptVariables(content, {
+      knowledgeDir: 'docs',
+      sessionId: 's1',
+      turnId: 't1',
+    });
+    expect(result).toBe('Session: s1, Turn: t1');
+  });
+
+  it('replaces {{sessionId}} and {{turnId}} with empty string when not provided', () => {
+    const content = 'Session: {{sessionId}}, Turn: {{turnId}}';
+    const result = resolvePromptVariables(content, { knowledgeDir: 'docs' });
+    expect(result).toBe('Session: , Turn: ');
+  });
+
+  it('replaces {{sessionId}} and {{turnId}} with empty string when explicitly undefined', () => {
+    const content = 'Session: {{sessionId}}, Turn: {{turnId}}';
+    const result = resolvePromptVariables(content, {
+      knowledgeDir: 'docs',
+      sessionId: undefined,
+      turnId: undefined,
+    });
+    expect(result).toBe('Session: , Turn: ');
+  });
 });

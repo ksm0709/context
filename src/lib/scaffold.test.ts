@@ -14,7 +14,7 @@ describe('scaffoldIfNeeded', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `scaffold-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `scaffold-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(tmpDir, { recursive: true });
   });
 
@@ -66,10 +66,9 @@ describe('scaffoldIfNeeded', () => {
 
     const turnEnd = readFileSync(join(promptsDir, 'turn-end.md'), 'utf-8');
     expect(turnEnd).toContain('작업 마무리');
-    expect(turnEnd).toContain('메인 에이전트가 직접 확인하세요');
-    expect(turnEnd).toContain('작업이 끝났다고 판단하기 전에 위 검증 결과를 직접 다시 확인하세요');
-    expect(turnEnd).toContain('context update prompt');
-    expect(turnEnd).toContain('.context/templates/adr.md');
+    expect(turnEnd).toContain('아래 메뉴 중 하나를 선택해 진행 상황에 맞게 수행하세요.');
+    expect(turnEnd).toContain('반드시 사용자의 응답을 기다리세요(STOP)');
+    expect(turnEnd).toContain('.context/guides/quality-check.md');
     expect(turnEnd).not.toContain('.opencode/context/templates');
     expect(turnEnd).not.toContain('subagent');
     expect(turnEnd).not.toContain('task(');
@@ -121,6 +120,12 @@ describe('scaffoldIfNeeded', () => {
     expect(existsSync(join(tmpDir, '.context', 'templates'))).toBe(true);
   });
 
+  it('creates .context/guides/ directory', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    expect(existsSync(join(tmpDir, '.context', 'guides'))).toBe(true);
+  });
+
   it('creates 9 template files in templates directory', () => {
     scaffoldIfNeeded(tmpDir);
 
@@ -141,6 +146,24 @@ describe('scaffoldIfNeeded', () => {
     }
   });
 
+  it('creates 7 guide files in guides directory', () => {
+    scaffoldIfNeeded(tmpDir);
+
+    const guidesDir = join(tmpDir, '.context', 'guides');
+    const expectedFiles = [
+      'daily-note-guide.md',
+      'note-guide.md',
+      'search-guide.md',
+      'quality-check.md',
+      'scope-review.md',
+      'commit-guide.md',
+      'complete-guide.md',
+    ];
+    for (const file of expectedFiles) {
+      expect(existsSync(join(guidesDir, file))).toBe(true);
+    }
+  });
+
   it('template files contain expected section headers', () => {
     scaffoldIfNeeded(tmpDir);
 
@@ -157,13 +180,6 @@ describe('scaffoldIfNeeded', () => {
 
     const insight = readFileSync(join(templatesDir, 'insight.md'), 'utf-8');
     expect(insight).toContain('Insight:');
-  });
-
-  it('DEFAULT_TURN_END contains {{knowledgeDir}} placeholder', () => {
-    scaffoldIfNeeded(tmpDir);
-    const turnEnd = readFileSync(join(tmpDir, '.context', 'prompts', 'turn-end.md'), 'utf-8');
-    expect(turnEnd).toContain('{{knowledgeDir}}');
-    expect(turnEnd).not.toContain('`docs/`');
   });
 
   it('DEFAULT_TURN_START does not contain {{knowledgeDir}}', () => {
@@ -223,7 +239,7 @@ describe('updateScaffold', () => {
 
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(12); // config + turn-start + turn-end + 9 templates
+    expect(updated).toHaveLength(19); // config + turn-start + turn-end + 9 templates + 7 guides
     expect(existsSync(join(tmpDir, '.context', 'config.jsonc'))).toBe(true);
     expect(existsSync(join(tmpDir, '.context', 'prompts', 'turn-start.md'))).toBe(true);
     expect(existsSync(join(tmpDir, '.context', 'prompts', 'turn-end.md'))).toBe(true);
@@ -232,7 +248,7 @@ describe('updateScaffold', () => {
   it('creates scaffold directory if it does not exist', () => {
     const updated = updateScaffold(tmpDir);
 
-    expect(updated).toHaveLength(12);
+    expect(updated).toHaveLength(19);
     expect(existsSync(join(tmpDir, '.context', 'prompts'))).toBe(true);
     expect(existsSync(join(tmpDir, '.context', 'prompts'))).toBe(true);
   });
@@ -241,6 +257,12 @@ describe('updateScaffold', () => {
     updateScaffold(tmpDir);
 
     expect(existsSync(join(tmpDir, '.context', 'templates'))).toBe(true);
+  });
+
+  it('creates guides directory', () => {
+    updateScaffold(tmpDir);
+
+    expect(existsSync(join(tmpDir, '.context', 'guides'))).toBe(true);
   });
 
   it('includes template files in updated paths', () => {
@@ -353,7 +375,7 @@ describe('autoUpdateTemplates', () => {
     );
   });
 
-  it('does NOT update config.jsonc or prompts', () => {
+  it('does NOT update config.jsonc but updates prompts', () => {
     scaffoldIfNeeded(tmpDir);
 
     // Simulate older version
@@ -370,7 +392,7 @@ describe('autoUpdateTemplates', () => {
     autoUpdateTemplates(tmpDir);
 
     expect(readFileSync(join(tmpDir, '.context', 'config.jsonc'), 'utf-8')).toBe('CUSTOM CONFIG');
-    expect(readFileSync(join(tmpDir, '.context', 'prompts', 'turn-start.md'), 'utf-8')).toBe(
+    expect(readFileSync(join(tmpDir, '.context', 'prompts', 'turn-start.md'), 'utf-8')).not.toBe(
       'CUSTOM TURN START'
     );
   });
@@ -404,7 +426,7 @@ describe('autoUpdateTemplates', () => {
 
     const updated = autoUpdateTemplates(tmpDir);
 
-    expect(updated).toHaveLength(9); // 9 template files
+    expect(updated).toHaveLength(18); // 9 template files + 7 guides + 2 prompts
     expect(existsSync(join(tmpDir, '.context', 'templates', 'adr.md'))).toBe(true);
     expect(existsSync(join(tmpDir, '.context', 'templates', 'index.md'))).toBe(true);
   });
@@ -414,7 +436,7 @@ describe('updatePrompts', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `scaffold-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `scaffold-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(tmpDir, { recursive: true });
   });
 
@@ -470,8 +492,8 @@ describe('updatePrompts', () => {
     expect(content).not.toContain('task(');
   });
 
-  it('refreshes existing installs to the latest prompt wording only through updatePrompts', async () => {
-    const { scaffoldIfNeeded, autoUpdateTemplates, updatePrompts } = await import('./scaffold.js');
+  it('refreshes existing installs to the latest prompt wording through autoUpdateTemplates', async () => {
+    const { scaffoldIfNeeded, autoUpdateTemplates } = await import('./scaffold.js');
     scaffoldIfNeeded(tmpDir);
 
     const turnEndPath = join(tmpDir, '.context', 'prompts', 'turn-end.md');
@@ -479,16 +501,8 @@ describe('updatePrompts', () => {
     writeFileSync(join(tmpDir, '.context', '.version'), '0.0.1', 'utf-8');
 
     autoUpdateTemplates(tmpDir);
-    expect(readFileSync(turnEndPath, 'utf-8')).toBe('LEGACY PROMPT WITH subagent task(');
-
-    const updated = updatePrompts(tmpDir);
-    expect(updated).toContain('prompts/turn-end.md');
-    expect(readFileSync(turnEndPath, 'utf-8')).toContain('context update prompt');
-    expect(readFileSync(turnEndPath, 'utf-8')).toContain(
-      '작업이 끝났다고 판단하기 전에 위 검증 결과를 직접 다시 확인하세요'
-    );
-    expect(readFileSync(turnEndPath, 'utf-8')).not.toContain('subagent');
-    expect(readFileSync(turnEndPath, 'utf-8')).not.toContain('task(');
+    expect(readFileSync(turnEndPath, 'utf-8')).not.toBe('LEGACY PROMPT WITH subagent task(');
+    expect(readFileSync(turnEndPath, 'utf-8')).toContain('작업 마무리');
   });
 
   it('does NOT update config.jsonc or template files', async () => {

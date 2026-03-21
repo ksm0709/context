@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import pkg from '../package.json';
 
 import plugin from './index.js';
 
@@ -43,7 +44,7 @@ describe('context plugin', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `plugin-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `plugin-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(tmpDir, { recursive: true });
   });
 
@@ -88,6 +89,7 @@ describe('context plugin', () => {
   it('injects only the knowledge index when prompt files are missing', async () => {
     mkdirSync(join(tmpDir, '.context', 'prompts'), { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
 
     const hooks = await plugin(createMockInput(tmpDir) as never);
@@ -132,6 +134,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -148,6 +151,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
     writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
@@ -167,6 +171,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), 'OLD CONTENT');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -206,6 +211,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), 'TURN START CONTENT');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -223,6 +229,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), 'OLD CONTENT');
 
@@ -243,6 +250,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{"knowledge": {"dir": "notes"}}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
 
@@ -259,6 +267,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), '');
     writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
 
@@ -275,6 +284,7 @@ describe('context plugin', () => {
     const promptsDir = join(tmpDir, '.context', 'prompts');
     mkdirSync(promptsDir, { recursive: true });
     writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{"knowledge": {"dir": "notes"}}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), 'Read from {{knowledgeDir}}/guide.md');
     writeFileSync(join(promptsDir, 'turn-end.md'), '');
 
@@ -297,6 +307,7 @@ describe('context plugin', () => {
         prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
       })
     );
+    writeFileSync(join(legacyDir, '.version'), pkg.version);
     writeFileSync(join(promptsDir, 'turn-start.md'), 'LEGACY TURN START');
     writeFileSync(join(promptsDir, 'turn-end.md'), 'LEGACY TURN END');
 
@@ -321,6 +332,7 @@ describe('context plugin', () => {
         prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
       })
     );
+    writeFileSync(join(newDir, '.version'), pkg.version);
     writeFileSync(join(newDir, 'prompts', 'turn-start.md'), 'NEW CONTEXT');
     writeFileSync(join(newDir, 'prompts', 'turn-end.md'), '');
 
@@ -330,6 +342,7 @@ describe('context plugin', () => {
         prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
       })
     );
+    writeFileSync(join(legacyDir, '.version'), pkg.version);
     writeFileSync(join(legacyDir, 'prompts', 'turn-start.md'), 'LEGACY CONTEXT');
     writeFileSync(join(legacyDir, 'prompts', 'turn-end.md'), '');
 
@@ -339,5 +352,81 @@ describe('context plugin', () => {
 
     expect(output.messages[0].parts[0]?.text).toContain('NEW CONTEXT');
     expect(output.messages[0].parts[0]?.text).not.toContain('LEGACY CONTEXT');
+  });
+
+  it('suppresses turn-end injection if a valid .work-complete file exists and is newer than the user message', async () => {
+    const promptsDir = join(tmpDir, '.context', 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
+    writeFileSync(join(promptsDir, 'turn-start.md'), '');
+    writeFileSync(join(promptsDir, 'turn-end.md'), 'TURN END CONTENT');
+
+    const signalPath = join(tmpDir, '.context', '.work-complete');
+    writeFileSync(signalPath, 'session_id=sess-1\nturn_id=123');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const userMsg = createUserMessage();
+    // Make user message older than the signal file
+    userMsg.info.time.created = statSync(signalPath).mtimeMs - 1000;
+    const output = { messages: [userMsg] };
+
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    // Should be suppressed
+    expect(output.messages).toHaveLength(1);
+    expect(existsSync(signalPath)).toBe(true);
+  });
+
+  it('deletes stale .work-complete files and re-enables injection', async () => {
+    const promptsDir = join(tmpDir, '.context', 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
+    writeFileSync(join(promptsDir, 'turn-start.md'), '');
+    writeFileSync(join(promptsDir, 'turn-end.md'), 'TURN END CONTENT');
+
+    const signalPath = join(tmpDir, '.context', '.work-complete');
+    writeFileSync(signalPath, 'session_id=sess-1\nturn_id=123');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const userMsg = createUserMessage();
+    // Make user message newer than the signal file
+    userMsg.info.time.created = statSync(signalPath).mtimeMs + 1000;
+    const output = { messages: [userMsg] };
+
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    // Should NOT be suppressed
+    expect(output.messages).toHaveLength(2);
+    expect(output.messages[1].parts[0]?.text).toContain('TURN END CONTENT');
+    // File should be deleted
+    expect(existsSync(signalPath)).toBe(false);
+  });
+
+  it('ignores .work-complete files from other sessions', async () => {
+    const promptsDir = join(tmpDir, '.context', 'prompts');
+    mkdirSync(promptsDir, { recursive: true });
+    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
+    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
+    writeFileSync(join(promptsDir, 'turn-start.md'), '');
+    writeFileSync(join(promptsDir, 'turn-end.md'), 'TURN END CONTENT');
+
+    const signalPath = join(tmpDir, '.context', '.work-complete');
+    writeFileSync(signalPath, 'session_id=other-session\nturn_id=123');
+
+    const hooks = await plugin(createMockInput(tmpDir) as never);
+    const userMsg = createUserMessage();
+    // Make user message older than the signal file (would suppress if same session)
+    userMsg.info.time.created = statSync(signalPath).mtimeMs - 1000;
+    const output = { messages: [userMsg] };
+
+    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+    // Should NOT be suppressed because session ID doesn't match
+    expect(output.messages).toHaveLength(2);
+    expect(output.messages[1].parts[0]?.text).toContain('TURN END CONTENT');
+    // File should NOT be deleted
+    expect(existsSync(signalPath)).toBe(true);
   });
 });
