@@ -1,21 +1,15 @@
-Final QA Summary — context plugin
-===================================
-Date: 2026-02-26
-Runtime: Bun v1.3.9
+Final QA Summary — context plugin (Turn-End Menu-Based Refactor)
+=================================================================
+Date: 2026-03-21
 
-Scenario 1: Full Test Suite .............. PASS (33/33 tests, 0 fail)
-Scenario 2: Scaffold from Clean State .... PASS (all files created, idempotent)
-Scenario 3: Config Loading ............... PASS (custom merge + defaults)
-Scenario 4: Knowledge Index .............. PASS (build + format + missing graceful)
-Scenario 5: Prompt Reader ................ PASS (read + missing returns "")
+Scenarios [17/17 pass] | Integration [3/3] | Edge Cases [0 tested] | VERDICT: PASS
 
-Scenarios [5/5 pass] | Integration [5/5] | Edge Cases [3 tested] | VERDICT: APPROVE
-
-Edge Cases Tested:
-1. Scaffold idempotency (second call returns false)
-2. Knowledge index with non-existent source (skipped gracefully)
-3. Prompt reader with missing file (returns empty string)
-
-Note: dist/ is a single-file bundle (bun target). Individual lib modules
-are not separately importable from dist/. QA ran against source .ts files
-via bun runtime, which matches the actual plugin execution path.
+Details:
+- Task 1 (Scaffold Guides): 3/3 pass
+- Task 2 (Menu Format): 2/2 pass
+- Task 3 (Prompt Variables): 2/2 pass
+- Task 4 (OpenCode Signal): 3/3 pass
+- Task 5 (OMX Signal): 5/5 pass
+- Task 6 (Decision Note): 1/1 pass
+- Task 7 (Architecture Update): 1/1 pass
+- Integration (Lint, Build, Test): 3/3 pass

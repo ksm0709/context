@@ -12,3 +12,6 @@ coverage/
 .memory/
 .omx/
 .opencode/
+.sisyphus/
+.context/
+.mise/
