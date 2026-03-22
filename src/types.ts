@@ -1,8 +1,4 @@
 export interface ContextConfig {
-  prompts: {
-    turnStart?: string;
-    turnEnd?: string;
-  };
   knowledge: {
     dir?: string;
     sources: string[];

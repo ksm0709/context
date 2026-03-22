@@ -20,10 +20,7 @@ describe('loadConfig', () => {
     const config = loadConfig(tmpDir);
 
     expect(config).toBeDefined();
-    expect(Object.keys(config)).toEqual(['prompts', 'knowledge', 'omx']);
-    expect(config.prompts).toBeDefined();
-    expect(config.prompts.turnStart).toContain('.context/prompts/turn-start.md');
-    expect(config.prompts.turnEnd).toContain('.context/prompts/turn-end.md');
+    expect(Object.keys(config)).toEqual(['knowledge', 'omx']);
     expect(config.knowledge).toBeDefined();
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
@@ -35,10 +32,6 @@ describe('loadConfig', () => {
     mkdirSync(configDir, { recursive: true });
 
     const configContent = JSON.stringify({
-      prompts: {
-        turnStart: 'custom/start.md',
-        turnEnd: 'custom/end.md',
-      },
       knowledge: {
         dir: 'knowledge',
         sources: ['README.md', 'docs/guide.md'],
@@ -48,8 +41,6 @@ describe('loadConfig', () => {
 
     const config = loadConfig(tmpDir);
 
-    expect(config.prompts.turnStart).toBe('custom/start.md');
-    expect(config.prompts.turnEnd).toBe('custom/end.md');
     expect(config.knowledge.sources).toEqual(['README.md', 'docs/guide.md']);
     expect(config.knowledge.dir).toBe('knowledge');
     expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
@@ -61,9 +52,6 @@ describe('loadConfig', () => {
 
     const configContent = `{
       // This is a comment
-      "prompts": {
-        "turnStart": "custom/start.md" // inline comment
-      },
       /* block comment */
       "knowledge": {
         "sources": ["README.md"]
@@ -73,7 +61,6 @@ describe('loadConfig', () => {
 
     const config = loadConfig(tmpDir);
 
-    expect(config.prompts.turnStart).toBe('custom/start.md');
     expect(config.knowledge.sources).toEqual(['README.md']);
   });
 
@@ -86,8 +73,6 @@ describe('loadConfig', () => {
     const config = loadConfig(tmpDir);
 
     // Should return defaults, not throw
-    expect(config.prompts.turnStart).toContain('.context/prompts/turn-start.md');
-    expect(config.prompts.turnEnd).toContain('.context/prompts/turn-end.md');
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
     expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
@@ -98,28 +83,16 @@ describe('loadConfig', () => {
     mkdirSync(configDir, { recursive: true });
 
     const configContent = JSON.stringify({
-      prompts: {
-        turnStart: 'custom/start.md',
-        // turnEnd is not specified
-      },
       // knowledge is not specified
     });
     writeFileSync(join(configDir, 'config.jsonc'), configContent);
 
     const config = loadConfig(tmpDir);
 
-    // Custom value should be used
-    expect(config.prompts.turnStart).toBe('custom/start.md');
-    // Default value should be used for missing field
-    expect(config.prompts.turnEnd).toContain('.context/prompts/turn-end.md');
     // Default knowledge sources should be used
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');
     expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
-  });
-  it('returns only turnStart and turnEnd prompt defaults', () => {
-    const config = loadConfig(tmpDir);
-    expect(Object.keys(config.prompts)).toEqual(['turnStart', 'turnEnd']);
   });
 });
 
@@ -217,10 +190,6 @@ describe('loadConfig - legacy fallback', () => {
     mkdirSync(legacyDir, { recursive: true });
 
     const configContent = JSON.stringify({
-      prompts: {
-        turnStart: 'legacy/start.md',
-        turnEnd: 'legacy/end.md',
-      },
       knowledge: {
         dir: 'legacy-docs',
         sources: ['LEGACY.md'],
@@ -230,8 +199,6 @@ describe('loadConfig - legacy fallback', () => {
 
     const config = loadConfig(tmpDir);
 
-    expect(config.prompts.turnStart).toBe('legacy/start.md');
-    expect(config.prompts.turnEnd).toBe('legacy/end.md');
     expect(config.knowledge.dir).toBe('legacy-docs');
     expect(config.knowledge.sources).toEqual(['LEGACY.md']);
   });
@@ -239,20 +206,17 @@ describe('loadConfig - legacy fallback', () => {
   it('prefers .context/ over .opencode/context/ when both exist', () => {
     const newDir = join(tmpDir, '.context');
     mkdirSync(newDir, { recursive: true });
-    writeFileSync(
-      join(newDir, 'config.jsonc'),
-      JSON.stringify({ prompts: { turnStart: 'new/start.md' } })
-    );
+    writeFileSync(join(newDir, 'config.jsonc'), JSON.stringify({ knowledge: { dir: 'new-docs' } }));
 
     const legacyDir = join(tmpDir, '.opencode', 'context');
     mkdirSync(legacyDir, { recursive: true });
     writeFileSync(
       join(legacyDir, 'config.jsonc'),
-      JSON.stringify({ prompts: { turnStart: 'legacy/start.md' } })
+      JSON.stringify({ knowledge: { dir: 'legacy-docs' } })
     );
 
     const config = loadConfig(tmpDir);
 
-    expect(config.prompts.turnStart).toBe('new/start.md');
+    expect(config.knowledge.dir).toBe('new-docs');
   });
 });

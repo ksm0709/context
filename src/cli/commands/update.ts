@@ -1,7 +1,7 @@
 import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { updateScaffold, updatePrompts } from '../../lib/scaffold.js';
+import { updateScaffold } from '../../lib/scaffold.js';
 
 const KNOWN_SUBCOMMANDS = ['all', 'prompt', 'plugin'];
 
@@ -14,7 +14,7 @@ export function runUpdate(args: string[]): void {
       runUpdateAll(resolve(rest[0] ?? process.cwd()));
       break;
     case 'prompt':
-      runUpdatePrompt(resolve(rest[0] ?? process.cwd()));
+      process.stdout.write('Prompt update is no longer supported.\n');
       break;
     case 'plugin':
       runUpdatePlugin(rest[0] ?? 'latest');
@@ -38,19 +38,6 @@ function runUpdateAll(projectDir: string): void {
     process.stdout.write('All scaffold files are already up to date.\n');
   } else {
     process.stdout.write(`Updated ${updated.length} file(s):\n`);
-    for (const f of updated) {
-      process.stdout.write(`  - ${f}\n`);
-    }
-  }
-}
-
-function runUpdatePrompt(projectDir: string): void {
-  const updated = updatePrompts(projectDir);
-
-  if (updated.length === 0) {
-    process.stdout.write('All prompt files are already up to date.\n');
-  } else {
-    process.stdout.write(`Updated ${updated.length} prompt file(s):\n`);
     for (const f of updated) {
       process.stdout.write(`  - ${f}\n`);
     }

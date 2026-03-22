@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DEFAULTS } from '../constants';
 import { resolveContextDir } from './context-dir';
 import pkg from '../../package.json';
 
@@ -9,10 +8,6 @@ const PLUGIN_VERSION: string = pkg.version;
 const DEFAULT_CONFIG = `{
   // Context Plugin Configuration
   // See: https://github.com/ksm0709/context
-  "prompts": {
-    "turnStart": "prompts/turn-start.md",
-    "turnEnd": "prompts/turn-end.md"
-  },
   "knowledge": {
     "dir": ".context/memory",
     "sources": ["AGENTS.md"]
@@ -24,55 +19,6 @@ const DEFAULT_CONFIG = `{
     }
   }
 }`;
-
-const DEFAULT_TURN_START = `## Knowledge Context
-
-이 프로젝트는 **제텔카스텐(Zettelkasten)** 방식으로 지식을 관리합니다.
-세션 간 컨텍스트를 보존하여, 이전 세션의 결정/패턴/실수가 다음 세션에서 재활용됩니다.
-
-### 제텔카스텐 핵심 원칙
-
-1. **원자성** -- 하나의 노트 = 하나의 주제. 여러 주제를 섞지 마세요.
-2. **연결** -- 모든 노트는 [[wikilink]]로 관련 노트에 연결. 고립된 노트는 발견되지 않습니다.
-3. **자기 언어** -- 복사-붙여넣기가 아닌, 핵심을 이해하고 간결하게 서술하세요.
-
-### 작업 전 필수
-
-- **데일리 노트 확인**: 가장 최근의 데일리 노트(\`{{knowledgeDir}}/daily/YYYY-MM-DD.md\`)를 읽고 이전 세션의 컨텍스트와 미해결 이슈를 파악하세요
-- **작업 의도 선언**: 작업 시작 전, 현재 세션의 목표와 작업 의도를 명확히 파악하고 선언하세요 (추후 작업 경로 검증 시 기준이 됩니다)
-- 메인 에이전트가 아래 **Available Knowledge** 목록에서 현재 작업과 관련된 문서를 **직접 먼저** 읽으세요
-- 도메인 폴더 구조가 있다면 INDEX.md의 요약을 참고하여 필요한 노트만 선택적으로 읽으세요
-- 문서 내 [[링크]]를 따라가며 관련 노트를 탐색하세요 -- 링크를 놓치면 중요한 맥락을 잃습니다
-- 지식 파일에 기록된 아키텍처 결정, 패턴, 제약사항을 반드시 따르세요
-- 읽은 지식을 현재 작업의 설계, 구현, 검증에 직접 반영하세요
-
-### 개발 원칙
-
-- **TDD** (Test-Driven Development): 테스트를 먼저 작성하고(RED), 구현하여 통과시킨 뒤(GREEN), 리팩토링하세요
-- **DDD** (Domain-Driven Design): 도메인 개념을 코드 구조에 반영하세요. 타입과 모듈은 비즈니스 도메인을 기준으로 분리하세요
-- **테스트 커버리지**: 새로 작성하거나 변경한 코드는 테스트 커버리지 80% 이상을 목표로 하세요. 구현 전에 테스트부터 작성하면 자연스럽게 달성됩니다
-
-### 우선순위
-
-- AGENTS.md의 지시사항이 항상 최우선
-- 지식 노트의 결정사항 > 일반적 관행
-- 지식 노트에 없는 새로운 결정이나 반복 가치가 있는 발견은 작업 메모나 지식 노트 후보로 기록하세요
-`;
-
-const DEFAULT_TURN_END = `## TURN END 작업 지침
-이 지침은 에이전트를 위한 것이며, 사용자에게 직접적으로 노출하지 않습니다.
-아래 메뉴 중 하나를 선택해 진행 상황에 맞게 수행하세요.
-**반드시 링크된 가이드를 참고하여 정확히 수행해야 합니다.**
-
-1. **계속 작업**: 기존 작업이 완료되지 않았고 아직 아래 액션을 취할 단계가 아니라면 작업 속개.
-2. **데일리 노트 기록**: [.context/guides/daily-note-guide.md] 데일리 노트에 중요한 컨텍스트를 기록하여 다음 세션이나 에이전트 팀이 참고할 수 있도록 하세요. 기존 내용 수정은 불가하며, 새로운 메모를 추가 하는것만 가능합니다. 간략한 한 두 문장으로 작성하여 핵심 컨텍스트가 명확히 전달되도록 하세요.
-3. **지식 노트 작성**: [.context/guides/note-guide.md] 작업기억(데일리노트, 세션 컨텍스트)보다 오래 기억되어야 하는 중요한 결정, 패턴, 실수, 발견은 지식 노트로 기록하여 프로젝트의 집단 지식으로 남기세요.
-4. **노트/스킬 검색 및 읽기**: [.context/guides/search-guide.md] 어려움에 처했다면 현재 진행 상황에 필요한 지식이나 스킬이 있는지 확인하고, 관련 노트를 읽어보세요. 새로운 아이디어나 해결책이 떠오를 수 있습니다.
-5. **작업 경로 리뷰**: [.context/guides/scope-review.md] 사용자가 의도한 작업 범위를 벗어나지 않았는지, 작업이 너무 크거나 복잡해지지는 않았는지 검토하세요.
-6. **체크포인트 커밋**: [.context/guides/commit-guide.md] 작업이 길어질 경우, 중요한 단계마다 체크포인트 커밋을 하여 작업 내용을 안전하게 저장하고, 필요 시 이전 상태로 돌아갈 수 있도록 하세요.
-7. **퀄리티 검증**: [.context/guides/quality-check.md] **작업 완료 전에 반드시 수행하세요**. 코드 린트, 포맷터, 테스트, 빌드, 코드리뷰를 실행하여 작업 결과물이 프로젝트의 품질 기준을 충족하는지 확인하세요.
-8. **작업 완료**: [.context/guides/complete-guide.md] 모든 작업이 완료되었다면, 이 가이드를 따르세요. 이 작업 지침이 더이상 트리거되지 않을 것입니다.
-`;
 
 const DEFAULT_ADR_TEMPLATE = `# ADR-NNN: [제목]
 
@@ -392,9 +338,6 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
   }
 
   try {
-    const promptsDir = join(contextDir, 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-
     const templatesDir = join(contextDir, 'templates');
     mkdirSync(templatesDir, { recursive: true });
 
@@ -402,8 +345,6 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
     mkdirSync(guidesDir, { recursive: true });
 
     writeFileSync(join(contextDir, 'config.jsonc'), DEFAULT_CONFIG, 'utf-8');
-    writeFileSync(join(promptsDir, DEFAULTS.turnStartFile), DEFAULT_TURN_START, 'utf-8');
-    writeFileSync(join(promptsDir, DEFAULTS.turnEndFile), DEFAULT_TURN_END, 'utf-8');
 
     for (const [filename, content] of Object.entries(TEMPLATE_FILES)) {
       writeFileSync(join(templatesDir, filename), content, 'utf-8');
@@ -423,7 +364,6 @@ export function scaffoldIfNeeded(projectDir: string): boolean {
 
 export function updateScaffold(projectDir: string): string[] {
   const contextDir = join(projectDir, resolveContextDir(projectDir));
-  mkdirSync(join(contextDir, 'prompts'), { recursive: true });
   mkdirSync(join(contextDir, 'templates'), { recursive: true });
   mkdirSync(join(contextDir, 'guides'), { recursive: true });
 
@@ -437,8 +377,6 @@ export function updateScaffold(projectDir: string): string[] {
 
   const templates: Record<string, string> = {
     'config.jsonc': DEFAULT_CONFIG,
-    [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
-    [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
     ...templateEntries,
     ...guideEntries,
   };
@@ -493,13 +431,10 @@ export function autoUpdateTemplates(projectDir: string): string[] {
   const stored = getStoredVersion(projectDir);
   if (stored === PLUGIN_VERSION) return [];
 
-  mkdirSync(join(contextDir, 'prompts'), { recursive: true });
   mkdirSync(join(contextDir, 'templates'), { recursive: true });
   mkdirSync(join(contextDir, 'guides'), { recursive: true });
 
   const filesToUpdate: Record<string, string> = {
-    [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
-    [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
     ...Object.fromEntries(Object.entries(TEMPLATE_FILES).map(([f, c]) => [`templates/${f}`, c])),
     ...Object.fromEntries(Object.entries(GUIDE_FILES).map(([f, c]) => [`guides/${f}`, c])),
   };
@@ -518,29 +453,5 @@ export function autoUpdateTemplates(projectDir: string): string[] {
   }
 
   writeVersion(contextDir, PLUGIN_VERSION);
-  return updated;
-}
-
-export function updatePrompts(projectDir: string): string[] {
-  const contextDir = join(projectDir, resolveContextDir(projectDir));
-  mkdirSync(join(contextDir, 'prompts'), { recursive: true });
-
-  const prompts: Record<string, string> = {
-    [`prompts/${DEFAULTS.turnStartFile}`]: DEFAULT_TURN_START,
-    [`prompts/${DEFAULTS.turnEndFile}`]: DEFAULT_TURN_END,
-  };
-
-  const updated: string[] = [];
-  for (const [path, content] of Object.entries(prompts)) {
-    const filePath = join(contextDir, path);
-    try {
-      const existing = readFileSync(filePath, 'utf-8');
-      if (existing === content) continue;
-    } catch {
-      /* file missing — will create */
-    }
-    writeFileSync(filePath, content, 'utf-8');
-    updated.push(path);
-  }
   return updated;
 }

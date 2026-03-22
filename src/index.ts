@@ -1,30 +1,13 @@
 import { existsSync, readFileSync, statSync, unlinkSync } from 'node:fs';
-import { isAbsolute, join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Plugin } from '@opencode-ai/plugin';
-import { loadConfig } from './lib/config.js';
 import { resolveContextDir } from './lib/context-dir.js';
-import {
-  buildKnowledgeIndexV2,
-  formatKnowledgeIndex,
-  formatDomainIndex,
-} from './lib/knowledge-index.js';
-import { readPromptFile, resolvePromptVariables } from './lib/prompt-reader.js';
 import { scaffoldIfNeeded, autoUpdateTemplates } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
 
-/**
- * Resolve a prompt file path relative to the project directory.
- * - Absolute paths are used as-is
- * - Paths starting with '.context/' or '.opencode/' are project-root-relative
- * - Other relative paths are resolved relative to the resolved context dir
- */
-function resolvePromptPath(directory: string, contextDir: string, promptPath: string): string {
-  if (isAbsolute(promptPath)) return promptPath;
-  if (promptPath.startsWith('.context/') || promptPath.startsWith('.opencode/')) {
-    return join(directory, promptPath);
-  }
-  return join(directory, contextDir, promptPath);
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const plugin: Plugin = async ({ directory, client }) => {
   // 1. Scaffold on first run, or auto-update templates on version change
@@ -53,28 +36,18 @@ const plugin: Plugin = async ({ directory, client }) => {
     }
   }
 
-  // 2. Load config once at plugin init
-  const config = loadConfig(directory);
-
   return {
+    config: async (config) => {
+      config.mcp = config.mcp || {};
+      config.mcp['context-mcp'] = {
+        type: 'local',
+        command: ['bun', join(__dirname, 'mcp.js')],
+      };
+    },
     'experimental.chat.messages.transform': async (_input, output) => {
       // OMX 환경에서는 messages.transform을 통한 주입을 건너뜁니다.
       // (OMX는 onSessionStart에서 AGENTS.md에 주입하고, onTurnComplete에서 tmux send-keys로 turn-end를 주입합니다)
       if (process.env.OMX_HOOK_PLUGINS) return;
-
-      let skipTurnStart = false;
-      // 서브에이전트 등에서 환경변수가 유실되었더라도, AGENTS.md에 이미 주입되어 있다면 turn-start 주입을 생략합니다.
-      // (OpenCode가 AGENTS.md를 읽어서 시스템 프롬프트에 포함하므로 중복 주입 방지)
-      const agentsMdPath = join(directory, 'AGENTS.md');
-      if (existsSync(agentsMdPath)) {
-        const content = readFileSync(agentsMdPath, 'utf-8');
-        if (
-          content.includes('<!-- context:start -->') &&
-          content.includes('<!-- context:end -->')
-        ) {
-          skipTurnStart = true;
-        }
-      }
 
       if (output.messages.length === 0) return;
 
@@ -90,40 +63,6 @@ const plugin: Plugin = async ({ directory, client }) => {
       );
       if (isTurnEndMessage) {
         return;
-      }
-
-      // Prepare prompt variables for template resolution
-      const promptVars = {
-        knowledgeDir: config.knowledge.dir ?? 'docs',
-        sessionId: lastUserMsg.info.sessionID,
-      };
-
-      if (!skipTurnStart) {
-        // 3. turn-start + knowledge index: combine and append to last user message (hot-reload)
-        const turnStartPath = resolvePromptPath(
-          directory,
-          contextDir,
-          config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
-        );
-        const turnStartRaw = readPromptFile(turnStartPath) ?? '';
-        const turnStart = resolvePromptVariables(turnStartRaw, promptVars);
-
-        const knowledgeIndex = buildKnowledgeIndexV2(directory, config.knowledge);
-        const indexContent =
-          knowledgeIndex.mode === 'flat'
-            ? formatKnowledgeIndex(knowledgeIndex.individualFiles)
-            : formatDomainIndex(knowledgeIndex);
-
-        const combinedContent = [turnStart, indexContent].filter(Boolean).join('\n\n');
-        if (combinedContent) {
-          lastUserMsg.parts.push({
-            id: `context-turn-start-${Date.now()}`,
-            sessionID: lastUserMsg.info.sessionID,
-            messageID: lastUserMsg.info.id,
-            type: 'text' as const,
-            text: combinedContent,
-          });
-        }
       }
 
       // 6. turn-end: inject as separate user message (hot-reload)
@@ -149,16 +88,6 @@ const plugin: Plugin = async ({ directory, client }) => {
         }
       }
 
-      const turnEndPath = resolvePromptPath(
-        directory,
-        contextDir,
-        config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
-      );
-      const turnEndRaw = readPromptFile(turnEndPath);
-      if (!turnEndRaw) return;
-
-      const turnEnd = resolvePromptVariables(turnEndRaw, promptVars);
-
       const msgId = `context-turn-end-${Date.now()}`;
       output.messages.push({
         info: {
@@ -177,7 +106,7 @@ const plugin: Plugin = async ({ directory, client }) => {
             sessionID: lastUserMsg.info.sessionID,
             messageID: msgId,
             type: 'text' as const,
-            text: `<system-reminder>\n${turnEnd}\n</system-reminder>`,
+            text: `<system-reminder> TURN END. You MUST call the 'submit_turn_complete' MCP tool to finalize your work and record notes. Do not wait for user input. </system-reminder>`,
           },
         ],
       });

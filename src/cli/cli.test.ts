@@ -71,7 +71,7 @@ describe('runCli', () => {
     expect(out.join('')).toMatch(/Updated \d+ file\(s\)/);
   });
 
-  it('update prompt: updates only prompt files', () => {
+  it('update prompt: reports no longer supported', () => {
     const out: string[] = [];
     vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
       out.push(String(s));
@@ -80,23 +80,7 @@ describe('runCli', () => {
 
     runCli(['update', 'prompt', tmpDir]);
     const output = out.join('');
-    expect(output).toMatch(/Updated \d+ prompt file\(s\)/);
-    expect(output).toContain('turn-start.md');
-    expect(output).toContain('turn-end.md');
-  });
-
-  it('update prompt: reports up-to-date when prompts already current', () => {
-    const out: string[] = [];
-    vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
-      out.push(String(s));
-      return true;
-    });
-
-    runCli(['update', 'prompt', tmpDir]);
-    out.length = 0;
-
-    runCli(['update', 'prompt', tmpDir]);
-    expect(out.join('')).toContain('up to date');
+    expect(output).toContain('Prompt update is no longer supported.');
   });
 
   it('update plugin: calls Bun.spawnSync with correct args', () => {

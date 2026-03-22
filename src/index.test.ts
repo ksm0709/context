@@ -2,18 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import pkg from '../package.json';
-
 import plugin from './index.js';
-
-function expectNoDelegationWording(text: string): void {
-  const lowerText = text.toLowerCase();
-
-  expect(lowerText).not.toContain('subagent');
-  expect(lowerText).not.toContain('task(');
-  expect(text).not.toContain('서브에이전트');
-  expect(text).not.toContain('위임');
-}
 
 function createMockInput(projectDir: string) {
   return {
@@ -60,56 +49,17 @@ describe('context plugin', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns only the messages.transform hook', async () => {
+  it('returns the config and messages.transform hooks', async () => {
     const hooks = await plugin(createMockInput(tmpDir) as never);
 
     expect(hooks).toBeDefined();
-    expect(Object.keys(hooks)).toEqual(['experimental.chat.messages.transform']);
+    expect(Object.keys(hooks)).toEqual(['config', 'experimental.chat.messages.transform']);
   });
 
   it('scaffolds .context/ on first run', async () => {
     await plugin(createMockInput(tmpDir) as never);
 
     expect(existsSync(join(tmpDir, '.context'))).toBe(true);
-  });
-
-  it('appends turn-start and colocated knowledge index to the last user message', async () => {
-    writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    expect(output.messages).toHaveLength(2);
-
-    const appendedPart = output.messages[0].parts.at(-1);
-    expect(appendedPart?.text).toContain('## Knowledge Context');
-    expect(appendedPart?.text).toContain('## Available Knowledge');
-    expect(appendedPart?.text).toContain('AGENTS.md');
-    expect(appendedPart?.text?.indexOf('## Knowledge Context')).toBeLessThan(
-      appendedPart?.text?.indexOf('## Available Knowledge') ?? 0
-    );
-    expect(appendedPart?.synthetic).toBeUndefined();
-    expectNoDelegationWording(appendedPart?.text ?? '');
-  });
-
-  it('injects only the knowledge index when prompt files are missing', async () => {
-    mkdirSync(join(tmpDir, '.context', 'prompts'), { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    expect(output.messages).toHaveLength(1);
-    expect(output.messages[0].parts).toHaveLength(1);
-    expect(output.messages[0].parts[0]?.text).toContain('## Available Knowledge');
-    expect(output.messages[0].parts[0]?.text).toContain('AGENTS.md');
-    expect(output.messages[0].parts[0]?.text).not.toContain('## Knowledge Context');
   });
 
   it('skips injection when there are no messages', async () => {
@@ -138,67 +88,7 @@ describe('context plugin', () => {
     expect(output.messages[0].parts).toEqual([]);
   });
 
-  it('skips turn-start append when prompt and knowledge content are empty', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), '');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    expect(output.messages).toHaveLength(1);
-    expect(output.messages[0].parts).toEqual([]);
-  });
-
-  it('injects only knowledge when turn-start prompt content is empty', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), '');
-    writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    expect(output.messages).toHaveLength(1);
-    expect(output.messages[0].parts).toHaveLength(1);
-    expect(output.messages[0].parts[0]?.text).toContain('## Available Knowledge');
-    expect(output.messages[0].parts[0]?.text).not.toContain('## Knowledge Context');
-  });
-
-  it('hot-reloads turn-start content between message transforms', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), 'OLD CONTENT');
-    writeFileSync(join(promptsDir, 'turn-end.md'), '');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const firstOutput = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, firstOutput as never);
-    expect(firstOutput.messages[0].parts[0]?.text).toContain('OLD CONTENT');
-
-    writeFileSync(join(promptsDir, 'turn-start.md'), 'NEW CONTENT');
-
-    const secondOutput = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, secondOutput as never);
-    expect(secondOutput.messages[0].parts[0]?.text).toContain('NEW CONTENT');
-    expect(secondOutput.messages[0].parts[0]?.text).not.toContain('OLD CONTENT');
-  });
-
-  it('injects turn-end as a separate user message only when content is non-empty', async () => {
-    writeFileSync(join(tmpDir, 'AGENTS.md'), '# Project Guide\n\nThis is the guide.');
-
+  it('injects turn-end reminder as a separate user message', async () => {
     const hooks = await plugin(createMockInput(tmpDir) as never);
     const output = { messages: [createUserMessage()] };
 
@@ -209,168 +99,28 @@ describe('context plugin', () => {
     const turnEndPart = turnEndMessage.parts[0];
 
     expect(turnEndMessage.info.role).toBe('user');
-    expect(turnEndPart?.text).toContain('<system-reminder>');
-    expect(turnEndPart?.text).toContain('## TURN END 작업 지침');
+    expect(turnEndPart?.text).toContain('<system-reminder> TURN END.');
+    expect(turnEndPart?.text).toContain("call the 'submit_turn_complete' MCP tool");
     expect(turnEndPart?.synthetic).toBeUndefined();
-    expectNoDelegationWording(turnEndPart?.text ?? '');
   });
 
-  it('skips turn-end injection when turn-end prompt content is empty', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), 'TURN START CONTENT');
-    writeFileSync(join(promptsDir, 'turn-end.md'), '');
-
+  it('skips injection if last user message already has turn-end reminder', async () => {
     const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
+    const userMsg = createUserMessage();
+    userMsg.parts.push({
+      type: 'text',
+      text: "<system-reminder> TURN END. You MUST call the 'submit_turn_complete' MCP tool to finalize your work and record notes. Do not wait for user input. </system-reminder>",
+    });
+    const output = { messages: [userMsg] };
 
     await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
 
     expect(output.messages).toHaveLength(1);
-    expect(output.messages[0].parts[0]?.text).toContain('TURN START CONTENT');
-    expectNoDelegationWording(output.messages[0].parts[0]?.text ?? '');
-  });
-
-  it('hot-reloads turn-end content between message transforms', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'OLD CONTENT');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const firstOutput = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, firstOutput as never);
-    expect(firstOutput.messages[1].parts[0]?.text).toContain('OLD CONTENT');
-
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'NEW CONTENT');
-
-    const secondOutput = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, secondOutput as never);
-    expect(secondOutput.messages[1].parts[0]?.text).toContain('NEW CONTENT');
-    expect(secondOutput.messages[1].parts[0]?.text).not.toContain('OLD CONTENT');
-  });
-
-  it('resolves {{knowledgeDir}} in turn-end with custom knowledge.dir', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{"knowledge": {"dir": "notes"}}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    const turnEndText = output.messages[1].parts[0]?.text ?? '';
-    expect(turnEndText).toContain('notes/file.md');
-    expect(turnEndText).not.toContain('{{knowledgeDir}}');
-  });
-
-  it('resolves {{knowledgeDir}} in turn-end with default docs fallback', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'Save to {{knowledgeDir}}/file.md');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    const turnEndText = output.messages[1].parts[0]?.text ?? '';
-    expect(turnEndText).toContain('docs/file.md');
-    expect(turnEndText).not.toContain('{{knowledgeDir}}');
-  });
-
-  it('resolves {{knowledgeDir}} in turn-start with custom knowledge.dir', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{"knowledge": {"dir": "notes"}}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), 'Read from {{knowledgeDir}}/guide.md');
-    writeFileSync(join(promptsDir, 'turn-end.md'), '');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    const turnStartText = output.messages[0].parts[0]?.text ?? '';
-    expect(turnStartText).toContain('notes/guide.md');
-    expect(turnStartText).not.toContain('{{knowledgeDir}}');
-  });
-
-  it('resolves prompts from .opencode/context/ when .context/ does not exist (legacy fallback)', async () => {
-    const legacyDir = join(tmpDir, '.opencode', 'context');
-    const promptsDir = join(legacyDir, 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(
-      join(legacyDir, 'config.jsonc'),
-      JSON.stringify({
-        prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
-      })
-    );
-    writeFileSync(join(legacyDir, '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), 'LEGACY TURN START');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'LEGACY TURN END');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    expect(output.messages[0].parts[0]?.text).toContain('LEGACY TURN START');
-    expect(output.messages).toHaveLength(2);
-    expect(output.messages[1].parts[0]?.text).toContain('LEGACY TURN END');
-  });
-
-  it('prefers .context/ over .opencode/context/ when both exist', async () => {
-    const newDir = join(tmpDir, '.context');
-    const legacyDir = join(tmpDir, '.opencode', 'context');
-    mkdirSync(join(newDir, 'prompts'), { recursive: true });
-    mkdirSync(join(legacyDir, 'prompts'), { recursive: true });
-
-    writeFileSync(
-      join(newDir, 'config.jsonc'),
-      JSON.stringify({
-        prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
-      })
-    );
-    writeFileSync(join(newDir, '.version'), pkg.version);
-    writeFileSync(join(newDir, 'prompts', 'turn-start.md'), 'NEW CONTEXT');
-    writeFileSync(join(newDir, 'prompts', 'turn-end.md'), '');
-
-    writeFileSync(
-      join(legacyDir, 'config.jsonc'),
-      JSON.stringify({
-        prompts: { turnStart: 'prompts/turn-start.md', turnEnd: 'prompts/turn-end.md' },
-      })
-    );
-    writeFileSync(join(legacyDir, '.version'), pkg.version);
-    writeFileSync(join(legacyDir, 'prompts', 'turn-start.md'), 'LEGACY CONTEXT');
-    writeFileSync(join(legacyDir, 'prompts', 'turn-end.md'), '');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const output = { messages: [createUserMessage()] };
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    expect(output.messages[0].parts[0]?.text).toContain('NEW CONTEXT');
-    expect(output.messages[0].parts[0]?.text).not.toContain('LEGACY CONTEXT');
   });
 
   it('suppresses turn-end injection if a valid .work-complete file exists and is newer than the user message', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'TURN END CONTENT');
-
     const signalPath = join(tmpDir, '.context', '.work-complete');
+    mkdirSync(join(tmpDir, '.context'), { recursive: true });
     writeFileSync(signalPath, 'session_id=sess-1\nturn_id=123');
 
     const hooks = await plugin(createMockInput(tmpDir) as never);
@@ -387,14 +137,8 @@ describe('context plugin', () => {
   });
 
   it('deletes stale .work-complete files and re-enables injection', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'TURN END CONTENT');
-
     const signalPath = join(tmpDir, '.context', '.work-complete');
+    mkdirSync(join(tmpDir, '.context'), { recursive: true });
     writeFileSync(signalPath, 'session_id=sess-1\nturn_id=123');
 
     const hooks = await plugin(createMockInput(tmpDir) as never);
@@ -407,34 +151,8 @@ describe('context plugin', () => {
 
     // Should NOT be suppressed
     expect(output.messages).toHaveLength(2);
-    expect(output.messages[1].parts[0]?.text).toContain('TURN END CONTENT');
+    expect(output.messages[1].parts[0]?.text).toContain('TURN END');
     // File should be deleted
     expect(existsSync(signalPath)).toBe(false);
-  });
-
-  it('ignores .work-complete files from other sessions', async () => {
-    const promptsDir = join(tmpDir, '.context', 'prompts');
-    mkdirSync(promptsDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.context', 'config.jsonc'), '{}');
-    writeFileSync(join(tmpDir, '.context', '.version'), pkg.version);
-    writeFileSync(join(promptsDir, 'turn-start.md'), '');
-    writeFileSync(join(promptsDir, 'turn-end.md'), 'TURN END CONTENT');
-
-    const signalPath = join(tmpDir, '.context', '.work-complete');
-    writeFileSync(signalPath, 'session_id=other-session\nturn_id=123');
-
-    const hooks = await plugin(createMockInput(tmpDir) as never);
-    const userMsg = createUserMessage();
-    // Make user message older than the signal file (would suppress if same session)
-    userMsg.info.time.created = statSync(signalPath).mtimeMs - 1000;
-    const output = { messages: [userMsg] };
-
-    await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-    // Should NOT be suppressed because session ID doesn't match
-    expect(output.messages).toHaveLength(2);
-    expect(output.messages[1].parts[0]?.text).toContain('TURN END CONTENT');
-    // File should NOT be deleted
-    expect(existsSync(signalPath)).toBe(true);
   });
 });

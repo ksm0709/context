@@ -7,10 +7,6 @@ import { resolveContextDir } from './context-dir';
 
 function getDefaultConfig(): ContextConfig {
   return {
-    prompts: {
-      turnStart: join(DEFAULTS.promptDir, DEFAULTS.turnStartFile),
-      turnEnd: join(DEFAULTS.promptDir, DEFAULTS.turnEndFile),
-    },
     knowledge: {
       dir: 'docs',
       sources: [...DEFAULTS.knowledgeSources],
@@ -29,10 +25,6 @@ function getDefaultConfig(): ContextConfig {
 function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
   const defaults = getDefaultConfig();
   return {
-    prompts: {
-      turnStart: partial.prompts?.turnStart ?? defaults.prompts.turnStart,
-      turnEnd: partial.prompts?.turnEnd ?? defaults.prompts.turnEnd,
-    },
     knowledge: {
       dir: partial.knowledge?.dir ?? defaults.knowledge.dir,
       sources: partial.knowledge?.sources ?? defaults.knowledge.sources,

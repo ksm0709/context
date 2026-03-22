@@ -8,6 +8,10 @@ Context plugin for Bun
 
 <!-- Example usage code goes here -->
 
+## MCP Server
+
+This plugin automatically registers an MCP (Model Context Protocol) server named `context-mcp` with OpenCode. The server provides tools for searching knowledge base files (`.md` files in `docs/` and `.context/` directories).
+
 ## OMX Support
 
 This plugin supports OMX (OpenCode Managed eXtension). See [[docs/omx-setup.md]] for setup instructions.

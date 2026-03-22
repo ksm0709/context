@@ -10,6 +10,23 @@ vi.mock('./tmux-submit.js', () => ({
   }),
 }));
 
+vi.mock('../lib/config.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/config.js')>();
+  return {
+    ...actual,
+    loadConfig: vi.fn((dir: string) => {
+      const config = actual.loadConfig(dir);
+      return {
+        ...config,
+        prompts: {
+          turnStart: join(dir, '.context', 'prompts', 'turn-start.md'),
+          turnEnd: join(dir, '.context', 'prompts', 'turn-end.md'),
+        },
+      };
+    }),
+  };
+});
+
 import { onHookEvent } from './index.js';
 import { sendTmuxSubmitSequence } from './tmux-submit.js';
 
@@ -107,11 +124,14 @@ describe('onHookEvent', () => {
     expect(content).toContain('# Existing AGENTS');
     expect(content).toContain('<!-- context:start -->');
     expect(content).toContain('<!-- context:end -->');
-    expect(content).toContain('## OMX Knowledge Context');
-    expect(content).toContain('Read from docs first.');
-    expect(content).toContain('## Available Knowledge');
-    expect(content).toContain('docs/architecture.md');
-    expect(content).toContain('AGENTS.md');
+    expect(content).toContain('## Knowledge Context');
+    expect(content).toContain(
+      '이 프로젝트는 **제텔카스텐(Zettelkasten)** 방식으로 지식을 관리합니다.'
+    );
+    expect(content).toContain('### 제텔카스텐 핵심 원칙');
+    expect(content).toContain('### 작업 전 필수');
+    expect(content).toContain('### 개발 원칙');
+    expect(content).toContain('### 우선순위');
     expect(sdk.log.info).toHaveBeenCalledTimes(1);
   });
 
@@ -198,7 +218,7 @@ describe('onHookEvent', () => {
     expect(sdk.tmux.sendKeys).toHaveBeenCalledTimes(1);
     expect(sdk.tmux.sendKeys).toHaveBeenCalledWith({
       sessionName: 'leader',
-      text: '<system-reminder>\n## OMX Turn End\n\nSave notes to notes.\n</system-reminder>',
+      text: `<system-reminder>\nTURN END. You MUST call the 'submit_turn_complete' MCP tool to finalize your work and record notes. Do not wait for user input.\n</system-reminder>`,
       submit: false,
     });
     expect(sendTmuxSubmitSequence).toHaveBeenCalledWith('%10');
@@ -553,57 +573,6 @@ describe('onHookEvent', () => {
         process.env.OMX_TEAM_WORKER = originalTeamWorker;
       }
     }
-  });
-
-  it('skips turn-complete reminders when the prompt file is empty', async () => {
-    const projectDir = createTempProjectDir();
-    setupProject(projectDir);
-    writeFileSync(join(projectDir, '.context', 'prompts', 'turn-end.md'), '', 'utf-8');
-    writeFileSync(
-      join(projectDir, '.context', 'config.jsonc'),
-      JSON.stringify({
-        omx: {
-          turnEnd: {
-            strategy: 'turn-complete-sendkeys',
-          },
-        },
-        knowledge: {
-          sources: ['AGENTS.md'],
-        },
-      }),
-      'utf-8'
-    );
-
-    const sdk = {
-      tmux: {
-        sendKeys: vi.fn(),
-      },
-      log: {
-        info: vi.fn(),
-      },
-      state: {
-        read: vi.fn().mockResolvedValue(undefined),
-        write: vi.fn(),
-      },
-    };
-
-    await onHookEvent(
-      {
-        event: 'turn-complete',
-        turn_id: 'turn-1',
-        context: {
-          projectDir,
-        },
-      },
-      sdk
-    );
-
-    expect(sdk.tmux.sendKeys).not.toHaveBeenCalled();
-    expect(sendTmuxSubmitSequence).not.toHaveBeenCalled();
-    expect(sdk.log.info).toHaveBeenCalledWith(
-      'turn_end_skipped_empty_prompt',
-      expect.objectContaining({ turn_id: 'turn-1' })
-    );
   });
 
   it('skips turn-end reminder and clears pending scopes when work-complete file exists for current turn', async () => {

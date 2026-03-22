@@ -30,10 +30,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs",
+    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs"
+    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs"
   },
   "files": [
     "dist"
@@ -42,7 +42,8 @@
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "dependencies": {
-    "@ksm0709/context": "^0.0.21",
+    "@ksm0709/context": "^0.0.22",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "jsonc-parser": "^3.0.0"
   },
   "devDependencies": {

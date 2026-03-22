@@ -1,8 +1,5 @@
 export const DEFAULTS = {
   configPath: '.context/config.jsonc',
-  promptDir: '.context/prompts',
-  turnStartFile: 'turn-start.md',
-  turnEndFile: 'turn-end.md',
   knowledgeSources: ['AGENTS.md'],
   templateDir: '.context/templates',
   indexFilename: 'INDEX.md',
