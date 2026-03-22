@@ -10,6 +10,10 @@ vi.mock('./tmux-submit.js', () => ({
   }),
 }));
 
+vi.mock('./registry.js', () => ({
+  ensureMcpRegistered: vi.fn().mockReturnValue(false),
+}));
+
 vi.mock('../lib/config.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/config.js')>();
   return {
@@ -29,6 +33,7 @@ vi.mock('../lib/config.js', async (importOriginal) => {
 
 import { onHookEvent } from './index.js';
 import { sendTmuxSubmitSequence } from './tmux-submit.js';
+import { ensureMcpRegistered } from './registry.js';
 
 const tempDirs: string[] = [];
 
@@ -133,6 +138,43 @@ describe('onHookEvent', () => {
     expect(content).toContain('### 개발 원칙');
     expect(content).toContain('### 우선순위');
     expect(sdk.log.info).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls ensureMcpRegistered and logs warning if it returns true on session-start', async () => {
+    vi.mocked(ensureMcpRegistered).mockReturnValue(true);
+    const projectDir = createTempProjectDir();
+    setupProject(projectDir);
+
+    const sdk = {
+      log: {
+        info: vi.fn(),
+      },
+      tmux: {
+        sendKeys: vi.fn().mockResolvedValue({ ok: true }),
+      },
+    };
+
+    await onHookEvent(
+      {
+        event: 'session-start',
+        context: {
+          projectDir,
+          session_name: 'test-session',
+        },
+      },
+      sdk
+    );
+
+    expect(ensureMcpRegistered).toHaveBeenCalledWith(sdk.log.info);
+
+    const warningMsg =
+      "Context MCP was just added to your OMX registry. You must stop this session, run 'omx setup', and restart to use MCP tools.";
+    expect(sdk.log.info).toHaveBeenCalledWith(warningMsg);
+    expect(sdk.tmux.sendKeys).toHaveBeenCalledWith({
+      sessionName: 'test-session',
+      text: `# WARNING: ${warningMsg}`,
+      submit: true,
+    });
   });
 
   it('ignores unrelated events', async () => {

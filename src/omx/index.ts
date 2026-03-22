@@ -5,6 +5,7 @@ import { DEFAULTS } from '../constants.js';
 import { loadConfig } from '../lib/config.js';
 import { scaffoldIfNeeded } from '../lib/scaffold.js';
 import { injectIntoAgentsMd } from './agents-md.js';
+import { ensureMcpRegistered } from './registry.js';
 import { sendTmuxSubmitSequence } from './tmux-submit.js';
 
 interface OmxHookContext {
@@ -153,6 +154,27 @@ async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
 
   injectIntoAgentsMd(join(projectDir, 'AGENTS.md'), STATIC_KNOWLEDGE_CONTEXT);
   await sdk.log.info(`Injected context into AGENTS.md for ${projectDir}`);
+
+  const wasRegistered = ensureMcpRegistered(sdk.log.info);
+  if (wasRegistered) {
+    const warningMsg =
+      "Context MCP was just added to your OMX registry. You must stop this session, run 'omx setup', and restart to use MCP tools.";
+    await sdk.log.info(warningMsg);
+
+    if (typeof sdk.tmux?.sendKeys === 'function') {
+      const sessionName =
+        typeof event.context?.session_name === 'string' &&
+        event.context.session_name.trim().length > 0
+          ? event.context.session_name.trim()
+          : undefined;
+
+      await sdk.tmux.sendKeys({
+        sessionName,
+        text: `# WARNING: ${warningMsg}`,
+        submit: true,
+      });
+    }
+  }
 }
 
 async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {

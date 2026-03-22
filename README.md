@@ -14,7 +14,7 @@ This plugin automatically registers an MCP (Model Context Protocol) server named
 
 ## OMX Support
 
-This plugin supports OMX (OpenCode Managed eXtension). See [[docs/omx-setup.md]] for setup instructions.
+This plugin supports OMX (OpenCode Managed eXtension). See [docs/omx-setup.md](docs/omx-setup.md) for setup instructions.
 
 ## Installation
 

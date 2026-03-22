@@ -2,6 +2,7 @@ import { join, resolve, dirname } from 'node:path';
 import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { ensureMcpRegistered } from '../../omx/registry.js';
 
 export function resolveOmxSource(): string | null {
   try {
@@ -33,6 +34,10 @@ export function installOmx(projectDir: string, sourcePath: string): void {
   copyFileSync(sourcePath, join(targetDir, 'context.mjs'));
 
   process.stdout.write('Installed context plugin to .omx/hooks/context.mjs\n');
+
+  if (ensureMcpRegistered()) {
+    process.stdout.write('Successfully registered context-mcp in ~/.omx/mcp-registry.json\n');
+  }
 }
 
 export function runInstall(args: string[]): void {
