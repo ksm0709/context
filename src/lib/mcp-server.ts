@@ -65,7 +65,8 @@ export function startMcpServer() {
               }
             }
           } catch (err) {
-            if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+            if ((err as { code?: string }).code !== 'ENOENT') {
+              // eslint-disable-next-line no-console
               console.error(`Error reading directory ${dir}:`, err);
             }
           }
@@ -185,7 +186,9 @@ export function startMcpServer() {
           if (existingContent.length > 0 && !existingContent.endsWith('\n')) {
             textToAppend = '\n' + textToAppend;
           }
-        } catch (err) {}
+        } catch {
+          // ignore error if file doesn't exist
+        }
 
         if (!textToAppend.endsWith('\n')) {
           textToAppend += '\n';
@@ -244,7 +247,7 @@ export function startMcpServer() {
         try {
           fileContent = await fs.readFile(filePath, 'utf-8');
         } catch (err) {
-          if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          if ((err as { code?: string }).code === 'ENOENT') {
             return {
               content: [
                 {
@@ -403,7 +406,9 @@ export function startMcpServer() {
             if (existingContent.length > 0 && !existingContent.endsWith('\n')) {
               textToAppend = '\n' + textToAppend;
             }
-          } catch (err) {}
+          } catch {
+            // ignore error if file doesn't exist
+          }
 
           if (!textToAppend.endsWith('\n')) {
             textToAppend += '\n';
@@ -441,66 +446,79 @@ export function startMcpServer() {
     {
       description: 'Mark the current turn as complete after verifying all required steps',
       inputSchema: {
-        daily_note_updated: z
-          .boolean()
+        daily_note_update_proof: z
+          .string()
+          .min(5)
           .optional()
-          .default(false)
           .describe(
-            '데일리 노트에 중요한 컨텍스트를 기록하여 다음 세션이나 에이전트 팀이 참고할 수 있도록 하세요. 기존 내용 수정은 불가하며, 새로운 메모를 추가 하는것만 가능합니다. 참고 가이드: .context/guides/daily-note-guide.md 파일을 읽고 지침을 따르세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
+            "Provide the file path of the updated daily note, or explicitly write 'skipped' if no update was needed."
           ),
-        knowledge_note_created: z
-          .boolean()
+        knowledge_note_proof: z
+          .string()
+          .min(5)
           .optional()
-          .default(false)
           .describe(
-            '작업기억(데일리노트, 세션 컨텍스트)보다 오래 기억되어야 하는 중요한 결정, 패턴, 실수, 발견은 지식 노트로 기록하여 프로젝트의 집단 지식으로 남기세요. 참고 가이드: .context/guides/note-guide.md 파일을 읽고 지침을 따르세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
+            "Provide the file path of the created knowledge note, or explicitly write 'skipped' if no note was created."
           ),
-        quality_check_passed: z
-          .boolean()
+        quality_check_output: z
+          .string()
+          .min(20)
           .describe(
-            '작업 완료 전에 반드시 수행하세요. 코드 린트, 포맷터, 테스트, 빌드, 코드리뷰를 실행하여 작업 결과물이 프로젝트의 품질 기준을 충족하는지 확인하세요. 참고 가이드: .context/guides/quality-check.md 파일을 읽고 지침을 따르세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
+            'Provide the last 5 lines of the `mise run lint && mise run test` execution output to prove quality checks passed.'
           ),
-        checkpoints_committed: z
-          .boolean()
+        checkpoint_commit_hashes: z
+          .string()
+          .min(7)
           .describe(
-            '작업이 길어질 경우, 중요한 단계마다 체크포인트 커밋을 하여 작업 내용을 안전하게 저장하고, 필요 시 이전 상태로 돌아갈 수 있도록 하세요. 참고 가이드: .context/guides/commit-guide.md 파일을 읽고 지침을 따르세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
+            'Provide the output of `git log -1 --oneline` or an explanation if the task was too small for checkpoints.'
           ),
-        scope_reviewed: z
-          .boolean()
+        scope_review_notes: z
+          .string()
+          .min(10)
           .describe(
-            '사용자가 의도한 작업 범위를 벗어나지 않았는지, 작업이 너무 크거나 복잡해지지는 않았는지 검토하세요. 참고 가이드: .context/guides/scope-review.md 파일을 읽고 지침을 따르세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
+            'Provide a brief sentence confirming the scope check and that the work did not exceed the intended boundaries.'
           ),
       },
     },
     async ({
-      daily_note_updated = false,
-      knowledge_note_created = false,
-      quality_check_passed,
-      checkpoints_committed,
-      scope_reviewed,
+      daily_note_update_proof,
+      knowledge_note_proof,
+      quality_check_output,
+      checkpoint_commit_hashes,
+      scope_review_notes,
     }) => {
       const missingSteps: string[] = [];
       const warnings: string[] = [];
 
-      if (daily_note_updated === false)
+      if (!daily_note_update_proof || daily_note_update_proof.toLowerCase() === 'skipped') {
         warnings.push(
           'Warning: Daily note was skipped. This is allowed, but ensure no important context is lost.'
         );
-      if (knowledge_note_created === false)
+      } else if (daily_note_update_proof.length < 5) {
+        missingSteps.push('daily_note_update_proof (too short)');
+      }
+
+      if (!knowledge_note_proof || knowledge_note_proof.toLowerCase() === 'skipped') {
         warnings.push(
           'Warning: Knowledge note was skipped. This is allowed, but ensure no important context is lost.'
         );
+      } else if (knowledge_note_proof.length < 5) {
+        missingSteps.push('knowledge_note_proof (too short)');
+      }
 
-      if (!quality_check_passed) missingSteps.push('quality_check_passed');
-      if (!checkpoints_committed) missingSteps.push('checkpoints_committed');
-      if (!scope_reviewed) missingSteps.push('scope_reviewed');
+      if (!quality_check_output || quality_check_output.length < 20)
+        missingSteps.push('quality_check_output');
+      if (!checkpoint_commit_hashes || checkpoint_commit_hashes.length < 7)
+        missingSteps.push('checkpoint_commit_hashes');
+      if (!scope_review_notes || scope_review_notes.length < 10)
+        missingSteps.push('scope_review_notes');
 
       if (missingSteps.length > 0) {
         return {
           content: [
             {
               type: 'text',
-              text: `Error: The following required steps were not completed: ${missingSteps.join(', ')}. You must complete all steps before finishing the turn.`,
+              text: `Error: The following required steps were not completed or provided insufficient proof: ${missingSteps.join(', ')}. You must provide valid proof for all steps before finishing the turn.`,
             },
           ],
           isError: true,
