@@ -278,7 +278,7 @@ async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
     contextDir,
     config.prompts.turnEnd ?? join(DEFAULTS.promptDir, DEFAULTS.turnEndFile)
   );
-  const turnEndRaw = readPromptFile(turnEndPath);
+  let turnEndRaw = readPromptFile(turnEndPath);
   if (!turnEndRaw) {
     await sdk.log.info('turn_end_skipped_empty_prompt', {
       event: event.event,
@@ -286,6 +286,18 @@ async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
       turn_id: event.turn_id,
     });
     return;
+  }
+
+  // Prevent accidental injection of AGENTS.md or turn-start content if config is misconfigured
+  if (
+    turnEndRaw.includes('<!-- context:start -->') ||
+    turnEndRaw.includes('## Knowledge Context')
+  ) {
+    const defaultTurnEndPath = join(projectDir, DEFAULTS.promptDir, DEFAULTS.turnEndFile);
+    turnEndRaw = readPromptFile(defaultTurnEndPath);
+    if (!turnEndRaw) {
+      return;
+    }
   }
 
   if (typeof sdk.tmux?.sendKeys !== 'function') {

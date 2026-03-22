@@ -62,7 +62,9 @@ const plugin: Plugin = async ({ directory, client }) => {
       // (OMX는 onSessionStart에서 AGENTS.md에 주입하고, onTurnComplete에서 tmux send-keys로 turn-end를 주입합니다)
       if (process.env.OMX_HOOK_PLUGINS) return;
 
-      // 서브에이전트 등에서 환경변수가 유실되었더라도, AGENTS.md에 이미 주입되어 있다면 OMX 환경으로 간주합니다.
+      let skipTurnStart = false;
+      // 서브에이전트 등에서 환경변수가 유실되었더라도, AGENTS.md에 이미 주입되어 있다면 turn-start 주입을 생략합니다.
+      // (OpenCode가 AGENTS.md를 읽어서 시스템 프롬프트에 포함하므로 중복 주입 방지)
       const agentsMdPath = join(directory, 'AGENTS.md');
       if (existsSync(agentsMdPath)) {
         const content = readFileSync(agentsMdPath, 'utf-8');
@@ -70,7 +72,7 @@ const plugin: Plugin = async ({ directory, client }) => {
           content.includes('<!-- context:start -->') &&
           content.includes('<!-- context:end -->')
         ) {
-          return;
+          skipTurnStart = true;
         }
       }
 
@@ -81,8 +83,10 @@ const plugin: Plugin = async ({ directory, client }) => {
 
       // 만약 마지막 유저 메시지가 이미 turn-end 리마인더(tmux send-keys로 주입된 것)라면,
       // turn-start를 덧붙이거나 turn-end를 중복 주입하지 않습니다.
+      // 주의: 서브에이전트의 [SYSTEM DIRECTIVE...] 도 <system-reminder>를 사용하므로, 'TURN END' 텍스트로 구분합니다.
       const isTurnEndMessage = lastUserMsg.parts.some(
-        (p) => p.type === 'text' && p.text.includes('<system-reminder>')
+        (p) =>
+          p.type === 'text' && p.text.includes('<system-reminder>') && p.text.includes('TURN END')
       );
       if (isTurnEndMessage) {
         return;
@@ -94,30 +98,32 @@ const plugin: Plugin = async ({ directory, client }) => {
         sessionId: lastUserMsg.info.sessionID,
       };
 
-      // 3. turn-start + knowledge index: combine and append to last user message (hot-reload)
-      const turnStartPath = resolvePromptPath(
-        directory,
-        contextDir,
-        config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
-      );
-      const turnStartRaw = readPromptFile(turnStartPath) ?? '';
-      const turnStart = resolvePromptVariables(turnStartRaw, promptVars);
+      if (!skipTurnStart) {
+        // 3. turn-start + knowledge index: combine and append to last user message (hot-reload)
+        const turnStartPath = resolvePromptPath(
+          directory,
+          contextDir,
+          config.prompts.turnStart ?? join(DEFAULTS.promptDir, DEFAULTS.turnStartFile)
+        );
+        const turnStartRaw = readPromptFile(turnStartPath) ?? '';
+        const turnStart = resolvePromptVariables(turnStartRaw, promptVars);
 
-      const knowledgeIndex = buildKnowledgeIndexV2(directory, config.knowledge);
-      const indexContent =
-        knowledgeIndex.mode === 'flat'
-          ? formatKnowledgeIndex(knowledgeIndex.individualFiles)
-          : formatDomainIndex(knowledgeIndex);
+        const knowledgeIndex = buildKnowledgeIndexV2(directory, config.knowledge);
+        const indexContent =
+          knowledgeIndex.mode === 'flat'
+            ? formatKnowledgeIndex(knowledgeIndex.individualFiles)
+            : formatDomainIndex(knowledgeIndex);
 
-      const combinedContent = [turnStart, indexContent].filter(Boolean).join('\n\n');
-      if (combinedContent) {
-        lastUserMsg.parts.push({
-          id: `context-turn-start-${Date.now()}`,
-          sessionID: lastUserMsg.info.sessionID,
-          messageID: lastUserMsg.info.id,
-          type: 'text' as const,
-          text: combinedContent,
-        });
+        const combinedContent = [turnStart, indexContent].filter(Boolean).join('\n\n');
+        if (combinedContent) {
+          lastUserMsg.parts.push({
+            id: `context-turn-start-${Date.now()}`,
+            sessionID: lastUserMsg.info.sessionID,
+            messageID: lastUserMsg.info.id,
+            type: 'text' as const,
+            text: combinedContent,
+          });
+        }
       }
 
       // 6. turn-end: inject as separate user message (hot-reload)
