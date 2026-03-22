@@ -1,0 +1,3 @@
+timestamp={{currentTimestamp}}
+session_id={{sessionId}}
+turn_id={{turnId}}

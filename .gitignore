@@ -13,5 +13,7 @@ coverage/
 .omx/
 .opencode/
 .sisyphus/
-.context/
 .mise/
+.context/*
+!.context/memory/
+
