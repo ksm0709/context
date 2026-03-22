@@ -7,6 +7,10 @@ const mockRegisterTool = vi.fn();
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
   return {
     McpServer: vi.fn().mockImplementation(() => ({
+      server: {
+        _requestHandlers: new Map(),
+        setRequestHandler: vi.fn(),
+      },
       registerTool: mockRegisterTool,
       connect: vi.fn(),
     })),

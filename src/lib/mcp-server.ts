@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -555,6 +556,32 @@ export function startMcpServer() {
       }
     }
   );
+
+  // === OMX(codex) 호환성을 위한 패치 ===
+  // codex는 strict JSON 파싱을 하므로 최신 SDK가 추가하는 execution 필드나 $schema를 인식하지 못하고 툴을 드롭합니다.
+  const listToolsMethod = ListToolsRequestSchema.shape.method.value;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const originalListToolsHandler = (server.server as any)._requestHandlers?.get(listToolsMethod);
+
+  if (originalListToolsHandler) {
+    server.server.setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
+      const response = await originalListToolsHandler(request, extra);
+      if (response.tools) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        response.tools = response.tools.map((tool: any) => {
+          const newTool = { ...tool };
+          // codex 파서를 터뜨리는 호환성 파괴 필드들 제거
+          delete newTool.execution;
+          if (newTool.inputSchema && newTool.inputSchema.$schema) {
+            delete newTool.inputSchema.$schema;
+          }
+          return newTool;
+        });
+      }
+      return response;
+    });
+  }
+  // ===================================
 
   const transport = new StdioServerTransport();
   server.connect(transport);
