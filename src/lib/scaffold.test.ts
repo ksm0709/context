@@ -67,7 +67,7 @@ describe('scaffoldIfNeeded', () => {
     const turnEnd = readFileSync(join(promptsDir, 'turn-end.md'), 'utf-8');
     expect(turnEnd).toContain('8. **작업 완료**:');
     expect(turnEnd).toContain('아래 메뉴 중 하나를 선택해 진행 상황에 맞게 수행하세요.');
-    expect(turnEnd).toContain('메뉴를 출력한 뒤에는 반드시 사용자의 응답을 기다리세요(STOP).');
+    expect(turnEnd).toContain('이 지침은 에이전트를 위한 것이며, 사용자에게 직접적으로 노출하지 않습니다.');
     expect(turnEnd).toContain('반드시 링크된 가이드를 참고하여 정확히 수행해야 합니다.');
     expect(turnEnd).toContain('.context/guides/quality-check.md');
     expect(turnEnd).toContain('.context/guides/daily-note-guide.md');
