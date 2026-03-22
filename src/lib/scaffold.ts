@@ -242,14 +242,15 @@ turn_id={{turnId}}
 
 const DEFAULT_DAILY_NOTE_GUIDE = `# 데일리 노트 기록 가이드
 
-- [ ] \`docs/daily/YYYY-MM-DD.md\` 파일(오늘 날짜 기준)을 생성하거나 업데이트하세요.
+- [ ] \`context-mcp_append_daily_note\` 도구를 사용하여 기록을 추가하세요.
 - [ ] **주의**: 데일리 노트의 기존 내용은 절대 수정하거나 삭제하지 마세요.
-- [ ] 파일 맨 마지막 줄에 다음과 같은 형식으로만 기록을 추가(Append)하세요:
+- [ ] 기록은 다음과 같은 형식으로 추가됩니다:
   \`[{{currentTimestamp}}] <기억 할 내용>\`
 - [ ] \`<기억 할 내용>\`에는 완벽한 컨텍스트 인계를 위해 오늘 완료한 핵심 작업 요약, 미해결 이슈(TODO), 중요 메모, 지식 노트 \`[[wikilink]]\` 등을 포함하세요.`;
 
 const DEFAULT_NOTE_GUIDE = `# 지식 노트 작성 및 관리 가이드
 
+- [ ] **노트 생성**: \`context-mcp_create_knowledge_note\` 도구를 사용하여 생성하세요.
 - [ ] 제텔카스텐(Zettelkasten) 3대 원칙 준수:
   - [ ] 원자성: 한 노트당 한 주제
   - [ ] 연결: 고립된 노트 방지

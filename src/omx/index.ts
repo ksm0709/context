@@ -125,10 +125,15 @@ const STATIC_KNOWLEDGE_CONTEXT = `## Knowledge Context
 2. **연결** -- 모든 노트는 [[wikilink]]로 관련 노트에 연결. 고립된 노트는 발견되지 않습니다.
 3. **자기 언어** -- 복사-붙여넣기가 아닌, 핵심을 이해하고 간결하게 서술하세요.
 
+### MCP Tools
+- **지식 관리**: \`context-mcp_search_knowledge\`, \`context-mcp_read_knowledge\`, \`context-mcp_create_knowledge_note\`, \`context-mcp_update_knowledge_note\`
+- **데일리 노트**: \`context-mcp_read_daily_note\`, \`context-mcp_append_daily_note\`
+- **작업 완료**: \`context-mcp_submit_turn_complete\` (작업 종료 시 필수 호출)
+
 ### 작업 전 필수
-- **데일리 노트 확인**: 가장 최근의 데일리 노트를 읽고 이전 세션의 컨텍스트와 미해결 이슈를 파악하세요. (Use \`read_daily_note\` tool)
+- **데일리 노트 확인**: 가장 최근의 데일리 노트를 읽고 이전 세션의 컨텍스트와 미해결 이슈를 파악하세요.
 - **작업 의도 선언**: 작업 시작 전, 현재 세션의 목표와 작업 의도를 명확히 파악하고 선언하세요.
-- **지식 검색**: 작업과 관련된 문서를 **직접 먼저** 검색하고 읽으세요. (Use \`search_knowledge\` and \`read_knowledge\` tools)
+- **지식 검색**: 작업과 관련된 문서를 **직접 먼저** 검색하고 읽으세요.
 - 지식 파일에 기록된 아키텍처 결정, 패턴, 제약사항을 반드시 따르세요.
 
 ### 개발 원칙
@@ -139,7 +144,7 @@ const STATIC_KNOWLEDGE_CONTEXT = `## Knowledge Context
 ### 우선순위
 - AGENTS.md의 지시사항이 항상 최우선
 - 지식 노트의 결정사항 > 일반적 관행
-- 지식 노트에 없는 새로운 결정이나 반복 가치가 있는 발견은 작업 메모나 지식 노트 후보로 기록하세요. (Use \`create_knowledge_note\` tool)`;
+- 지식 노트에 없는 새로운 결정이나 반복 가치가 있는 발견은 작업 메모나 지식 노트 후보로 기록하세요.`;
 
 async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
   const projectDir = resolveProjectDir(event);

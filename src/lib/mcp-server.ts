@@ -21,12 +21,13 @@ export function startMcpServer() {
       description: 'Search .md files in docs/ and .context/ directories for a keyword or regex',
       inputSchema: {
         query: z.string().describe('The keyword or regex to search for'),
+        limit: z.number().optional().default(50).describe('Maximum number of results to return'),
       },
     },
-    async ({ query }) => {
+    async ({ query, limit = 50 }) => {
       const searchDirs = ['docs', '.context'];
       const results: { file: string; snippet: string }[] = [];
-      const maxResults = 10;
+      const maxResults = limit;
       const snippetLength = 100;
 
       try {
@@ -163,7 +164,11 @@ export function startMcpServer() {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
         const dateString = `${year}-${month}-${day}`;
+        const timestamp = `[${year}-${month}-${day} ${hours}:${minutes}:${seconds}]`;
 
         const dirPath = path.resolve(process.cwd(), '.context/memory/daily');
         const filePath = path.join(dirPath, `${dateString}.md`);
@@ -171,6 +176,10 @@ export function startMcpServer() {
         await fs.mkdir(dirPath, { recursive: true });
 
         let textToAppend = content;
+        if (!content.startsWith(`[${year}-${month}-${day}`)) {
+          textToAppend = `${timestamp} ${content}`;
+        }
+
         try {
           const existingContent = await fs.readFile(filePath, 'utf-8');
           if (existingContent.length > 0 && !existingContent.endsWith('\n')) {
@@ -277,7 +286,8 @@ export function startMcpServer() {
   server.registerTool(
     'create_knowledge_note',
     {
-      description: 'Create a new Zettelkasten knowledge note with frontmatter and wikilinks',
+      description:
+        'Create a new Zettelkasten knowledge note with frontmatter and wikilinks. You can optionally use a template by providing the `template` parameter. Available templates: adr (Architecture Decision Records), pattern (Design patterns), bug (Bug reports and analysis), gotcha (Pitfalls and gotchas), decision (General decisions), context (General context and background), runbook (Procedures and runbooks), insight (Insights and learnings).',
       inputSchema: {
         title: z.string().describe('The title of the note'),
         content: z.string().describe('The main content of the note'),
@@ -286,9 +296,13 @@ export function startMcpServer() {
           .array(z.string())
           .optional()
           .describe('Optional list of related note titles to link to'),
+        template: z
+          .enum(['adr', 'pattern', 'bug', 'gotcha', 'decision', 'context', 'runbook', 'insight'])
+          .optional()
+          .describe('Optional template to use for the note'),
       },
     },
-    async ({ title, content, tags, linked_notes }) => {
+    async ({ title, content, tags, linked_notes, template }) => {
       try {
         const filename =
           title
@@ -302,15 +316,27 @@ export function startMcpServer() {
 
         const date = new Date().toISOString().split('T')[0];
 
-        let fileContent = `---\n`;
-        fileContent += `title: ${title}\n`;
-        fileContent += `date: ${date}\n`;
-        if (tags && tags.length > 0) {
-          fileContent += `tags:\n${tags.map((t) => `  - ${t}`).join('\n')}\n`;
+        let fileContent = '';
+        if (template) {
+          const templatePath = path.resolve(process.cwd(), `.context/templates/${template}.md`);
+          try {
+            fileContent = await fs.readFile(templatePath, 'utf-8');
+            fileContent = fileContent.replace(/\[제목\]/g, title);
+            fileContent += `\n\n${content}`;
+          } catch (err) {
+            fileContent = `Error loading template: ${err instanceof Error ? err.message : String(err)}\n\n${content}`;
+          }
+        } else {
+          fileContent = `---\n`;
+          fileContent += `title: ${title}\n`;
+          fileContent += `date: ${date}\n`;
+          if (tags && tags.length > 0) {
+            fileContent += `tags:\n${tags.map((t) => `  - ${t}`).join('\n')}\n`;
+          }
+          fileContent += `---\n\n`;
+          fileContent += `# ${title}\n\n`;
+          fileContent += `${content}\n`;
         }
-        fileContent += `---\n\n`;
-        fileContent += `# ${title}\n\n`;
-        fileContent += `${content}\n`;
 
         if (linked_notes && linked_notes.length > 0) {
           fileContent += `\n## Related Notes\n\n`;
@@ -417,41 +443,54 @@ export function startMcpServer() {
       inputSchema: {
         daily_note_updated: z
           .boolean()
+          .optional()
+          .default(false)
           .describe(
-            '데일리 노트에 중요한 컨텍스트를 기록하여 다음 세션이나 에이전트 팀이 참고할 수 있도록 하세요. 기존 내용 수정은 불가하며, 새로운 메모를 추가 하는것만 가능합니다. Did you use the append_daily_note tool?'
+            '데일리 노트에 중요한 컨텍스트를 기록하여 다음 세션이나 에이전트 팀이 참고할 수 있도록 하세요. 기존 내용 수정은 불가하며, 새로운 메모를 추가 하는것만 가능합니다. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
           ),
         knowledge_note_created: z
           .boolean()
+          .optional()
+          .default(false)
           .describe(
-            '작업기억(데일리노트, 세션 컨텍스트)보다 오래 기억되어야 하는 중요한 결정, 패턴, 실수, 발견은 지식 노트로 기록하여 프로젝트의 집단 지식으로 남기세요. Did you use the create_knowledge_note tool if needed?'
+            '작업기억(데일리노트, 세션 컨텍스트)보다 오래 기억되어야 하는 중요한 결정, 패턴, 실수, 발견은 지식 노트로 기록하여 프로젝트의 집단 지식으로 남기세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
           ),
         quality_check_passed: z
           .boolean()
           .describe(
-            '작업 완료 전에 반드시 수행하세요. 코드 린트, 포맷터, 테스트, 빌드, 코드리뷰를 실행하여 작업 결과물이 프로젝트의 품질 기준을 충족하는지 확인하세요.'
+            '작업 완료 전에 반드시 수행하세요. 코드 린트, 포맷터, 테스트, 빌드, 코드리뷰를 실행하여 작업 결과물이 프로젝트의 품질 기준을 충족하는지 확인하세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
           ),
         checkpoints_committed: z
           .boolean()
           .describe(
-            '작업이 길어질 경우, 중요한 단계마다 체크포인트 커밋을 하여 작업 내용을 안전하게 저장하고, 필요 시 이전 상태로 돌아갈 수 있도록 하세요.'
+            '작업이 길어질 경우, 중요한 단계마다 체크포인트 커밋을 하여 작업 내용을 안전하게 저장하고, 필요 시 이전 상태로 돌아갈 수 있도록 하세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
           ),
         scope_reviewed: z
           .boolean()
           .describe(
-            '사용자가 의도한 작업 범위를 벗어나지 않았는지, 작업이 너무 크거나 복잡해지지는 않았는지 검토하세요.'
+            '사용자가 의도한 작업 범위를 벗어나지 않았는지, 작업이 너무 크거나 복잡해지지는 않았는지 검토하세요. 실제로 도구를 사용해 노트를 작성했거나 검증을 수행한 경우에만 true로 설정하세요. 거짓으로 true를 입력하지 마세요. (Set to true ONLY if you actually performed this action. Do not fake it.)'
           ),
       },
     },
     async ({
-      daily_note_updated,
-      knowledge_note_created,
+      daily_note_updated = false,
+      knowledge_note_created = false,
       quality_check_passed,
       checkpoints_committed,
       scope_reviewed,
     }) => {
       const missingSteps: string[] = [];
-      if (!daily_note_updated) missingSteps.push('daily_note_updated');
-      if (!knowledge_note_created) missingSteps.push('knowledge_note_created');
+      const warnings: string[] = [];
+
+      if (daily_note_updated === false)
+        warnings.push(
+          'Warning: Daily note was skipped. This is allowed, but ensure no important context is lost.'
+        );
+      if (knowledge_note_created === false)
+        warnings.push(
+          'Warning: Knowledge note was skipped. This is allowed, but ensure no important context is lost.'
+        );
+
       if (!quality_check_passed) missingSteps.push('quality_check_passed');
       if (!checkpoints_committed) missingSteps.push('checkpoints_committed');
       if (!scope_reviewed) missingSteps.push('scope_reviewed');
@@ -481,7 +520,7 @@ export function startMcpServer() {
           content: [
             {
               type: 'text',
-              text: 'Turn successfully marked as complete.',
+              text: `Turn successfully marked as complete.${warnings.length > 0 ? '\n\n' + warnings.join('\n') : ''}`,
             },
           ],
         };
