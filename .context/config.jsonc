@@ -6,7 +6,7 @@
     "turnEnd": "prompts/turn-end.md"
   },
   "knowledge": {
-    "dir": "docs",
+    "dir": ".context/memory",
     "sources": ["AGENTS.md"]
   },
   "omx": {
