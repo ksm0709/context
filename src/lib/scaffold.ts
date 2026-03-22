@@ -14,7 +14,7 @@ const DEFAULT_CONFIG = `{
     "turnEnd": "prompts/turn-end.md"
   },
   "knowledge": {
-    "dir": "docs",
+    "dir": ".context/memory",
     "sources": ["AGENTS.md"]
   },
   "omx": {
@@ -60,7 +60,8 @@ const DEFAULT_TURN_START = `## Knowledge Context
 `;
 
 const DEFAULT_TURN_END = `## TURN END 작업 지침
-아래 메뉴 중 하나를 선택해 진행 상황에 맞게 수행하세요. 메뉴를 출력한 뒤에는 반드시 사용자의 응답을 기다리세요(STOP). 임의로 다음 단계를 진행하지 마세요.
+이 지침은 에이전트를 위한 것이며, 사용자에게 직접적으로 노출하지 않습니다.
+아래 메뉴 중 하나를 선택해 진행 상황에 맞게 수행하세요.
 **반드시 링크된 가이드를 참고하여 정확히 수행해야 합니다.**
 
 1. **계속 작업**: 기존 작업이 완료되지 않았고 아직 아래 액션을 취할 단계가 아니라면 작업 속개.
