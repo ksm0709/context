@@ -242,7 +242,7 @@ turn_id={{turnId}}
 
 const DEFAULT_DAILY_NOTE_GUIDE = `# 데일리 노트 기록 가이드
 
-- [ ] \`context-mcp_append_daily_note\` 도구를 사용하여 기록을 추가하세요.
+- [ ] \`context_mcp_append_daily_note\` 도구를 사용하여 기록을 추가하세요.
 - [ ] **주의**: 데일리 노트의 기존 내용은 절대 수정하거나 삭제하지 마세요.
 - [ ] 기록은 다음과 같은 형식으로 추가됩니다:
   \`[{{currentTimestamp}}] <기억 할 내용>\`
@@ -250,7 +250,7 @@ const DEFAULT_DAILY_NOTE_GUIDE = `# 데일리 노트 기록 가이드
 
 const DEFAULT_NOTE_GUIDE = `# 지식 노트 작성 및 관리 가이드
 
-- [ ] **노트 생성**: \`context-mcp_create_knowledge_note\` 도구를 사용하여 생성하세요.
+- [ ] **노트 생성**: \`context_mcp_create_knowledge_note\` 도구를 사용하여 생성하세요.
 - [ ] 제텔카스텐(Zettelkasten) 3대 원칙 준수:
   - [ ] 원자성: 한 노트당 한 주제
   - [ ] 연결: 고립된 노트 방지

@@ -127,9 +127,9 @@ const STATIC_KNOWLEDGE_CONTEXT = `## Knowledge Context
 3. **자기 언어** -- 복사-붙여넣기가 아닌, 핵심을 이해하고 간결하게 서술하세요.
 
 ### MCP Tools
-- **지식 관리**: \`context-mcp_search_knowledge\`, \`context-mcp_read_knowledge\`, \`context-mcp_create_knowledge_note\`, \`context-mcp_update_knowledge_note\`
-- **데일리 노트**: \`context-mcp_read_daily_note\`, \`context-mcp_append_daily_note\`
-- **작업 완료**: \`context-mcp_submit_turn_complete\` (작업 종료 시 필수 호출)
+- **지식 관리**: \`context_mcp_search_knowledge\`, \`context_mcp_read_knowledge\`, \`context_mcp_create_knowledge_note\`, \`context_mcp_update_knowledge_note\`
+- **데일리 노트**: \`context_mcp_read_daily_note\`, \`context_mcp_append_daily_note\`
+- **작업 완료**: \`context_mcp_submit_turn_complete\` (작업 종료 시 필수 호출)
 
 ### 작업 전 필수
 - **데일리 노트 확인**: 가장 최근의 데일리 노트를 읽고 이전 세션의 컨텍스트와 미해결 이슈를 파악하세요.

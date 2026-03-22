@@ -60,7 +60,13 @@ export function ensureMcpRegistered(sdkLog?: typeof console.log): boolean {
     args: [mcpPath],
   };
 
-  const currentConfig = registry['context-mcp'];
+  const currentConfig = registry['context_mcp'];
+  let changed = false;
+
+  if ('context-mcp' in registry) {
+    delete registry['context-mcp'];
+    changed = true;
+  }
 
   if (
     !currentConfig ||
@@ -68,13 +74,16 @@ export function ensureMcpRegistered(sdkLog?: typeof console.log): boolean {
     !Array.isArray(currentConfig.args) ||
     currentConfig.args[0] !== expectedConfig.args[0]
   ) {
-    registry['context-mcp'] = expectedConfig;
+    registry['context_mcp'] = expectedConfig;
+    changed = true;
+  }
 
+  if (changed) {
     try {
       mkdirSync(dirname(targetPath), { recursive: true });
       writeFileSync(targetPath, JSON.stringify(registry, null, 2), 'utf-8');
       if (sdkLog) {
-        sdkLog(`[INFO] Registered context-mcp in ${targetPath}`);
+        sdkLog(`[INFO] Registered context_mcp in ${targetPath}`);
       }
       return true;
     } catch (e) {
