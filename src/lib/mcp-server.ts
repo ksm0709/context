@@ -4,6 +4,15 @@ import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import {
+  buildReadKnowledgeResponse,
+  buildSearchKnowledgeResponse,
+  formatRelatedNotesSection,
+  loadKnowledgeNotes,
+  normalizeKnowledgePath,
+  resolveRelatedKnowledgeLinks,
+  searchKnowledgeNotes,
+} from './knowledge-search.js';
 
 export function startMcpServer() {
   const server = new McpServer(
@@ -19,71 +28,27 @@ export function startMcpServer() {
   server.registerTool(
     'search_knowledge',
     {
-      description: 'Search .md files in docs/ and .context/ directories for a keyword or regex',
+      description:
+        'Search knowledge notes in docs/ and .context/ using weighted metadata/body matching and ranked results',
       inputSchema: {
-        query: z.string().describe('The keyword or regex to search for'),
+        query: z
+          .string()
+          .describe(
+            'The search query to match against titles, descriptions, tags, and note content'
+          ),
         limit: z.number().optional().describe('Maximum number of results to return (default: 50)'),
       },
     },
     async ({ query, limit = 50 }) => {
-      const searchDirs = ['docs', '.context'];
-      const results: { file: string; snippet: string }[] = [];
-      const maxResults = limit;
-      const snippetLength = 100;
-
       try {
-        const regex = new RegExp(query, 'i');
-
-        for (const dir of searchDirs) {
-          const fullDirPath = path.resolve(process.cwd(), dir);
-          try {
-            const files = await fs.readdir(fullDirPath, { recursive: true });
-            for (const file of files) {
-              if (typeof file === 'string' && file.endsWith('.md')) {
-                const filePath = path.join(fullDirPath, file);
-                const content = await fs.readFile(filePath, 'utf-8');
-                const match = regex.exec(content);
-
-                if (match) {
-                  const start = Math.max(0, match.index - snippetLength / 2);
-                  const end = Math.min(
-                    content.length,
-                    match.index + match[0].length + snippetLength / 2
-                  );
-                  let snippet = content.substring(start, end).replace(/\n/g, ' ');
-                  if (start > 0) snippet = '...' + snippet;
-                  if (end < content.length) snippet = snippet + '...';
-
-                  results.push({
-                    file: path.relative(process.cwd(), filePath),
-                    snippet,
-                  });
-
-                  if (results.length >= maxResults) {
-                    break;
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            if ((err as { code?: string }).code !== 'ENOENT') {
-              // eslint-disable-next-line no-console
-              console.error(`Error reading directory ${dir}:`, err);
-            }
-          }
-          if (results.length >= maxResults) {
-            break;
-          }
-        }
+        const notes = await loadKnowledgeNotes(process.cwd());
+        const results = searchKnowledgeNotes(notes, query, limit);
 
         return {
           content: [
             {
               type: 'text',
-              text:
-                results.length > 0
-                  ? results.map((r) => `File: ${r.file}\nSnippet: ${r.snippet}`).join('\n\n')
-                  : 'No matches found.',
+              text: buildSearchKnowledgeResponse(results),
             },
           ],
         };
@@ -104,30 +69,24 @@ export function startMcpServer() {
   server.registerTool(
     'read_knowledge',
     {
-      description: 'Read the content of a specific .md file in docs/ or .context/ directories',
+      description:
+        'Read a specific knowledge note and append linked-note metadata to help agents explore related notes',
       inputSchema: {
         path: z.string().describe('The relative path to the file (e.g., docs/architecture.md)'),
       },
     },
     async ({ path: filePath }) => {
       try {
-        const normalizedPath = path.normalize(filePath);
-        if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
-          throw new Error('Invalid path: Directory traversal is not allowed');
-        }
-
-        if (!normalizedPath.startsWith('docs/') && !normalizedPath.startsWith('.context/')) {
-          throw new Error('Invalid path: Only files in docs/ or .context/ are allowed');
-        }
+        const normalizedPath = normalizeKnowledgePath(filePath);
 
         const fullPath = path.resolve(process.cwd(), normalizedPath);
-        const content = await fs.readFile(fullPath, 'utf-8');
-
-        const MAX_LENGTH = 32 * 1024;
-        const truncatedContent =
-          content.length > MAX_LENGTH
-            ? content.substring(0, MAX_LENGTH) + '\n\n... (content truncated due to size limit)'
-            : content;
+        const notes = await loadKnowledgeNotes(process.cwd());
+        const note = notes.find((entry) => entry.file === normalizedPath);
+        const content = note?.content ?? (await fs.readFile(fullPath, 'utf-8'));
+        const relatedNotesSection = note
+          ? formatRelatedNotesSection(resolveRelatedKnowledgeLinks(notes, note.file, note.links))
+          : '';
+        const truncatedContent = buildReadKnowledgeResponse(content, relatedNotesSection);
 
         return {
           content: [
