@@ -14,6 +14,10 @@ vi.mock('./registry.js', () => ({
   ensureMcpRegistered: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock('../shared/codex-settings.js', () => ({
+  pruneStaleMockMcpServer: vi.fn().mockReturnValue(false),
+}));
+
 vi.mock('../lib/config.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/config.js')>();
   return {
@@ -34,6 +38,7 @@ vi.mock('../lib/config.js', async (importOriginal) => {
 import { onHookEvent } from './index.js';
 import { sendTmuxSubmitSequence } from './tmux-submit.js';
 import { ensureMcpRegistered } from './registry.js';
+import { pruneStaleMockMcpServer } from '../shared/codex-settings.js';
 
 const tempDirs: string[] = [];
 
@@ -138,6 +143,33 @@ describe('onHookEvent', () => {
     expect(content).toContain('### 개발 원칙');
     expect(content).toContain('### 우선순위');
     expect(sdk.log.info).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes stale mock-mcp from Codex config on session-start', async () => {
+    vi.mocked(pruneStaleMockMcpServer).mockReturnValue(true);
+    const projectDir = createTempProjectDir();
+    setupProject(projectDir);
+
+    const sdk = {
+      log: {
+        info: vi.fn(),
+      },
+    };
+
+    await onHookEvent(
+      {
+        event: 'session-start',
+        context: {
+          projectDir,
+        },
+      },
+      sdk
+    );
+
+    expect(pruneStaleMockMcpServer).toHaveBeenCalledTimes(1);
+    expect(sdk.log.info).toHaveBeenCalledWith(
+      'Removed stale mock-mcp from ~/.codex/config.toml because its target file is missing.'
+    );
   });
 
   it('calls ensureMcpRegistered and logs warning if it returns true on session-start', async () => {

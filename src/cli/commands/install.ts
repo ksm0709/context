@@ -8,6 +8,7 @@ import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
 import { STATIC_KNOWLEDGE_CONTEXT } from '../../shared/knowledge-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
+import { pruneStaleMockMcpServer } from '../../shared/codex-settings.js';
 import {
   normalizeContextMcpServer,
   removeMcpServer,
@@ -47,6 +48,12 @@ export function installOmx(projectDir: string, sourcePath: string): void {
 
   if (ensureMcpRegistered()) {
     process.stdout.write('Successfully registered context-mcp in ~/.omx/mcp-registry.json\n');
+  }
+
+  if (pruneStaleMockMcpServer()) {
+    process.stdout.write(
+      'Removed stale mock-mcp from ~/.codex/config.toml because its target file is missing\n'
+    );
   }
 }
 

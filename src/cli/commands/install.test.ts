@@ -22,6 +22,10 @@ vi.mock('../../shared/mcp-path.js', () => ({
   resolveMcpPath: vi.fn(() => '/mock/dist/mcp.js'),
 }));
 
+vi.mock('../../shared/codex-settings.js', () => ({
+  pruneStaleMockMcpServer: vi.fn().mockReturnValue(false),
+}));
+
 vi.mock('../../omx/registry.js', () => ({
   ensureMcpRegistered: vi.fn().mockReturnValue(false),
 }));
@@ -35,6 +39,7 @@ import {
   removeMcpServer,
   registerHook,
 } from '../../shared/claude-settings.js';
+import { pruneStaleMockMcpServer } from '../../shared/codex-settings.js';
 import { execSync } from 'node:child_process';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
@@ -108,6 +113,17 @@ describe('installOmx', () => {
       'export default function hook() {}'
     );
     expect(stdout.join('')).toContain('Installed context plugin to .omx/hooks/context.mjs');
+  });
+
+  it('removes stale mock-mcp from Codex config when present', () => {
+    const projectDir = join(tmpDir, 'project');
+    mkdirSync(projectDir, { recursive: true });
+    vi.mocked(pruneStaleMockMcpServer).mockReturnValue(true);
+
+    installOmx(projectDir, sourceFile);
+
+    expect(pruneStaleMockMcpServer).toHaveBeenCalledTimes(1);
+    expect(stdout.join('')).toContain('Removed stale mock-mcp from ~/.codex/config.toml');
   });
 
   it('exits with error when source file not found', () => {

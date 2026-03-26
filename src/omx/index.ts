@@ -5,6 +5,7 @@ import { DEFAULTS } from '../constants.js';
 import { loadConfig } from '../lib/config.js';
 import { scaffoldIfNeeded } from '../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../shared/agents-md.js';
+import { pruneStaleMockMcpServer } from '../shared/codex-settings.js';
 import { STATIC_KNOWLEDGE_CONTEXT } from '../shared/knowledge-context.js';
 import { ensureMcpRegistered } from './registry.js';
 import { sendTmuxSubmitSequence } from './tmux-submit.js';
@@ -119,6 +120,12 @@ async function logWarn(
 
 async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
   const projectDir = resolveProjectDir(event);
+
+  if (pruneStaleMockMcpServer()) {
+    await sdk.log.info(
+      'Removed stale mock-mcp from ~/.codex/config.toml because its target file is missing.'
+    );
+  }
 
   scaffoldIfNeeded(projectDir);
 
