@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.34] - 2026-03-26
+
+### Fixes
+
+- remove the package's accidental self-dependency so `bun add @ksm0709/context` can install cleanly during `context update plugin`
+
 ## [0.0.33] - 2026-03-26
 
 ### Fixes
