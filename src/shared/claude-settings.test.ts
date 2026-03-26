@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'no
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
+  hasContextMcpServer,
+  normalizeContextMcpServer,
   setSettingsPath,
   readClaudeSettings,
   writeClaudeSettings,
@@ -101,6 +103,26 @@ describe('registerMcpServer', () => {
   });
 });
 
+describe('hasContextMcpServer', () => {
+  it('returns true for the canonical context-mcp entry', () => {
+    expect(
+      hasContextMcpServer({ mcpServers: { 'context-mcp': { command: 'bun', args: [] } } })
+    ).toBe(true);
+  });
+
+  it('returns true for the legacy context_mcp entry', () => {
+    expect(hasContextMcpServer({ mcpServers: { context_mcp: { command: 'bun', args: [] } } })).toBe(
+      true
+    );
+  });
+
+  it('returns false when neither context MCP entry exists', () => {
+    expect(hasContextMcpServer({ mcpServers: { other: { command: 'bun', args: [] } } })).toBe(
+      false
+    );
+  });
+});
+
 describe('removeMcpServer', () => {
   it('removes an existing MCP server', () => {
     setupTmpSettings();
@@ -113,6 +135,44 @@ describe('removeMcpServer', () => {
   it('does nothing if server does not exist', () => {
     setupTmpSettings();
     expect(() => removeMcpServer('nonexistent')).not.toThrow();
+  });
+});
+
+describe('normalizeContextMcpServer', () => {
+  it('moves legacy context_mcp to context-mcp', () => {
+    setupTmpSettings();
+    writeClaudeSettings({
+      mcpServers: {
+        context_mcp: { command: 'bun', args: ['legacy.js'], enabled: true },
+      },
+    });
+
+    expect(normalizeContextMcpServer()).toBe(true);
+    expect(readClaudeSettings().mcpServers).toEqual({
+      'context-mcp': { command: 'bun', args: ['legacy.js'], enabled: true },
+    });
+  });
+
+  it('keeps the canonical context-mcp entry when both names exist', () => {
+    setupTmpSettings();
+    writeClaudeSettings({
+      mcpServers: {
+        'context-mcp': { command: 'bun', args: ['canonical.js'], enabled: true },
+        context_mcp: { command: 'bun', args: ['legacy.js'], enabled: true },
+      },
+    });
+
+    expect(normalizeContextMcpServer()).toBe(true);
+    expect(readClaudeSettings().mcpServers).toEqual({
+      'context-mcp': { command: 'bun', args: ['canonical.js'], enabled: true },
+    });
+  });
+
+  it('returns false when no context MCP entry exists', () => {
+    setupTmpSettings();
+    writeClaudeSettings({ mcpServers: { other: { command: 'bun', args: [] } } });
+
+    expect(normalizeContextMcpServer()).toBe(false);
   });
 });
 
@@ -129,7 +189,10 @@ describe('registerHook', () => {
   it('deduplicates: same command replaces existing rule', () => {
     setupTmpSettings();
     const rule1: HookRule = { hooks: [{ type: 'command', command: 'echo hello' }] };
-    const rule2: HookRule = { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo hello' }] };
+    const rule2: HookRule = {
+      matcher: 'Bash',
+      hooks: [{ type: 'command', command: 'echo hello' }],
+    };
     registerHook('PostToolUse', rule1);
     registerHook('PostToolUse', rule2);
     const settings = readClaudeSettings();

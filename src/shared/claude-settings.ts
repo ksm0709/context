@@ -27,6 +27,9 @@ export interface ClaudeSettings {
   [key: string]: unknown;
 }
 
+const CONTEXT_MCP_SERVER_NAME = 'context-mcp';
+const LEGACY_CONTEXT_MCP_SERVER_NAME = 'context_mcp';
+
 // Allow overriding settings path for testing
 let settingsPath = join(homedir(), '.claude', 'settings.json');
 
@@ -44,6 +47,17 @@ export function readClaudeSettings(): ClaudeSettings {
   }
   const content = readFileSync(settingsPath, 'utf8');
   return parseJsonc(content) ?? {};
+}
+
+export function hasContextMcpServer(settings: ClaudeSettings): boolean {
+  if (!settings.mcpServers) {
+    return false;
+  }
+
+  return (
+    CONTEXT_MCP_SERVER_NAME in settings.mcpServers ||
+    LEGACY_CONTEXT_MCP_SERVER_NAME in settings.mcpServers
+  );
 }
 
 export function writeClaudeSettings(settings: ClaudeSettings): void {
@@ -94,6 +108,38 @@ export function removeMcpServer(name: string): void {
   }
 }
 
+export function normalizeContextMcpServer(): boolean {
+  const settings = readClaudeSettings();
+  if (!settings.mcpServers) {
+    return false;
+  }
+
+  const currentEntry = settings.mcpServers[CONTEXT_MCP_SERVER_NAME];
+  const legacyEntry = settings.mcpServers[LEGACY_CONTEXT_MCP_SERVER_NAME];
+  if (!currentEntry && !legacyEntry) {
+    return false;
+  }
+
+  const nextEntry = currentEntry ?? legacyEntry;
+  let changed = false;
+
+  if (legacyEntry) {
+    delete settings.mcpServers[LEGACY_CONTEXT_MCP_SERVER_NAME];
+    changed = true;
+  }
+
+  if (!currentEntry && nextEntry) {
+    settings.mcpServers[CONTEXT_MCP_SERVER_NAME] = nextEntry;
+    changed = true;
+  }
+
+  if (changed) {
+    writeClaudeSettings(settings);
+  }
+
+  return changed;
+}
+
 export function registerHook(event: string, rule: HookRule): void {
   const settings = readClaudeSettings();
   if (!settings.hooks) {
@@ -109,7 +155,7 @@ export function registerHook(event: string, rule: HookRule): void {
     // Find if any existing rule contains this command
     let replaced = false;
     for (let i = 0; i < rules.length; i++) {
-      const existingIdx = rules[i].hooks.findIndex(h => h.command === hookCmd.command);
+      const existingIdx = rules[i].hooks.findIndex((h) => h.command === hookCmd.command);
       if (existingIdx !== -1) {
         // Replace the entire rule that contains this command
         rules[i] = rule;

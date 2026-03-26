@@ -8,6 +8,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { printHelp, runCli } from './index.js';
+import { getSettingsPath, setSettingsPath } from '../shared/claude-settings.js';
 
 describe('printHelp', () => {
   it('prints usage and all subcommands', () => {
@@ -17,7 +18,8 @@ describe('printHelp', () => {
 
     expect(output).toContain('Usage: context <command>');
     expect(output).toContain('update [all] [path]');
-    expect(output).toContain('reinstall omc/omx');
+    expect(output).toContain('reinstall installed targets');
+    expect(output).toContain('update omx [path]');
     expect(output).toContain('update prompt [path]');
     expect(output).toContain('update plugin [version]');
     expect(output).toContain('install omc');
@@ -26,13 +28,17 @@ describe('printHelp', () => {
 
 describe('runCli', () => {
   let tmpDir: string;
+  let originalSettingsPath: string;
 
   beforeEach(() => {
     tmpDir = join(tmpdir(), `cli-test-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
+    originalSettingsPath = getSettingsPath();
+    setSettingsPath(join(tmpDir, '.claude', 'settings.json'));
   });
 
   afterEach(() => {
+    setSettingsPath(originalSettingsPath);
     rmSync(tmpDir, { recursive: true, force: true });
     vi.restoreAllMocks();
   });

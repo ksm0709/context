@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.33] - 2026-03-26
+
+### Fixes
+
+- normalize legacy `context_mcp` Claude entries to `context-mcp` during OMC install
+- add explicit `context update omx` routing so OMX-only updates avoid Claude reinstall side effects
+- recognize both `context-mcp` and `context_mcp` when detecting existing OMC registrations
+
+### Docs
+
+- update OMX setup guidance for the normalized MCP server name
+
 ## [0.0.12] - 2026-03-08
 
 ### Features

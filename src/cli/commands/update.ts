@@ -3,9 +3,9 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { updateScaffold } from '../../lib/scaffold.js';
 import { installOmc, installOmx, resolveOmxSource } from './install.js';
-import { readClaudeSettings } from '../../shared/claude-settings.js';
+import { hasContextMcpServer, readClaudeSettings } from '../../shared/claude-settings.js';
 
-const KNOWN_SUBCOMMANDS = ['all', 'prompt', 'plugin'];
+const KNOWN_SUBCOMMANDS = ['all', 'prompt', 'plugin', 'omx'];
 
 export function runUpdate(args: string[]): void {
   const [subcommand, ...rest] = args;
@@ -20,6 +20,9 @@ export function runUpdate(args: string[]): void {
       break;
     case 'plugin':
       runUpdatePlugin(rest[0] ?? 'latest');
+      break;
+    case 'omx':
+      runUpdateOmx(resolve(rest[0] ?? process.cwd()));
       break;
     default:
       // Backward compat: if subcommand is not a known subcommand, treat as projectDir
@@ -40,23 +43,37 @@ export function isOmxInstalled(projectDir: string): boolean {
 export function isOmcInstalled(): boolean {
   try {
     const settings = readClaudeSettings();
-    return settings.mcpServers != null && 'context-mcp' in settings.mcpServers;
+    return hasContextMcpServer(settings);
   } catch {
     return false;
   }
 }
 
-function runUpdateAll(projectDir: string): void {
-  const updated = updateScaffold(projectDir);
-
+function writeUpdatedFiles(updated: string[]): void {
   if (updated.length === 0) {
     process.stdout.write('All scaffold files are already up to date.\n');
-  } else {
-    process.stdout.write(`Updated ${updated.length} file(s):\n`);
-    for (const f of updated) {
-      process.stdout.write(`  - ${f}\n`);
-    }
+    return;
   }
+
+  process.stdout.write(`Updated ${updated.length} file(s):\n`);
+  for (const f of updated) {
+    process.stdout.write(`  - ${f}\n`);
+  }
+}
+
+function reinstallOmx(projectDir: string): void {
+  const source = resolveOmxSource();
+  if (source) {
+    process.stdout.write('\nRe-installing omx plugin...\n');
+    installOmx(projectDir, source);
+  } else {
+    process.stderr.write('\nWarning: could not resolve omx source; skipping omx reinstall.\n');
+  }
+}
+
+function runUpdateAll(projectDir: string): void {
+  const updated = updateScaffold(projectDir);
+  writeUpdatedFiles(updated);
 
   // Auto-reinstall omc/omx if already installed
   if (isOmcInstalled()) {
@@ -65,14 +82,20 @@ function runUpdateAll(projectDir: string): void {
   }
 
   if (isOmxInstalled(projectDir)) {
-    const source = resolveOmxSource();
-    if (source) {
-      process.stdout.write('\nRe-installing omx plugin...\n');
-      installOmx(projectDir, source);
-    } else {
-      process.stderr.write('\nWarning: could not resolve omx source; skipping omx reinstall.\n');
-    }
+    reinstallOmx(projectDir);
   }
+}
+
+function runUpdateOmx(projectDir: string): void {
+  const updated = updateScaffold(projectDir);
+  writeUpdatedFiles(updated);
+
+  if (isOmxInstalled(projectDir)) {
+    reinstallOmx(projectDir);
+    return;
+  }
+
+  process.stdout.write('\nOMX plugin is not installed for this project; skipping omx reinstall.\n');
 }
 
 export function detectPackageManager(): string {

@@ -9,6 +9,7 @@ import { injectIntoAgentsMd } from '../../shared/agents-md.js';
 import { STATIC_KNOWLEDGE_CONTEXT } from '../../shared/knowledge-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
 import {
+  normalizeContextMcpServer,
   removeMcpServer,
   registerHook,
 } from '../../shared/claude-settings.js';
@@ -78,16 +79,18 @@ export function installOmc(projectDir: string): void {
     } catch {
       /* entry may not exist yet */
     }
-    execSync(
-      `claude mcp add -s user context-mcp -- ${bunPath} ${mcpPath}`,
-      { encoding: 'utf-8', stdio: 'pipe' }
-    );
+    execSync(`claude mcp add -s user context-mcp -- ${bunPath} ${mcpPath}`, {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
   } catch (e) {
     process.stderr.write(
       `Warning: Failed to register MCP via Claude CLI: ${e instanceof Error ? e.message : String(e)}\n` +
-      `You can manually run: claude mcp add -s user context-mcp -- ${bunPath} ${mcpPath}\n`
+        `You can manually run: claude mcp add -s user context-mcp -- ${bunPath} ${mcpPath}\n`
     );
   }
+
+  normalizeContextMcpServer();
 
   // 6. Register SessionStart hook
   registerHook('SessionStart', {

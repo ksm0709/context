@@ -583,7 +583,9 @@ export function startMcpServer() {
   // Codex CLI's Rust parser uses #[serde(deny_unknown_fields)] and rejects
   // the "listChanged" field that McpServer auto-injects into capabilities.
   // Override it to an empty object so Codex can parse the init response.
-  const rawServer = (server as unknown as { server: { _capabilities: { tools?: Record<string, unknown> } } }).server;
+  const rawServer = (
+    server as unknown as { server: { _capabilities: { tools?: Record<string, unknown> } } }
+  ).server;
   if (rawServer._capabilities?.tools) {
     rawServer._capabilities.tools = {};
   }

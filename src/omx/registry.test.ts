@@ -126,7 +126,7 @@ describe('registry', () => {
       writeFileSync(
         targetPath,
         JSON.stringify({
-          'context_mcp': {
+          context_mcp: {
             command: 'bun',
             args: [resolveMcpPath()],
           },

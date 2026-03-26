@@ -33,7 +33,10 @@ export function ensureMcpRegistered(sdkLog?: typeof console.log): boolean {
     }
   }
 
-  let registry: Record<string, { command?: string; args?: string[]; enabled?: boolean } | undefined> = {};
+  let registry: Record<
+    string,
+    { command?: string; args?: string[]; enabled?: boolean } | undefined
+  > = {};
 
   if (existsSync(targetPath)) {
     try {

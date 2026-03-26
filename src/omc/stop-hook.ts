@@ -18,4 +18,6 @@ try {
   if (ageMs > 24 * 60 * 60 * 1000) {
     unlinkSync(workCompleteFile);
   }
-} catch { /* silently ignore */ }
+} catch {
+  /* silently ignore */
+}

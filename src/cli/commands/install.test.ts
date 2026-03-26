@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { installOmx, installOmc } from './install.js';
 
 vi.mock('../../shared/claude-settings.js', () => ({
+  normalizeContextMcpServer: vi.fn(),
   removeMcpServer: vi.fn(),
   registerHook: vi.fn(),
 }));
@@ -30,6 +31,7 @@ vi.mock('node:child_process', () => ({
 }));
 
 import {
+  normalizeContextMcpServer,
   removeMcpServer,
   registerHook,
 } from '../../shared/claude-settings.js';
@@ -125,7 +127,10 @@ describe('installOmc', () => {
   let stdout: string[];
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `install-omc-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tmpDir = join(
+      tmpdir(),
+      `install-omc-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     mkdirSync(tmpDir, { recursive: true });
 
     stdout = [];
@@ -136,6 +141,7 @@ describe('installOmc', () => {
 
     (scaffoldIfNeeded as ReturnType<typeof vi.fn>).mockClear();
     (injectIntoAgentsMd as ReturnType<typeof vi.fn>).mockClear();
+    (normalizeContextMcpServer as ReturnType<typeof vi.fn>).mockClear();
     (removeMcpServer as ReturnType<typeof vi.fn>).mockClear();
     (registerHook as ReturnType<typeof vi.fn>).mockClear();
   });
@@ -149,19 +155,19 @@ describe('installOmc', () => {
     installOmc(tmpDir);
 
     expect(scaffoldIfNeeded).toHaveBeenCalledWith(tmpDir);
-    expect(injectIntoAgentsMd).toHaveBeenCalledWith(
-      join(tmpDir, 'AGENTS.md'),
-      expect.any(String)
-    );
+    expect(injectIntoAgentsMd).toHaveBeenCalledWith(join(tmpDir, 'AGENTS.md'), expect.any(String));
   });
 
   it('removes old MCP entries and registers via claude mcp add', () => {
     installOmc(tmpDir);
 
+    expect(normalizeContextMcpServer).toHaveBeenCalled();
     expect(removeMcpServer).toHaveBeenCalledWith('context_mcp');
     expect(removeMcpServer).toHaveBeenCalledWith('context-mcp');
 
-    const calls = (execSync as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => String(c[0]));
+    const calls = (execSync as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) =>
+      String(c[0])
+    );
     expect(calls).toContain('claude mcp remove -s user context-mcp');
     expect(calls.find((c) => c.includes('claude mcp add -s user context-mcp'))).toBeTruthy();
   });

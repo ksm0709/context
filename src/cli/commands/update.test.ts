@@ -5,15 +5,32 @@ import {
   isGloballyInstalled,
   isOmxInstalled,
   isOmcInstalled,
+  runUpdate,
   runUpdatePlugin,
 } from './update.js';
+
+vi.mock('../../lib/scaffold.js', () => ({
+  updateScaffold: vi.fn().mockReturnValue([]),
+}));
+
+vi.mock('./install.js', () => ({
+  installOmc: vi.fn(),
+  installOmx: vi.fn(),
+  resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
+}));
 import { readClaudeSettings } from '../../shared/claude-settings.js';
+import { updateScaffold } from '../../lib/scaffold.js';
+import { installOmc, installOmx } from './install.js';
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
 }));
 
 vi.mock('../../shared/claude-settings.js', () => ({
+  hasContextMcpServer: vi.fn((settings) => {
+    const mcpServers = settings?.mcpServers ?? {};
+    return 'context-mcp' in mcpServers || 'context_mcp' in mcpServers;
+  }),
   readClaudeSettings: vi.fn().mockReturnValue({}),
 }));
 
@@ -91,6 +108,13 @@ describe('isOmcInstalled', () => {
     expect(isOmcInstalled()).toBe(false);
   });
 
+  it('returns true when settings has legacy context_mcp server', () => {
+    vi.mocked(readClaudeSettings).mockReturnValue({
+      mcpServers: { context_mcp: { command: 'bun', args: ['mcp.js'] } },
+    });
+    expect(isOmcInstalled()).toBe(true);
+  });
+
   it('returns false when settings has other MCP servers but not context-mcp', () => {
     vi.mocked(readClaudeSettings).mockReturnValue({
       mcpServers: { 'other-mcp': { command: 'node', args: ['other.js'] } },
@@ -103,6 +127,33 @@ describe('isOmcInstalled', () => {
       throw new Error('file not found');
     });
     expect(isOmcInstalled()).toBe(false);
+  });
+});
+
+describe('runUpdate', () => {
+  beforeEach(() => {
+    vi.mocked(updateScaffold).mockReturnValue([]);
+    vi.mocked(installOmc).mockClear();
+    vi.mocked(installOmx).mockClear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('treats omx as an explicit subcommand and skips omc reinstall', () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (path) => String(path) === '/my/project/.omx/hooks/context.mjs'
+    );
+    vi.mocked(readClaudeSettings).mockReturnValue({
+      mcpServers: { context_mcp: { command: 'bun', args: ['mcp.js'] } },
+    });
+
+    runUpdate(['omx', '/my/project']);
+
+    expect(updateScaffold).toHaveBeenCalledWith('/my/project');
+    expect(installOmx).toHaveBeenCalledWith('/my/project', '/mock/dist/omx/index.mjs');
+    expect(installOmc).not.toHaveBeenCalled();
   });
 });
 
