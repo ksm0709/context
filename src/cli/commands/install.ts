@@ -2,7 +2,16 @@ import { join, resolve, dirname } from 'node:path';
 import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { execSync } from 'node:child_process';
 import { ensureMcpRegistered } from '../../omx/registry.js';
+import { scaffoldIfNeeded } from '../../lib/scaffold.js';
+import { injectIntoAgentsMd } from '../../shared/agents-md.js';
+import { STATIC_KNOWLEDGE_CONTEXT } from '../../shared/knowledge-context.js';
+import { resolveMcpPath } from '../../shared/mcp-path.js';
+import {
+  removeMcpServer,
+  registerHook,
+} from '../../shared/claude-settings.js';
 
 export function resolveOmxSource(): string | null {
   try {
@@ -40,6 +49,74 @@ export function installOmx(projectDir: string, sourcePath: string): void {
   }
 }
 
+export function installOmc(projectDir: string): void {
+  // 1. Scaffold project context directory
+  scaffoldIfNeeded(projectDir);
+
+  // 2. Inject knowledge context into AGENTS.md
+  injectIntoAgentsMd(join(projectDir, 'AGENTS.md'), STATIC_KNOWLEDGE_CONTEXT);
+
+  // 3. Resolve bun path
+  let bunPath = 'bun';
+  try {
+    bunPath = execSync('which bun', { encoding: 'utf-8' }).trim();
+  } catch {
+    /* fallback to 'bun' */
+  }
+
+  // 4. Resolve MCP and hook paths
+  const mcpPath = resolveMcpPath();
+  const hookBasePath = join(dirname(mcpPath), 'omc') + '/';
+
+  // 5. Clean up legacy entries from settings.json and register via Claude CLI
+  removeMcpServer('context_mcp');
+  removeMcpServer('context-mcp');
+  try {
+    // Remove existing entry first (ignore errors if not found)
+    try {
+      execSync('claude mcp remove -s user context-mcp', { encoding: 'utf-8', stdio: 'pipe' });
+    } catch {
+      /* entry may not exist yet */
+    }
+    execSync(
+      `claude mcp add -s user context-mcp -- ${bunPath} ${mcpPath}`,
+      { encoding: 'utf-8', stdio: 'pipe' }
+    );
+  } catch (e) {
+    process.stderr.write(
+      `Warning: Failed to register MCP via Claude CLI: ${e instanceof Error ? e.message : String(e)}\n` +
+      `You can manually run: claude mcp add -s user context-mcp -- ${bunPath} ${mcpPath}\n`
+    );
+  }
+
+  // 6. Register SessionStart hook
+  registerHook('SessionStart', {
+    matcher: 'startup',
+    hooks: [
+      {
+        type: 'command',
+        command: `${bunPath} ${hookBasePath}session-start-hook.js`,
+        timeout: 15,
+        statusMessage: 'Initializing context plugin...',
+      },
+    ],
+  });
+
+  // 7. Register Stop hook
+  registerHook('Stop', {
+    hooks: [
+      {
+        type: 'command',
+        command: `${bunPath} ${hookBasePath}stop-hook.js`,
+        timeout: 10,
+        statusMessage: 'Checking turn completion...',
+      },
+    ],
+  });
+
+  process.stdout.write('Successfully installed context (omc) plugin.\n');
+}
+
 export function runInstall(args: string[]): void {
   const [subcommand] = args;
 
@@ -54,8 +131,12 @@ export function runInstall(args: string[]): void {
       installOmx(process.cwd(), source);
       break;
     }
+    case 'omc':
+    case 'claude':
+      installOmc(process.cwd());
+      break;
     case undefined:
-      process.stderr.write('Missing install target. Usage: context install omx\n');
+      process.stderr.write('Missing install target. Usage: context install <omx|omc>\n');
       process.exit(1);
       break;
     default:

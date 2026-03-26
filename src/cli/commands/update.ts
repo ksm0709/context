@@ -2,6 +2,8 @@ import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { updateScaffold } from '../../lib/scaffold.js';
+import { installOmc, installOmx, resolveOmxSource } from './install.js';
+import { readClaudeSettings } from '../../shared/claude-settings.js';
 
 const KNOWN_SUBCOMMANDS = ['all', 'prompt', 'plugin'];
 
@@ -31,6 +33,19 @@ export function runUpdate(args: string[]): void {
   }
 }
 
+export function isOmxInstalled(projectDir: string): boolean {
+  return existsSync(join(projectDir, '.omx', 'hooks', 'context.mjs'));
+}
+
+export function isOmcInstalled(): boolean {
+  try {
+    const settings = readClaudeSettings();
+    return settings.mcpServers != null && 'context-mcp' in settings.mcpServers;
+  } catch {
+    return false;
+  }
+}
+
 function runUpdateAll(projectDir: string): void {
   const updated = updateScaffold(projectDir);
 
@@ -40,6 +55,22 @@ function runUpdateAll(projectDir: string): void {
     process.stdout.write(`Updated ${updated.length} file(s):\n`);
     for (const f of updated) {
       process.stdout.write(`  - ${f}\n`);
+    }
+  }
+
+  // Auto-reinstall omc/omx if already installed
+  if (isOmcInstalled()) {
+    process.stdout.write('\nRe-installing omc hooks and settings...\n');
+    installOmc(projectDir);
+  }
+
+  if (isOmxInstalled(projectDir)) {
+    const source = resolveOmxSource();
+    if (source) {
+      process.stdout.write('\nRe-installing omx plugin...\n');
+      installOmx(projectDir, source);
+    } else {
+      process.stderr.write('\nWarning: could not resolve omx source; skipping omx reinstall.\n');
     }
   }
 }

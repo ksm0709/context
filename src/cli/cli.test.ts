@@ -17,8 +17,10 @@ describe('printHelp', () => {
 
     expect(output).toContain('Usage: context <command>');
     expect(output).toContain('update [all] [path]');
+    expect(output).toContain('reinstall omc/omx');
     expect(output).toContain('update prompt [path]');
     expect(output).toContain('update plugin [version]');
+    expect(output).toContain('install omc');
   });
 });
 

@@ -11,6 +11,11 @@ export interface ContextConfig {
       strategy?: OmxTurnEndStrategy;
     };
   };
+  omc?: {
+    turnEnd?: {
+      strategy: 'off' | 'stop-hook';
+    };
+  };
 }
 
 export type KnowledgeMode = 'auto' | 'domain' | 'flat';

@@ -1,23 +1,18 @@
-import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { join, dirname } from 'node:path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
+import { resolveMcpPath } from '../shared/mcp-path.js';
 
-export function resolveMcpPath(): string {
-  const currentFile = fileURLToPath(import.meta.url);
-  const currentDir = dirname(currentFile);
+export { resolveMcpPath };
 
-  const distMcpPath = resolve(currentDir, '..', 'mcp.js');
-  if (existsSync(distMcpPath)) {
-    return distMcpPath;
+/** Resolve absolute path to bun binary */
+function resolveBunPath(): string {
+  try {
+    return execSync('which bun', { encoding: 'utf-8', stdio: 'pipe' }).trim();
+  } catch {
+    return 'bun';
   }
-
-  const srcMcpPath = resolve(currentDir, '..', 'mcp.ts');
-  if (existsSync(srcMcpPath)) {
-    return srcMcpPath;
-  }
-
-  return distMcpPath;
 }
 
 export function getRegistryPaths(): string[] {
@@ -38,7 +33,7 @@ export function ensureMcpRegistered(sdkLog?: typeof console.log): boolean {
     }
   }
 
-  let registry: Record<string, { command?: string; args?: string[] } | undefined> = {};
+  let registry: Record<string, { command?: string; args?: string[]; enabled?: boolean } | undefined> = {};
 
   if (existsSync(targetPath)) {
     try {
@@ -55,16 +50,20 @@ export function ensureMcpRegistered(sdkLog?: typeof console.log): boolean {
   }
 
   const mcpPath = resolveMcpPath();
+  const bunPath = resolveBunPath();
   const expectedConfig = {
-    command: 'bun',
+    command: bunPath,
     args: [mcpPath],
+    enabled: true,
   };
 
-  const currentConfig = registry['context_mcp'];
+  // Use consistent name: context-mcp (hyphen)
+  const currentConfig = registry['context-mcp'];
   let changed = false;
 
-  if ('context-mcp' in registry) {
-    delete registry['context-mcp'];
+  // Clean up legacy underscore name
+  if ('context_mcp' in registry) {
+    delete registry['context_mcp'];
     changed = true;
   }
 
@@ -72,9 +71,10 @@ export function ensureMcpRegistered(sdkLog?: typeof console.log): boolean {
     !currentConfig ||
     currentConfig.command !== expectedConfig.command ||
     !Array.isArray(currentConfig.args) ||
-    currentConfig.args[0] !== expectedConfig.args[0]
+    currentConfig.args[0] !== expectedConfig.args[0] ||
+    currentConfig.enabled !== true
   ) {
-    registry['context_mcp'] = expectedConfig;
+    registry['context-mcp'] = expectedConfig;
     changed = true;
   }
 
@@ -83,7 +83,7 @@ export function ensureMcpRegistered(sdkLog?: typeof console.log): boolean {
       mkdirSync(dirname(targetPath), { recursive: true });
       writeFileSync(targetPath, JSON.stringify(registry, null, 2), 'utf-8');
       if (sdkLog) {
-        sdkLog(`[INFO] Registered context_mcp in ${targetPath}`);
+        sdkLog(`[INFO] Registered context-mcp in ${targetPath}`);
       }
       return true;
     } catch (e) {

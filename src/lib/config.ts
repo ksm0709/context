@@ -19,6 +19,11 @@ function getDefaultConfig(): ContextConfig {
         strategy: 'turn-complete-sendkeys',
       },
     },
+    omc: {
+      turnEnd: {
+        strategy: 'stop-hook',
+      },
+    },
   };
 }
 
@@ -35,6 +40,11 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
     omx: {
       turnEnd: {
         strategy: partial.omx?.turnEnd?.strategy ?? defaults.omx?.turnEnd?.strategy,
+      },
+    },
+    omc: {
+      turnEnd: {
+        strategy: partial.omc?.turnEnd?.strategy ?? defaults.omc?.turnEnd?.strategy ?? 'stop-hook',
       },
     },
   };

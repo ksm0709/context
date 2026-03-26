@@ -1,6 +1,6 @@
 {
   "name": "@ksm0709/context",
-  "version": "0.0.29",
+  "version": "0.0.32",
   "author": {
     "name": "TaehoKang",
     "email": "ksm07091@gmail.com"
@@ -30,10 +30,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs",
+    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs && bun build ./src/omc/session-start-hook.ts --outdir dist/omc --target bun && bun build ./src/omc/stop-hook.ts --outdir dist/omc --target bun",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs"
+    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs && bun build ./src/omc/session-start-hook.ts --outdir dist/omc --target bun && bun build ./src/omc/stop-hook.ts --outdir dist/omc --target bun"
   },
   "files": [
     "dist"
@@ -42,7 +42,7 @@
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "dependencies": {
-    "@ksm0709/context": "^0.0.28",
+    "@ksm0709/context": "^0.0.32",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "jsonc-parser": "^3.0.0"
   },

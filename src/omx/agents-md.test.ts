@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { injectIntoAgentsMd } from './agents-md.ts';
+import { injectIntoAgentsMd } from '../shared/agents-md.js';
 
 const START_MARKER = '<!-- context:start -->';
 const END_MARKER = '<!-- context:end -->';

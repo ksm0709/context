@@ -11,11 +11,12 @@ export function printHelp(out?: (s: string) => void): void {
   write(`Context Plugin CLI v${PLUGIN_VERSION}\n\n`);
   write('Usage: context <command> [options]\n\n');
   write('Commands:\n');
-  write('  update [all] [path]        Force-update all scaffold files\n');
+  write('  update [all] [path]        Force-update scaffold + reinstall omc/omx\n');
   write('  update prompt [path]       Force-update prompt files only\n');
   write('  update plugin [version]    Update @ksm0709/context package\n');
   write('  migrate [path] [--keep]    Migrate .opencode/context/ → .context/\n');
   write('  install omx                Install OMX hook plugin to .omx/hooks/\n');
+  write('  install omc                Install OMC hooks/MCP to Claude settings\n');
   write('\n');
 }
 

@@ -1,9 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
-import { detectPackageManager, isGloballyInstalled, runUpdatePlugin } from './update.js';
+import {
+  detectPackageManager,
+  isGloballyInstalled,
+  isOmxInstalled,
+  isOmcInstalled,
+  runUpdatePlugin,
+} from './update.js';
+import { readClaudeSettings } from '../../shared/claude-settings.js';
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
+}));
+
+vi.mock('../../shared/claude-settings.js', () => ({
+  readClaudeSettings: vi.fn().mockReturnValue({}),
 }));
 
 describe('detectPackageManager', () => {
@@ -50,6 +61,48 @@ describe('isGloballyInstalled', () => {
   it('returns false when ~/.bun/bin/context does not exist', () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
     expect(isGloballyInstalled()).toBe(false);
+  });
+});
+
+describe('isOmxInstalled', () => {
+  it('returns true when projectDir/.omx/hooks/context.mjs exists', () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (path) => String(path) === '/my/project/.omx/hooks/context.mjs'
+    );
+    expect(isOmxInstalled('/my/project')).toBe(true);
+  });
+
+  it('returns false when projectDir/.omx/hooks/context.mjs does not exist', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+    expect(isOmxInstalled('/my/project')).toBe(false);
+  });
+});
+
+describe('isOmcInstalled', () => {
+  it('returns true when settings has context-mcp server', () => {
+    vi.mocked(readClaudeSettings).mockReturnValue({
+      mcpServers: { 'context-mcp': { command: 'bun', args: ['mcp.js'] } },
+    });
+    expect(isOmcInstalled()).toBe(true);
+  });
+
+  it('returns false when settings has no mcpServers', () => {
+    vi.mocked(readClaudeSettings).mockReturnValue({});
+    expect(isOmcInstalled()).toBe(false);
+  });
+
+  it('returns false when settings has other MCP servers but not context-mcp', () => {
+    vi.mocked(readClaudeSettings).mockReturnValue({
+      mcpServers: { 'other-mcp': { command: 'node', args: ['other.js'] } },
+    });
+    expect(isOmcInstalled()).toBe(false);
+  });
+
+  it('returns false when readClaudeSettings throws', () => {
+    vi.mocked(readClaudeSettings).mockImplementation(() => {
+      throw new Error('file not found');
+    });
+    expect(isOmcInstalled()).toBe(false);
   });
 });
 

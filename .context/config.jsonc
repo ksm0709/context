@@ -1,10 +1,6 @@
 {
   // Context Plugin Configuration
   // See: https://github.com/ksm0709/context
-  "prompts": {
-    "turnStart": "prompts/turn-start.md",
-    "turnEnd": "prompts/turn-end.md"
-  },
   "knowledge": {
     "dir": ".context/memory",
     "sources": ["AGENTS.md"]

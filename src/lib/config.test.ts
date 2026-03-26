@@ -20,7 +20,7 @@ describe('loadConfig', () => {
     const config = loadConfig(tmpDir);
 
     expect(config).toBeDefined();
-    expect(Object.keys(config)).toEqual(['knowledge', 'omx']);
+    expect(Object.keys(config)).toEqual(['knowledge', 'omx', 'omc']);
     expect(config.knowledge).toBeDefined();
     expect(config.knowledge.sources).toEqual(['AGENTS.md']);
     expect(config.knowledge.dir).toBe('docs');

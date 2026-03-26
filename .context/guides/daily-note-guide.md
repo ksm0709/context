@@ -1,6 +1,6 @@
 # 데일리 노트 기록 가이드
 
-- [ ] `context-mcp_append_daily_note` 도구를 사용하여 기록을 추가하세요.
+- [ ] `context_mcp_append_daily_note` 도구를 사용하여 기록을 추가하세요.
 - [ ] **주의**: 데일리 노트의 기존 내용은 절대 수정하거나 삭제하지 마세요.
 - [ ] 기록은 다음과 같은 형식으로 추가됩니다:
   `[{{currentTimestamp}}] <기억 할 내용>`

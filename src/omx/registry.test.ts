@@ -12,6 +12,10 @@ vi.mock('node:os', async (importOriginal) => {
   };
 });
 
+vi.mock('node:child_process', () => ({
+  execSync: vi.fn(() => '/usr/local/bin/bun'),
+}));
+
 describe('registry', () => {
   let tmpDir: string;
   let mockHomedir: string;
@@ -57,7 +61,8 @@ describe('registry', () => {
 
       const content = JSON.parse(readFileSync(targetPath, 'utf-8'));
       expect(content['context-mcp']).toBeDefined();
-      expect(content['context-mcp'].command).toBe('bun');
+      expect(content['context-mcp'].command).toBe('/usr/local/bin/bun');
+      expect(content['context-mcp'].enabled).toBe(true);
       expect(Array.isArray(content['context-mcp'].args)).toBe(true);
       expect(content['context-mcp'].args[0]).toBe(resolveMcpPath());
     });
@@ -92,7 +97,7 @@ describe('registry', () => {
 
       expect(result).toBe(true);
       const content = JSON.parse(readFileSync(targetPath, 'utf-8'));
-      expect(content['context-mcp'].command).toBe('bun');
+      expect(content['context-mcp'].command).toBe('/usr/local/bin/bun');
       expect(content['context-mcp'].args[0]).toBe(resolveMcpPath());
     });
 
@@ -103,6 +108,25 @@ describe('registry', () => {
         targetPath,
         JSON.stringify({
           'context-mcp': {
+            command: '/usr/local/bin/bun',
+            args: [resolveMcpPath()],
+            enabled: true,
+          },
+        })
+      );
+
+      const result = ensureMcpRegistered();
+
+      expect(result).toBe(false);
+    });
+
+    it('cleans up legacy context_mcp entry', () => {
+      const targetPath = join(mockHomedir, '.omx', 'mcp-registry.json');
+      mkdirSync(dirname(targetPath), { recursive: true });
+      writeFileSync(
+        targetPath,
+        JSON.stringify({
+          'context_mcp': {
             command: 'bun',
             args: [resolveMcpPath()],
           },
@@ -111,7 +135,10 @@ describe('registry', () => {
 
       const result = ensureMcpRegistered();
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
+      const content = JSON.parse(readFileSync(targetPath, 'utf-8'));
+      expect(content['context_mcp']).toBeUndefined();
+      expect(content['context-mcp']).toBeDefined();
     });
 
     it('handles invalid JSON gracefully', () => {

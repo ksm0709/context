@@ -22,7 +22,7 @@ export function startMcpServer() {
       description: 'Search .md files in docs/ and .context/ directories for a keyword or regex',
       inputSchema: {
         query: z.string().describe('The keyword or regex to search for'),
-        limit: z.number().optional().default(50).describe('Maximum number of results to return'),
+        limit: z.number().optional().describe('Maximum number of results to return (default: 50)'),
       },
     },
     async ({ query, limit = 50 }) => {
@@ -224,16 +224,18 @@ export function startMcpServer() {
     {
       description: 'Read a daily note from N days ago',
       inputSchema: {
-        days_before: z.number().optional().default(0).describe('Number of days ago (0 for today)'),
+        days_before: z.number().optional().describe('Number of days ago (0 for today, default: 0)'),
         offset: z
           .number()
           .optional()
-          .default(0)
-          .describe('Line number to start reading from (0-indexed)'),
-        lines: z.number().optional().default(100).describe('Number of lines to read'),
+          .describe('Line number to start reading from (0-indexed, default: 0)'),
+        lines: z.number().optional().describe('Number of lines to read (default: 100)'),
       },
     },
-    async ({ days_before, offset, lines }) => {
+    async ({ days_before: _days_before, offset: _offset, lines: _lines }) => {
+      const days_before = _days_before ?? 0;
+      const offset = _offset ?? 0;
+      const lines = _lines ?? 100;
       try {
         const date = new Date();
         date.setDate(date.getDate() - days_before);
@@ -449,33 +451,28 @@ export function startMcpServer() {
       inputSchema: {
         daily_note_update_proof: z
           .string()
-          .min(5)
           .optional()
           .describe(
             "Provide the file path of the updated daily note, or explicitly write 'skipped' if no update was needed."
           ),
         knowledge_note_proof: z
           .string()
-          .min(5)
           .optional()
           .describe(
             "Provide the file path of the created knowledge note, or explicitly write 'skipped' if no note was created."
           ),
         quality_check_output: z
           .string()
-          .min(20)
           .describe(
             'Provide the last 5 lines of the `mise run lint && mise run test` execution output to prove quality checks passed.'
           ),
         checkpoint_commit_hashes: z
           .string()
-          .min(7)
           .describe(
             'Provide the output of `git log -1 --oneline` or an explanation if the task was too small for checkpoints.'
           ),
         scope_review_notes: z
           .string()
-          .min(10)
           .describe(
             'Provide a brief sentence confirming the scope check and that the work did not exceed the intended boundaries.'
           ),
@@ -582,6 +579,14 @@ export function startMcpServer() {
     });
   }
   // ===================================
+
+  // Codex CLI's Rust parser uses #[serde(deny_unknown_fields)] and rejects
+  // the "listChanged" field that McpServer auto-injects into capabilities.
+  // Override it to an empty object so Codex can parse the init response.
+  const rawServer = (server as unknown as { server: { _capabilities: { tools?: Record<string, unknown> } } }).server;
+  if (rawServer._capabilities?.tools) {
+    rawServer._capabilities.tools = {};
+  }
 
   const transport = new StdioServerTransport();
   server.connect(transport);
