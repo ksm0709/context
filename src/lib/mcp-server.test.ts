@@ -5,15 +5,18 @@ import * as fs from 'fs/promises';
 const mockRegisterTool = vi.fn();
 
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
+  class MockMcpServer {
+    server = {
+      _requestHandlers: new Map(),
+      setRequestHandler: vi.fn(),
+    };
+
+    registerTool = mockRegisterTool;
+    connect = vi.fn();
+  }
+
   return {
-    McpServer: vi.fn().mockImplementation(() => ({
-      server: {
-        _requestHandlers: new Map(),
-        setRequestHandler: vi.fn(),
-      },
-      registerTool: mockRegisterTool,
-      connect: vi.fn(),
-    })),
+    McpServer: MockMcpServer,
   };
 });
 
