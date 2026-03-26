@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Features
+
+- switch `context-mcp` knowledge search to metadata-first ranked discovery for long natural-language queries
+- append linked-note metadata to `read_knowledge` so agents can continue traversing related notes
+
+### Tests
+
+- add focused search/read workflow coverage for metadata extraction, ranking, and related-note tails
+
+### Docs
+
+- document the metadata-first `search_knowledge` → `read_knowledge` workflow for agents
+
 ## [0.0.34] - 2026-03-26
 
 ### Fixes
