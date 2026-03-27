@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.36] - 2026-03-27
+
+### Features
+
+- make `create_knowledge_note` template mode treat `.context/templates/*.md` as the note spec and validate completed markdown instead of appending a summary below the template
+
+### Fixes
+
+- reject `tags` and `linked_notes` in template mode to avoid duplicating metadata outside the template document
+- remove the accidental self-dependency before the next npm publish
+
+### Tests
+
+- add template-mode success, placeholder rejection, missing-heading rejection, and non-template regression coverage for `create_knowledge_note`
+
+### Docs
+
+- clarify in scaffold guidance that template mode requires fully completed markdown content
+
 ## [0.0.35] - 2026-03-27
 
 ### Features

@@ -51,6 +51,14 @@ vi.mock('fs/promises', () => ({
   writeFile: vi.fn(),
 }));
 
+function getRegisteredToolCall(name: string): RegisteredToolCall {
+  const call = mockRegisterTool.mock.calls.find(
+    (candidate): candidate is RegisteredToolCall => candidate[0] === name
+  );
+  expect(call).toBeDefined();
+  return call as RegisteredToolCall;
+}
+
 describe('mcp-server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,10 +69,7 @@ describe('mcp-server', () => {
     let handler: ToolHandler;
 
     beforeEach(() => {
-      const call = mockRegisterTool.mock.calls.find(
-        (candidate): candidate is RegisteredToolCall => candidate[0] === 'search_knowledge'
-      );
-      expect(call).toBeDefined();
+      const call = getRegisteredToolCall('search_knowledge');
       handler = call[2];
     });
 
@@ -131,10 +136,7 @@ This note mentions knowledge search once in the body, but it has no metadata sup
     let handler: ToolHandler;
 
     beforeEach(() => {
-      const call = mockRegisterTool.mock.calls.find(
-        (candidate): candidate is RegisteredToolCall => candidate[0] === 'read_knowledge'
-      );
-      expect(call).toBeDefined();
+      const call = getRegisteredToolCall('read_knowledge');
       handler = call[2];
     });
 
@@ -194,15 +196,280 @@ Additional context lives here.
     });
   });
 
+  describe('create_knowledge_note tool', () => {
+    let toolDef: { inputSchema: Record<string, unknown> };
+    let handler: ToolHandler;
+
+    beforeEach(() => {
+      const call = getRegisteredToolCall('create_knowledge_note');
+      toolDef = call[1];
+      handler = call[2];
+    });
+
+    it('includes template-mode schema fields', () => {
+      expect(toolDef.inputSchema).toHaveProperty('content');
+      expect(toolDef.inputSchema).toHaveProperty('template');
+      expect(toolDef.inputSchema).toHaveProperty('linked_notes');
+      expect(toolDef.inputSchema).toHaveProperty('tags');
+    });
+
+    it('creates a templated note when content fully matches the template structure', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (filePath: unknown) => {
+        const file = String(filePath);
+        if (file.endsWith('.context/templates/bug.md')) {
+          return `# Bug: [간단한 설명]
+
+## 증상
+
+- 에러 메시지: \`...\`
+- 관찰된 동작: ...
+
+## 원인
+
+실제 원인 분석
+
+## 해결
+
+// 수정 코드
+
+## 예방
+
+향후 같은 문제를 방지하는 방법
+
+## 관련 노트
+
+- [[유사-버그.md]] / [[예방-패턴.md]]
+` as never;
+        }
+
+        throw new Error(`Unexpected file read: ${file}`);
+      });
+
+      const completedMarkdown = `# Bug: stale mock-mcp entry in codex config
+
+## 증상
+
+- \`mock-mcp\`가 시작 실패한다.
+- \`/mcp\`에서 도구가 비어 있다.
+
+## 원인
+
+삭제된 절대경로를 가리키는 stale entry가 남아 있었다.
+
+## 해결
+
+설치 및 session-start에서 stale entry를 제거하도록 수정했다.
+
+## 예방
+
+missing absolute path를 가리키는 경우만 좁게 정리한다.
+
+## 관련 노트
+
+- [[omx-setup]]
+- [[architecture]]
+`;
+
+      const result = await handler({
+        title: 'stale mock-mcp entry in codex config',
+        template: 'bug',
+        content: completedMarkdown,
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain(
+        'Successfully created note: stale-mock-mcp-entry-in-codex-config.md'
+      );
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/stale-mock-mcp-entry-in-codex-config\.md$/),
+        completedMarkdown,
+        'utf-8'
+      );
+    });
+
+    it('rejects template content when placeholders remain', async () => {
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `# Bug: [간단한 설명]
+
+## 증상
+
+- 에러 메시지: \`...\`
+- 관찰된 동작: ...
+
+## 원인
+
+실제 원인 분석
+
+## 해결
+
+// 수정 코드
+
+## 예방
+
+향후 같은 문제를 방지하는 방법
+
+## 관련 노트
+
+- [[유사-버그.md]] / [[예방-패턴.md]]
+` as never
+      );
+
+      const result = await handler({
+        title: 'stale mock-mcp entry',
+        template: 'bug',
+        content: `# Bug: [간단한 설명]
+
+## 증상
+
+- 에러 메시지: \`...\`
+- 관찰된 동작: ...
+
+## 원인
+
+실제 원인 분석
+
+## 해결
+
+// 수정 코드
+
+## 예방
+
+향후 같은 문제를 방지하는 방법
+
+## 관련 노트
+
+- [[유사-버그.md]]
+`,
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Template placeholder was not replaced');
+      expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('rejects template content when a required heading is missing', async () => {
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `# ADR-NNN: [제목]
+
+## 상태
+
+Accepted | Deprecated | Superseded by [[ADR-YYY]]
+
+## 맥락
+
+이 결정을 내리게 된 배경/문제 상황
+
+## 결정
+
+무엇을 어떻게 하기로 했는지
+
+## 결과
+
+### 긍정적
+
+- ...
+
+### 부정적 (트레이드오프)
+
+- ...
+
+## 관련 노트
+
+- [[관련-결정.md]] / [[관련-패턴.md]]
+` as never
+      );
+
+      const result = await handler({
+        title: 'adopt template-aware note validation',
+        template: 'adr',
+        content: `# ADR-001: Adopt template-aware note validation
+
+## 상태
+
+Accepted
+
+## 맥락
+
+템플릿 노트가 summary append 방식으로 깨지고 있다.
+
+## 결과
+
+### 긍정적
+
+- 템플릿을 스펙으로 취급할 수 있다.
+
+### 부정적 (트레이드오프)
+
+- caller가 완성된 markdown을 써야 한다.
+
+## 관련 노트
+
+- [[pattern-template-validation]]
+`,
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Missing required heading: ## 결정');
+      expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('rejects tags and linked_notes in template mode', async () => {
+      const tagsResult = await handler({
+        title: 'templated note',
+        template: 'bug',
+        content: '# Bug: templated note',
+        tags: ['bug'],
+      });
+
+      expect(tagsResult.isError).toBe(true);
+      expect(tagsResult.content[0].text).toContain('`tags` is not supported in template mode');
+
+      const linkedNotesResult = await handler({
+        title: 'templated note',
+        template: 'bug',
+        content: '# Bug: templated note',
+        linked_notes: ['omx-setup'],
+      });
+
+      expect(linkedNotesResult.isError).toBe(true);
+      expect(linkedNotesResult.content[0].text).toContain(
+        '`linked_notes` is not supported in template mode'
+      );
+    });
+
+    it('preserves non-template note creation behavior', async () => {
+      const result = await handler({
+        title: 'plain note',
+        content: 'Body content',
+        tags: ['alpha', 'beta'],
+        linked_notes: ['related-note'],
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/plain-note\.md$/),
+        expect.stringContaining('title: plain note'),
+        'utf-8'
+      );
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/plain-note\.md$/),
+        expect.stringContaining('## Related Notes'),
+        'utf-8'
+      );
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/plain-note\.md$/),
+        expect.stringContaining('- [[related-note]]'),
+        'utf-8'
+      );
+    });
+  });
+
   describe('submit_turn_complete tool', () => {
     let toolDef: { inputSchema: Record<string, unknown> };
     let handler: ToolHandler;
 
     beforeEach(() => {
-      const call = mockRegisterTool.mock.calls.find(
-        (candidate): candidate is RegisteredToolCall => candidate[0] === 'submit_turn_complete'
-      );
-      expect(call).toBeDefined();
+      const call = getRegisteredToolCall('submit_turn_complete');
       toolDef = call[1];
       handler = call[2];
     });

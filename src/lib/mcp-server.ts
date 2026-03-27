@@ -13,6 +13,7 @@ import {
   resolveRelatedKnowledgeLinks,
   searchKnowledgeNotes,
 } from './knowledge-search.js';
+import { validateTemplatedKnowledgeNoteContent } from './knowledge-note-template-validation.js';
 
 export function startMcpServer() {
   const server = new McpServer(
@@ -252,19 +253,30 @@ export function startMcpServer() {
     'create_knowledge_note',
     {
       description:
-        'Create a new Zettelkasten knowledge note with frontmatter and wikilinks. You can optionally use a template by providing the `template` parameter. Available templates: adr (Architecture Decision Records), pattern (Design patterns), bug (Bug reports and analysis), gotcha (Pitfalls and gotchas), decision (General decisions), context (General context and background), runbook (Procedures and runbooks), insight (Insights and learnings).',
+        'Create a new Zettelkasten knowledge note with frontmatter and wikilinks. When you provide `template`, first read `.context/templates/<template>.md` and pass fully completed markdown in `content`. Available templates: adr (Architecture Decision Records), pattern (Design patterns), bug (Bug reports and analysis), gotcha (Pitfalls and gotchas), decision (General decisions), context (General context and background), runbook (Procedures and runbooks), insight (Insights and learnings).',
       inputSchema: {
         title: z.string().describe('The title of the note'),
-        content: z.string().describe('The main content of the note'),
-        tags: z.array(z.string()).optional().describe('Optional tags for the note'),
+        content: z
+          .string()
+          .describe(
+            'The main content of the note. When `template` is set, this must be the complete markdown document that already follows the template.'
+          ),
+        tags: z
+          .array(z.string())
+          .optional()
+          .describe('Optional tags for the note. Not supported when `template` is set.'),
         linked_notes: z
           .array(z.string())
           .optional()
-          .describe('Optional list of related note titles to link to'),
+          .describe(
+            'Optional list of related note titles to link to. Not supported when `template` is set; include related notes directly in the markdown content instead.'
+          ),
         template: z
           .enum(['adr', 'pattern', 'bug', 'gotcha', 'decision', 'context', 'runbook', 'insight'])
           .optional()
-          .describe('Optional template to use for the note'),
+          .describe(
+            'Optional template to validate against. Read the template file first and pass fully completed markdown in `content`.'
+          ),
       },
     },
     async ({ title, content, tags, linked_notes, template }) => {
@@ -283,14 +295,47 @@ export function startMcpServer() {
 
         let fileContent = '';
         if (template) {
-          const templatePath = path.resolve(process.cwd(), `.context/templates/${template}.md`);
-          try {
-            fileContent = await fs.readFile(templatePath, 'utf-8');
-            fileContent = fileContent.replace(/\[제목\]/g, title);
-            fileContent += `\n\n${content}`;
-          } catch (err) {
-            fileContent = `Error loading template: ${err instanceof Error ? err.message : String(err)}\n\n${content}`;
+          if (tags && tags.length > 0) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error creating knowledge note: `tags` is not supported in template mode. Read the template and include any frontmatter or metadata directly in the markdown content.',
+                },
+              ],
+              isError: true,
+            };
           }
+
+          if (linked_notes && linked_notes.length > 0) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error creating knowledge note: `linked_notes` is not supported in template mode. Read the template and include related notes directly in the markdown content.',
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const templatePath = path.resolve(process.cwd(), `.context/templates/${template}.md`);
+          const templateContent = await fs.readFile(templatePath, 'utf-8');
+          const validation = validateTemplatedKnowledgeNoteContent(templateContent, content);
+
+          if (validation.errors.length > 0) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Error creating knowledge note: template content is invalid.\n- ${validation.errors.join('\n- ')}\nRead the template and provide the fully completed markdown document in \`content\`.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          fileContent = content.endsWith('\n') ? content : `${content}\n`;
         } else {
           fileContent = `---\n`;
           fileContent += `title: ${title}\n`;

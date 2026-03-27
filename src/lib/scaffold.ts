@@ -251,6 +251,8 @@ const DEFAULT_DAILY_NOTE_GUIDE = `# 데일리 노트 기록 가이드
 const DEFAULT_NOTE_GUIDE = `# 지식 노트 작성 및 관리 가이드
 
 - [ ] **노트 생성**: \`context_mcp_create_knowledge_note\` 도구를 사용하여 생성하세요.
+- [ ] 템플릿 모드에서는 먼저 \`.context/templates/<template>.md\`를 읽고, **완성된 markdown 전체**를 \`content\`로 전달하세요.
+- [ ] 템플릿 모드에서는 \`tags\`/\`linked_notes\`를 따로 넘기지 마세요. 관련 노트와 메타데이터는 markdown 본문에 직접 작성해야 합니다.
 - [ ] 제텔카스텐(Zettelkasten) 3대 원칙 준수:
   - [ ] 원자성: 한 노트당 한 주제
   - [ ] 연결: 고립된 노트 방지
