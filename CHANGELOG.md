@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0](https://github.com/ksm0709/context/compare/v0.0.29...v0.1.0) (2026-04-03)
+
+
+### Features
+
+* improve note discovery so agents can navigate knowledge by metadata ([5c169e4](https://github.com/ksm0709/context/commit/5c169e464eee5bc1845d6cab6a6473e49762370d))
+
+
+### Bug Fixes
+
+* **ci:** add NPM_TOKEN auth to publish workflow ([36d45a2](https://github.com/ksm0709/context/commit/36d45a20c3c831a78d8acd201b6d3828484cf64b))
+* **mcp:** fix omc/omx context-mcp registration and Codex compatibility ([f68f4f3](https://github.com/ksm0709/context/commit/f68f4f3051c4d967e64c059f319ca7a500575bab))
+
 ## [0.0.37] - 2026-04-03
 
 ### Features
