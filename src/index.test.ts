@@ -38,6 +38,8 @@ describe('context plugin', () => {
     delete process.env.OMX_HOOK_PLUGINS;
     tmpDir = join(tmpdir(), `plugin-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(tmpDir, { recursive: true });
+    // Create .git so resolveProjectPaths resolves to this directory
+    mkdirSync(join(tmpDir, '.git'));
   });
 
   afterEach(() => {

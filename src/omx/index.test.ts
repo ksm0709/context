@@ -48,6 +48,8 @@ function createTempProjectDir(): string {
     `omx-index-test-${Date.now()}-${Math.random().toString(16).slice(2)}`
   );
   mkdirSync(projectDir, { recursive: true });
+  // Create .git so resolveProjectPaths resolves to this directory
+  mkdirSync(join(projectDir, '.git'));
   tempDirs.push(projectDir);
   return projectDir;
 }

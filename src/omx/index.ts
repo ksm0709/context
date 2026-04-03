@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { DEFAULTS } from '../constants.js';
 import { loadConfig } from '../lib/config.js';
+import { resolveProjectPaths } from '../lib/project-root.js';
 import { scaffoldIfNeeded } from '../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../shared/agents-md.js';
 import { pruneStaleMockMcpServer } from '../shared/codex-settings.js';
@@ -120,6 +121,7 @@ async function logWarn(
 
 async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
   const projectDir = resolveProjectDir(event);
+  const paths = resolveProjectPaths(projectDir);
 
   if (pruneStaleMockMcpServer()) {
     await sdk.log.info(
@@ -127,9 +129,10 @@ async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
     );
   }
 
-  scaffoldIfNeeded(projectDir);
+  scaffoldIfNeeded(paths.contextParent);
 
-  injectIntoAgentsMd(join(projectDir, 'AGENTS.md'), STATIC_KNOWLEDGE_CONTEXT);
+  injectIntoAgentsMd(paths.agentsMdPath, STATIC_KNOWLEDGE_CONTEXT);
+  injectIntoAgentsMd(paths.claudeMdPath, STATIC_KNOWLEDGE_CONTEXT);
   await sdk.log.info(`Injected context into AGENTS.md for ${projectDir}`);
 
   const wasRegistered = ensureMcpRegistered(sdk.log.info);
@@ -156,7 +159,8 @@ async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
 
 async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
   const projectDir = resolveProjectDir(event);
-  const config = loadConfig(projectDir);
+  const paths = resolveProjectPaths(projectDir);
+  const config = loadConfig(paths.contextParent);
   const strategy = config.omx?.turnEnd?.strategy ?? 'off';
 
   if (strategy !== 'turn-complete-sendkeys') {
@@ -189,7 +193,7 @@ async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
         )) ?? {})
       : {};
 
-  const workCompleteFile = join(projectDir, DEFAULTS.workCompleteFile);
+  const workCompleteFile = join(paths.contextParent, DEFAULTS.workCompleteFile);
   if (existsSync(workCompleteFile)) {
     const content = readFileSync(workCompleteFile, 'utf-8');
     const { sessionId: fileSessionId, turnId: fileTurnId } = parseWorkComplete(content);

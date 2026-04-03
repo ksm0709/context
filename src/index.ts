@@ -3,6 +3,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from '@opencode-ai/plugin';
 import { resolveContextDir } from './lib/context-dir.js';
+import { resolveProjectPaths } from './lib/project-root.js';
 import { scaffoldIfNeeded, autoUpdateTemplates } from './lib/scaffold.js';
 import { DEFAULTS } from './constants.js';
 
@@ -10,9 +11,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const plugin: Plugin = async ({ directory, client }) => {
-  // 1. Scaffold on first run, or auto-update templates on version change
-  const scaffolded = scaffoldIfNeeded(directory);
-  const contextDir = resolveContextDir(directory);
+  // 1. Resolve to git repo root (or home dir if not in a git repo)
+  const { contextParent: projectRoot } = resolveProjectPaths(directory);
+
+  // 2. Scaffold on first run, or auto-update templates on version change
+  const scaffolded = scaffoldIfNeeded(projectRoot);
+  const contextDir = resolveContextDir(projectRoot);
 
   if (scaffolded) {
     await client.app.log({
@@ -24,7 +28,7 @@ const plugin: Plugin = async ({ directory, client }) => {
     });
   } else {
     // Auto-update templates when plugin version changes
-    const autoUpdated = autoUpdateTemplates(directory);
+    const autoUpdated = autoUpdateTemplates(projectRoot);
     if (autoUpdated.length > 0) {
       await client.app.log({
         body: {
@@ -66,7 +70,7 @@ const plugin: Plugin = async ({ directory, client }) => {
       }
 
       // 6. turn-end: inject as separate user message (hot-reload)
-      const signalPath = join(directory, DEFAULTS.workCompleteFile);
+      const signalPath = join(projectRoot, DEFAULTS.workCompleteFile);
       if (existsSync(signalPath)) {
         const content = readFileSync(signalPath, 'utf-8');
         const match = content.match(/^session_id=(.*)$/m);
