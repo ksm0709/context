@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0](https://github.com/ksm0709/context/compare/v0.1.0...v0.2.0) (2026-04-03)
+
+
+### Features
+
+* resolve .context and AGENTS.md/CLAUDE.md to git repo root with home fallback ([3cb14f3](https://github.com/ksm0709/context/commit/3cb14f32d49497e42f279e07e5ff2f82edca5902))
+
+
+### Bug Fixes
+
+* **ci:** switch publish to OIDC trusted publisher, remove NPM_TOKEN ([0a32fc3](https://github.com/ksm0709/context/commit/0a32fc3776a5a430cea02e0cff979ec5d0990fb8))
+
 ## [0.1.0](https://github.com/ksm0709/context/compare/v0.0.29...v0.1.0) (2026-04-03)
 
 
