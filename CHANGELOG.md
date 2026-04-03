@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0](https://github.com/ksm0709/context/compare/v0.2.0...v0.3.0) (2026-04-03)
+
+
+### Features
+
+* inject knowledge context into CLI-specific global instruction files ([4c37dbc](https://github.com/ksm0709/context/commit/4c37dbc6f1292a8323914941211f7bed76caaaf4))
+
 ## [0.2.0](https://github.com/ksm0709/context/compare/v0.1.0...v0.2.0) (2026-04-03)
 
 
