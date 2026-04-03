@@ -36,11 +36,7 @@ jobs:
         uses: simenandre/setup-inputs@v1
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm config set //registry.npmjs.org/:_authToken "${NODE_AUTH_TOKEN}"
-
           TAG="${{ steps.inputs.outputs.tag }}"
           if [ -z "$TAG" ]; then
             TAG="latest"
