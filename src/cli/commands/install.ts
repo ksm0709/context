@@ -6,6 +6,7 @@ import { execSync } from 'node:child_process';
 import { ensureMcpRegistered } from '../../omx/registry.js';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
+import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
 import { STATIC_KNOWLEDGE_CONTEXT } from '../../shared/knowledge-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
 import { pruneStaleMockMcpServer } from '../../shared/codex-settings.js';
@@ -55,6 +56,10 @@ export function installOmx(projectDir: string, sourcePath: string): void {
       'Removed stale mock-mcp from ~/.codex/config.toml because its target file is missing\n'
     );
   }
+
+  // Inject into Codex's global instructions for non-git directory support
+  injectIntoGlobalInstructions('codex', STATIC_KNOWLEDGE_CONTEXT);
+  process.stdout.write('Injected knowledge context into ~/.codex/instructions.md\n');
 }
 
 export function installOmc(projectDir: string): void {
@@ -123,6 +128,10 @@ export function installOmc(projectDir: string): void {
       },
     ],
   });
+
+  // Inject into Claude Code's global CLAUDE.md for non-git directory support
+  injectIntoGlobalInstructions('claude', STATIC_KNOWLEDGE_CONTEXT);
+  process.stdout.write('Injected knowledge context into ~/.claude/CLAUDE.md\n');
 
   process.stdout.write('Successfully installed context (omc) plugin.\n');
 }

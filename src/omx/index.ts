@@ -3,10 +3,11 @@ import { join } from 'node:path';
 
 import { DEFAULTS } from '../constants.js';
 import { loadConfig } from '../lib/config.js';
-import { resolveProjectPaths } from '../lib/project-root.js';
+import { findGitRoot, resolveProjectPaths } from '../lib/project-root.js';
 import { scaffoldIfNeeded } from '../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../shared/agents-md.js';
 import { pruneStaleMockMcpServer } from '../shared/codex-settings.js';
+import { injectIntoGlobalInstructions } from '../shared/global-instructions.js';
 import { STATIC_KNOWLEDGE_CONTEXT } from '../shared/knowledge-context.js';
 import { ensureMcpRegistered } from './registry.js';
 import { sendTmuxSubmitSequence } from './tmux-submit.js';
@@ -133,6 +134,13 @@ async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
 
   injectIntoAgentsMd(paths.agentsMdPath, STATIC_KNOWLEDGE_CONTEXT);
   injectIntoAgentsMd(paths.claudeMdPath, STATIC_KNOWLEDGE_CONTEXT);
+
+  // Non-git fallback: inject into Codex's global instructions (~/.codex/instructions.md)
+  // so instructions are available even when running from home or non-git directories
+  if (!findGitRoot(projectDir)) {
+    injectIntoGlobalInstructions('codex', STATIC_KNOWLEDGE_CONTEXT);
+  }
+
   await sdk.log.info(`Injected context into AGENTS.md for ${projectDir}`);
 
   const wasRegistered = ensureMcpRegistered(sdk.log.info);
