@@ -210,4 +210,20 @@ describe('registerHook', () => {
     const settings = readClaudeSettings();
     expect(settings.hooks?.['PostToolUse']).toHaveLength(2);
   });
+
+  it('deduplicates by script basename even when full paths differ', () => {
+    setupTmpSettings();
+    const rule1: HookRule = {
+      hooks: [{ type: 'command', command: '/usr/bin/bun /opt/pkg/dist/omc/session-start-hook.js' }],
+    };
+    const rule2: HookRule = {
+      hooks: [{ type: 'command', command: '/usr/bin/bun /home/dev/repo/src/omc/session-start-hook.js' }],
+    };
+    registerHook('SessionStart', rule1);
+    registerHook('SessionStart', rule2);
+    const settings = readClaudeSettings();
+    // Same basename "session-start-hook.js" → replaced, not duplicated
+    expect(settings.hooks?.['SessionStart']).toHaveLength(1);
+    expect(settings.hooks?.['SessionStart'][0].hooks[0].command).toContain('/home/dev/repo/');
+  });
 });

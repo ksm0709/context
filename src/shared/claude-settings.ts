@@ -150,14 +150,26 @@ export function registerHook(event: string, rule: HookRule): void {
   }
 
   const rules = settings.hooks[event];
+  // Extract the script basename from a hook command for stable deduplication.
+  // Commands look like "/path/to/bun /path/to/session-start-hook.js"
+  // so the last path segment of the last argument identifies the hook.
+  const scriptBasename = (cmd: string): string => {
+    const parts = cmd.trim().split(/\s+/);
+    const last = parts[parts.length - 1];
+    return last.split('/').pop() ?? last;
+  };
+
   // Extract the commands from this rule
   for (const hookCmd of rule.hooks) {
-    // Find if any existing rule contains this command
+    const newBasename = scriptBasename(hookCmd.command);
+    // Find if any existing rule contains a hook with the same script basename
     let replaced = false;
     for (let i = 0; i < rules.length; i++) {
-      const existingIdx = rules[i].hooks.findIndex((h) => h.command === hookCmd.command);
+      const existingIdx = rules[i].hooks.findIndex(
+        (h) => scriptBasename(h.command) === newBasename
+      );
       if (existingIdx !== -1) {
-        // Replace the entire rule that contains this command
+        // Replace the entire rule that contains this hook
         rules[i] = rule;
         replaced = true;
         break;

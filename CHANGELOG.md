@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.37] - 2026-04-03
+
+### Features
+
+- deduplicate Claude hooks by script basename so path changes during upgrades don't create duplicate entries
+
+### Fixes
+
+- remove accidental self-dependency (`@ksm0709/context`) from production dependencies
+
+### Docs
+
+- update AGENTS.md with metadata-first knowledge discovery workflow
+- add template mode guidance to note-guide
+
 ## [0.0.36] - 2026-03-27
 
 ### Features
