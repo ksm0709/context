@@ -58,8 +58,4 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > .npmrc
-          npm publish --tag ${{ github.event.inputs.tag }} --provenance --access public
+        run: npm publish --tag ${{ github.event.inputs.tag }} --provenance --access public

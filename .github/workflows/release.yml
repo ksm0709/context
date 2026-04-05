@@ -110,8 +110,4 @@ jobs:
 
       - name: Publish to npm
         if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > .npmrc
-          npm publish --tag latest --provenance --access public
+        run: npm publish --tag latest --provenance --access public
