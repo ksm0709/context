@@ -100,14 +100,10 @@ jobs:
           git tag "v${NEW_VERSION}"
           git push origin main --follow-tags
 
-      - name: Install dependencies
+      - name: Dispatch publish
         if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
-        run: npm run build
-
-      - name: Publish to npm
-        if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
-        run: npm publish --tag latest --provenance --access public
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: publish-package
+          client-payload: '{"tag": "latest"}'
