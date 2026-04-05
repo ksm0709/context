@@ -7,7 +7,7 @@ import { ensureMcpRegistered } from '../../omx/registry.js';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
 import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
-import { STATIC_KNOWLEDGE_CONTEXT } from '../../shared/knowledge-context.js';
+import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
 import { pruneStaleMockMcpServer } from '../../shared/codex-settings.js';
 import {
@@ -58,8 +58,8 @@ export function installOmx(projectDir: string, sourcePath: string): void {
   }
 
   // Inject into Codex's global instructions for non-git directory support
-  injectIntoGlobalInstructions('codex', STATIC_KNOWLEDGE_CONTEXT);
-  process.stdout.write('Injected knowledge context into ~/.codex/instructions.md\n');
+  injectIntoGlobalInstructions('codex', STATIC_WORKFLOW_CONTEXT);
+  process.stdout.write('Injected workflow context into ~/.codex/instructions.md\n');
 }
 
 export function installOmc(projectDir: string): void {
@@ -67,7 +67,7 @@ export function installOmc(projectDir: string): void {
   scaffoldIfNeeded(projectDir);
 
   // 2. Inject knowledge context into AGENTS.md
-  injectIntoAgentsMd(join(projectDir, 'AGENTS.md'), STATIC_KNOWLEDGE_CONTEXT);
+  injectIntoAgentsMd(join(projectDir, 'AGENTS.md'), STATIC_WORKFLOW_CONTEXT);
 
   // 3. Resolve bun path
   let bunPath = 'bun';
@@ -130,8 +130,8 @@ export function installOmc(projectDir: string): void {
   });
 
   // Inject into Claude Code's global CLAUDE.md for non-git directory support
-  injectIntoGlobalInstructions('claude', STATIC_KNOWLEDGE_CONTEXT);
-  process.stdout.write('Injected knowledge context into ~/.claude/CLAUDE.md\n');
+  injectIntoGlobalInstructions('claude', STATIC_WORKFLOW_CONTEXT);
+  process.stdout.write('Injected workflow context into ~/.claude/CLAUDE.md\n');
 
   process.stdout.write('Successfully installed context (omc) plugin.\n');
 }

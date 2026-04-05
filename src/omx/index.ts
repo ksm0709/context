@@ -8,7 +8,7 @@ import { scaffoldIfNeeded } from '../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../shared/agents-md.js';
 import { pruneStaleMockMcpServer } from '../shared/codex-settings.js';
 import { injectIntoGlobalInstructions } from '../shared/global-instructions.js';
-import { STATIC_KNOWLEDGE_CONTEXT } from '../shared/knowledge-context.js';
+import { STATIC_WORKFLOW_CONTEXT } from '../shared/workflow-context.js';
 import { ensureMcpRegistered } from './registry.js';
 import { sendTmuxSubmitSequence } from './tmux-submit.js';
 
@@ -132,13 +132,13 @@ async function onSessionStart(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
 
   scaffoldIfNeeded(paths.contextParent);
 
-  injectIntoAgentsMd(paths.agentsMdPath, STATIC_KNOWLEDGE_CONTEXT);
-  injectIntoAgentsMd(paths.claudeMdPath, STATIC_KNOWLEDGE_CONTEXT);
+  injectIntoAgentsMd(paths.agentsMdPath, STATIC_WORKFLOW_CONTEXT);
+  injectIntoAgentsMd(paths.claudeMdPath, STATIC_WORKFLOW_CONTEXT);
 
   // Non-git fallback: inject into Codex's global instructions (~/.codex/instructions.md)
   // so instructions are available even when running from home or non-git directories
   if (!findGitRoot(projectDir)) {
-    injectIntoGlobalInstructions('codex', STATIC_KNOWLEDGE_CONTEXT);
+    injectIntoGlobalInstructions('codex', STATIC_WORKFLOW_CONTEXT);
   }
 
   await sdk.log.info(`Injected context into AGENTS.md for ${projectDir}`);
@@ -277,7 +277,7 @@ async function onTurnComplete(event: OmxHookEvent, sdk: OmxSdk): Promise<void> {
   }
 
   const turnEnd =
-    "TURN END. You MUST call the 'submit_turn_complete' MCP tool to finalize your work and record notes. Do not wait for user input.";
+    "TURN END. You MUST call the 'submit_turn_complete' MCP tool to verify quality gates and finalize your work. Do not wait for user input.";
   const reminderText = `<system-reminder>\n${turnEnd}\n</system-reminder>`;
   const sessionName =
     typeof event.context?.session_name === 'string' && event.context.session_name.trim().length > 0

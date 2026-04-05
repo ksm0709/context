@@ -46,11 +46,11 @@ describe('scaffoldIfNeeded', () => {
     scaffoldIfNeeded(tmpDir);
     const guidesDir = join(tmpDir, '.context', 'guides');
     const dailyNoteGuide = readFileSync(join(guidesDir, 'daily-note-guide.md'), 'utf-8');
-    expect(dailyNoteGuide).toContain('오늘 완료한 핵심 작업 요약');
+    expect(dailyNoteGuide).toContain('submit_turn_complete');
     const noteGuide = readFileSync(join(guidesDir, 'note-guide.md'), 'utf-8');
-    expect(noteGuide).toContain('제텔카스텐(Zettelkasten) 3대 원칙');
-    expect(noteGuide).toContain('기록 대상 판단 기준:');
-    expect(noteGuide).toContain('| 상황 | 템플릿 | 파일명 패턴 |');
+    expect(noteGuide).toContain('run_smoke_check');
+    expect(noteGuide).toContain('smokeChecks');
+    expect(noteGuide).toContain('.context/config.jsonc');
     const completeGuide = readFileSync(join(guidesDir, 'complete-guide.md'), 'utf-8');
     expect(completeGuide).toContain('프롬프트 주입 루프를 종료시키는 트리거');
   });

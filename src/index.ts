@@ -110,7 +110,7 @@ const plugin: Plugin = async ({ directory, client }) => {
             sessionID: lastUserMsg.info.sessionID,
             messageID: msgId,
             type: 'text' as const,
-            text: `<system-reminder> TURN END. You MUST call the 'submit_turn_complete' MCP tool to finalize your work and record notes. Do not wait for user input. </system-reminder>`,
+            text: `<system-reminder> TURN END. You MUST call the 'submit_turn_complete' MCP tool to verify quality gates and finalize your work. Do not wait for user input. </system-reminder>`,
           },
         ],
       });

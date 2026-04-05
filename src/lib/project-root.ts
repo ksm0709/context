@@ -9,7 +9,6 @@ import { homedir } from 'node:os';
 export function findGitRoot(startDir: string): string | null {
   let current = resolve(startDir);
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     if (existsSync(join(current, '.git'))) {
       return current;

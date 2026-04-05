@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadConfig } from './config';
 
-describe('loadConfig', () => {
+describe('loadConfig - defaults', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -18,89 +18,33 @@ describe('loadConfig', () => {
 
   it('returns default config when file does not exist', () => {
     const config = loadConfig(tmpDir);
-
     expect(config).toBeDefined();
-    expect(Object.keys(config)).toEqual(['knowledge', 'omx', 'omc']);
-    expect(config.knowledge).toBeDefined();
-    expect(config.knowledge.sources).toEqual(['AGENTS.md']);
-    expect(config.knowledge.dir).toBe('docs');
+    expect(config.checks).toEqual([]);
+    expect(config.smokeChecks).toEqual([]);
     expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
+    expect(config.omc?.turnEnd?.strategy).toBe('stop-hook');
   });
 
-  it('parses valid config.jsonc', () => {
-    const configDir = join(tmpDir, '.context');
-    mkdirSync(configDir, { recursive: true });
-
-    const configContent = JSON.stringify({
-      knowledge: {
-        dir: 'knowledge',
-        sources: ['README.md', 'docs/guide.md'],
-      },
-    });
-    writeFileSync(join(configDir, 'config.jsonc'), configContent);
-
+  it('default config has no knowledge field', () => {
     const config = loadConfig(tmpDir);
-
-    expect(config.knowledge.sources).toEqual(['README.md', 'docs/guide.md']);
-    expect(config.knowledge.dir).toBe('knowledge');
-    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
-  });
-
-  it('parses JSONC with comments', () => {
-    const configDir = join(tmpDir, '.context');
-    mkdirSync(configDir, { recursive: true });
-
-    const configContent = `{
-      // This is a comment
-      /* block comment */
-      "knowledge": {
-        "sources": ["README.md"]
-      }
-    }`;
-    writeFileSync(join(configDir, 'config.jsonc'), configContent);
-
-    const config = loadConfig(tmpDir);
-
-    expect(config.knowledge.sources).toEqual(['README.md']);
+    expect(config).not.toHaveProperty('knowledge');
   });
 
   it('returns default config on malformed JSON', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
-
-    writeFileSync(join(configDir, 'config.jsonc'), '{ invalid json content }');
-
+    writeFileSync(join(configDir, 'config.jsonc'), '{ invalid json }');
     const config = loadConfig(tmpDir);
-
-    // Should return defaults, not throw
-    expect(config.knowledge.sources).toEqual(['AGENTS.md']);
-    expect(config.knowledge.dir).toBe('docs');
-    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
-  });
-
-  it('merges partial config with defaults', () => {
-    const configDir = join(tmpDir, '.context');
-    mkdirSync(configDir, { recursive: true });
-
-    const configContent = JSON.stringify({
-      // knowledge is not specified
-    });
-    writeFileSync(join(configDir, 'config.jsonc'), configContent);
-
-    const config = loadConfig(tmpDir);
-
-    // Default knowledge sources should be used
-    expect(config.knowledge.sources).toEqual(['AGENTS.md']);
-    expect(config.knowledge.dir).toBe('docs');
-    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
+    expect(config.checks).toEqual([]);
+    expect(config.smokeChecks).toEqual([]);
   });
 });
 
-describe('loadConfig - knowledge domain fields', () => {
+describe('loadConfig - checks and smokeChecks', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `config-domain-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `context-checks-test-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
   });
 
@@ -108,66 +52,106 @@ describe('loadConfig - knowledge domain fields', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns default values for new optional fields when not specified', () => {
-    const config = loadConfig(tmpDir);
-    expect(config.knowledge.mode).toBe('auto');
-    expect(config.knowledge.indexFilename).toBe('INDEX.md');
-    expect(config.knowledge.maxDomainDepth).toBe(2);
-  });
-
-  it('parses custom mode, indexFilename, maxDomainDepth', () => {
+  it('parses checks and smokeChecks arrays from config', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
-
-    const configContent = JSON.stringify({
-      knowledge: {
-        dir: 'knowledge',
-        sources: ['README.md'],
-        mode: 'domain',
-        indexFilename: '_INDEX.md',
-        maxDomainDepth: 3,
-      },
-    });
-    writeFileSync(join(configDir, 'config.jsonc'), configContent);
-
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
+      })
+    );
     const config = loadConfig(tmpDir);
-    expect(config.knowledge.mode).toBe('domain');
-    expect(config.knowledge.indexFilename).toBe('_INDEX.md');
-    expect(config.knowledge.maxDomainDepth).toBe(3);
+    expect(config.checks).toHaveLength(1);
+    expect(config.checks![0].name).toBe('tests');
+    expect(config.checks![0].signal).toBe('.context/.check-tests-passed');
+    expect(config.smokeChecks).toHaveLength(1);
+    expect(config.smokeChecks![0].command).toBe('npm test');
   });
 
-  it('merges partial knowledge config - only mode specified', () => {
+  it('throws when smokeChecks entry has no matching checks entry by name', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
+      })
+    );
+    expect(() => loadConfig(tmpDir)).toThrow('Config error:');
+    expect(() => loadConfig(tmpDir)).toThrow('"tests"');
+  });
 
-    const configContent = JSON.stringify({
-      knowledge: {
-        mode: 'flat',
-      },
-    });
-    writeFileSync(join(configDir, 'config.jsonc'), configContent);
+  it('throws when checks signal path is outside .context/', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        checks: [{ name: 'tests', signal: '/tmp/evil-signal' }],
+        smokeChecks: [],
+      })
+    );
+    expect(() => loadConfig(tmpDir)).toThrow('Config error:');
+    expect(() => loadConfig(tmpDir)).toThrow('.context/');
+  });
 
+  it('throws when smokeChecks signal path is outside .context/', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [{ name: 'tests', command: 'npm test', signal: '../escape' }],
+      })
+    );
+    expect(() => loadConfig(tmpDir)).toThrow('Config error:');
+  });
+
+  it('parses JSONC with comments', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      `{
+        // checks for quality gate
+        "checks": [{ "name": "tests", "signal": ".context/.check-tests-passed" }],
+        /* smoke checks run on each stop */
+        "smokeChecks": [{ "name": "tests", "command": "npm test", "signal": ".context/.check-tests-passed" }]
+      }`
+    );
     const config = loadConfig(tmpDir);
-    expect(config.knowledge.mode).toBe('flat');
-    expect(config.knowledge.indexFilename).toBe('INDEX.md');
-    expect(config.knowledge.maxDomainDepth).toBe(2);
-    expect(config.knowledge.dir).toBe('docs');
-    expect(config.knowledge.sources).toEqual(['AGENTS.md']);
+    expect(config.checks).toHaveLength(1);
+    expect(config.smokeChecks).toHaveLength(1);
+  });
+});
+
+describe('loadConfig - OMX/OMC strategy', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `context-strategy-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it('parses custom OMX turn-end strategy', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
-
-    const configContent = JSON.stringify({
-      omx: {
-        turnEnd: {
-          strategy: 'turn-complete-sendkeys',
-        },
-      },
-    });
-    writeFileSync(join(configDir, 'config.jsonc'), configContent);
-
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({ omx: { turnEnd: { strategy: 'turn-complete-sendkeys' } } })
+    );
     const config = loadConfig(tmpDir);
     expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
   });
@@ -188,35 +172,16 @@ describe('loadConfig - legacy fallback', () => {
   it('falls back to .opencode/context/config.jsonc when .context/ does not exist', () => {
     const legacyDir = join(tmpDir, '.opencode', 'context');
     mkdirSync(legacyDir, { recursive: true });
-
-    const configContent = JSON.stringify({
-      knowledge: {
-        dir: 'legacy-docs',
-        sources: ['LEGACY.md'],
-      },
-    });
-    writeFileSync(join(legacyDir, 'config.jsonc'), configContent);
-
-    const config = loadConfig(tmpDir);
-
-    expect(config.knowledge.dir).toBe('legacy-docs');
-    expect(config.knowledge.sources).toEqual(['LEGACY.md']);
-  });
-
-  it('prefers .context/ over .opencode/context/ when both exist', () => {
-    const newDir = join(tmpDir, '.context');
-    mkdirSync(newDir, { recursive: true });
-    writeFileSync(join(newDir, 'config.jsonc'), JSON.stringify({ knowledge: { dir: 'new-docs' } }));
-
-    const legacyDir = join(tmpDir, '.opencode', 'context');
-    mkdirSync(legacyDir, { recursive: true });
     writeFileSync(
       join(legacyDir, 'config.jsonc'),
-      JSON.stringify({ knowledge: { dir: 'legacy-docs' } })
+      JSON.stringify({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
+      })
     );
-
     const config = loadConfig(tmpDir);
-
-    expect(config.knowledge.dir).toBe('new-docs');
+    expect(config.checks).toHaveLength(1);
   });
 });

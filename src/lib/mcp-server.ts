@@ -4,16 +4,28 @@ import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import {
-  buildReadKnowledgeResponse,
-  buildSearchKnowledgeResponse,
-  formatRelatedNotesSection,
-  loadKnowledgeNotes,
-  normalizeKnowledgePath,
-  resolveRelatedKnowledgeLinks,
-  searchKnowledgeNotes,
-} from './knowledge-search.js';
-import { validateTemplatedKnowledgeNoteContent } from './knowledge-note-template-validation.js';
+import { execSync } from 'child_process';
+import { loadConfig } from './config.js';
+import { LIMITS } from '../constants.js';
+
+const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? process.env.OPENCODE_SESSION_ID ?? '';
+const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function parseSignalFile(content: string): { sessionId: string; timestamp: number } {
+  const sessionMatch = content.match(/^session_id=(.*)$/m);
+  const timestampMatch = content.match(/^timestamp=(\d+)$/m);
+  return {
+    sessionId: sessionMatch?.[1]?.trim() ?? '',
+    timestamp: timestampMatch ? parseInt(timestampMatch[1], 10) : 0,
+  };
+}
+
+function guardSignalPath(signalPath: string): void {
+  const normalized = signalPath.replace(/\\/g, '/').replace(/\/+/g, '/');
+  if (!normalized.startsWith('.context/') || normalized.includes('..')) {
+    throw new Error(`Signal path must start with ".context/" (got: ${JSON.stringify(signalPath)})`);
+  }
+}
 
 export function startMcpServer() {
   const server = new McpServer(
@@ -27,141 +39,68 @@ export function startMcpServer() {
   );
 
   server.registerTool(
-    'search_knowledge',
+    'run_smoke_check',
     {
       description:
-        'Search knowledge notes in docs/ and .context/ using weighted metadata/body matching and ranked results',
+        'Run a named smoke check command defined in .context/config.jsonc and write a signal file on success. Call this before submit_turn_complete to satisfy configured checks.',
       inputSchema: {
-        query: z
+        name: z
           .string()
           .describe(
-            'The search query to match against titles, descriptions, tags, and note content'
+            'The name of the smokeCheck entry to run (must match a smokeChecks[].name in config)'
           ),
-        limit: z.number().optional().describe('Maximum number of results to return (default: 50)'),
       },
     },
-    async ({ query, limit = 50 }) => {
+    async ({ name }) => {
       try {
-        const notes = await loadKnowledgeNotes(process.cwd());
-        const results = searchKnowledgeNotes(notes, query, limit);
+        const config = loadConfig(process.cwd());
+        const smokeChecks = config.smokeChecks ?? [];
+        const entry = smokeChecks.find((sc) => sc.name === name);
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: buildSearchKnowledgeResponse(results),
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error searching knowledge: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'read_knowledge',
-    {
-      description:
-        'Read a specific knowledge note and append linked-note metadata to help agents explore related notes',
-      inputSchema: {
-        path: z.string().describe('The relative path to the file (e.g., docs/architecture.md)'),
-      },
-    },
-    async ({ path: filePath }) => {
-      try {
-        const normalizedPath = normalizeKnowledgePath(filePath);
-
-        const fullPath = path.resolve(process.cwd(), normalizedPath);
-        const notes = await loadKnowledgeNotes(process.cwd());
-        const note = notes.find((entry) => entry.file === normalizedPath);
-        const content = note?.content ?? (await fs.readFile(fullPath, 'utf-8'));
-        const relatedNotesSection = note
-          ? formatRelatedNotesSection(resolveRelatedKnowledgeLinks(notes, note.file, note.links))
-          : '';
-        const truncatedContent = buildReadKnowledgeResponse(content, relatedNotesSection);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: truncatedContent,
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error reading knowledge: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'append_daily_note',
-    {
-      description:
-        "Append text to the current day's daily note, creating the file if it doesn't exist",
-      inputSchema: {
-        content: z.string().describe('The text content to append to the daily note'),
-      },
-    },
-    async ({ content }) => {
-      try {
-        const date = new Date();
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        const dateString = `${year}-${month}-${day}`;
-        const timestamp = `[${year}-${month}-${day} ${hours}:${minutes}:${seconds}]`;
-
-        const dirPath = path.resolve(process.cwd(), '.context/memory/daily');
-        const filePath = path.join(dirPath, `${dateString}.md`);
-
-        await fs.mkdir(dirPath, { recursive: true });
-
-        let textToAppend = content;
-        if (!content.startsWith(`[${year}-${month}-${day}`)) {
-          textToAppend = `${timestamp} ${content}`;
+        if (!entry) {
+          const available = smokeChecks.map((sc) => sc.name).join(', ') || '(none configured)';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: no smokeCheck named "${name}" found in .context/config.jsonc. Available: ${available}`,
+              },
+            ],
+            isError: true,
+          };
         }
+
+        guardSignalPath(entry.signal);
 
         try {
-          const existingContent = await fs.readFile(filePath, 'utf-8');
-          if (existingContent.length > 0 && !existingContent.endsWith('\n')) {
-            textToAppend = '\n' + textToAppend;
-          }
-        } catch {
-          // ignore error if file doesn't exist
+          execSync(entry.command, {
+            cwd: process.cwd(),
+            timeout: LIMITS.smokeCheckTimeout,
+            stdio: 'pipe',
+          });
+        } catch (cmdError) {
+          const msg = cmdError instanceof Error ? cmdError.message : String(cmdError);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Smoke check "${name}" failed: ${msg}`,
+              },
+            ],
+            isError: true,
+          };
         }
 
-        if (!textToAppend.endsWith('\n')) {
-          textToAppend += '\n';
-        }
-
-        await fs.appendFile(filePath, textToAppend, 'utf-8');
+        const signalPath = path.resolve(process.cwd(), entry.signal);
+        await fs.mkdir(path.dirname(signalPath), { recursive: true });
+        const signalContent = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`;
+        await fs.writeFile(signalPath, signalContent, 'utf-8');
 
         return {
           content: [
             {
               type: 'text',
-              text: `Successfully appended to ${dateString}.md`,
+              text: `Smoke check "${name}" passed. Signal written to ${entry.signal}.`,
             },
           ],
         };
@@ -170,276 +109,7 @@ export function startMcpServer() {
           content: [
             {
               type: 'text',
-              text: `Error appending to daily note: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'read_daily_note',
-    {
-      description: 'Read a daily note from N days ago',
-      inputSchema: {
-        days_before: z.number().optional().describe('Number of days ago (0 for today, default: 0)'),
-        offset: z
-          .number()
-          .optional()
-          .describe('Line number to start reading from (0-indexed, default: 0)'),
-        lines: z.number().optional().describe('Number of lines to read (default: 100)'),
-      },
-    },
-    async ({ days_before: _days_before, offset: _offset, lines: _lines }) => {
-      const days_before = _days_before ?? 0;
-      const offset = _offset ?? 0;
-      const lines = _lines ?? 100;
-      try {
-        const date = new Date();
-        date.setDate(date.getDate() - days_before);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const dateString = `${year}-${month}-${day}`;
-
-        const filePath = path.resolve(process.cwd(), '.context/memory/daily', `${dateString}.md`);
-
-        let fileContent: string;
-        try {
-          fileContent = await fs.readFile(filePath, 'utf-8');
-        } catch (err) {
-          if ((err as { code?: string }).code === 'ENOENT') {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Daily note for ${dateString} does not exist.`,
-                },
-              ],
-            };
-          }
-          throw err;
-        }
-
-        const contentLines = fileContent.split('\n');
-        const selectedLines = contentLines.slice(offset, offset + lines);
-        const resultText = selectedLines.join('\n');
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: resultText || '(empty)',
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error reading daily note: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'create_knowledge_note',
-    {
-      description:
-        'Create a new Zettelkasten knowledge note with frontmatter and wikilinks. When you provide `template`, first read `.context/templates/<template>.md` and pass fully completed markdown in `content`. Available templates: adr (Architecture Decision Records), pattern (Design patterns), bug (Bug reports and analysis), gotcha (Pitfalls and gotchas), decision (General decisions), context (General context and background), runbook (Procedures and runbooks), insight (Insights and learnings).',
-      inputSchema: {
-        title: z.string().describe('The title of the note'),
-        content: z
-          .string()
-          .describe(
-            'The main content of the note. When `template` is set, this must be the complete markdown document that already follows the template.'
-          ),
-        tags: z
-          .array(z.string())
-          .optional()
-          .describe('Optional tags for the note. Not supported when `template` is set.'),
-        linked_notes: z
-          .array(z.string())
-          .optional()
-          .describe(
-            'Optional list of related note titles to link to. Not supported when `template` is set; include related notes directly in the markdown content instead.'
-          ),
-        template: z
-          .enum(['adr', 'pattern', 'bug', 'gotcha', 'decision', 'context', 'runbook', 'insight'])
-          .optional()
-          .describe(
-            'Optional template to validate against. Read the template file first and pass fully completed markdown in `content`.'
-          ),
-      },
-    },
-    async ({ title, content, tags, linked_notes, template }) => {
-      try {
-        const filename =
-          title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)/g, '') + '.md';
-        const dirPath = path.resolve(process.cwd(), '.context/memory');
-        const filePath = path.join(dirPath, filename);
-
-        await fs.mkdir(dirPath, { recursive: true });
-
-        const date = new Date().toISOString().split('T')[0];
-
-        let fileContent = '';
-        if (template) {
-          if (tags && tags.length > 0) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: 'Error creating knowledge note: `tags` is not supported in template mode. Read the template and include any frontmatter or metadata directly in the markdown content.',
-                },
-              ],
-              isError: true,
-            };
-          }
-
-          if (linked_notes && linked_notes.length > 0) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: 'Error creating knowledge note: `linked_notes` is not supported in template mode. Read the template and include related notes directly in the markdown content.',
-                },
-              ],
-              isError: true,
-            };
-          }
-
-          const templatePath = path.resolve(process.cwd(), `.context/templates/${template}.md`);
-          const templateContent = await fs.readFile(templatePath, 'utf-8');
-          const validation = validateTemplatedKnowledgeNoteContent(templateContent, content);
-
-          if (validation.errors.length > 0) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Error creating knowledge note: template content is invalid.\n- ${validation.errors.join('\n- ')}\nRead the template and provide the fully completed markdown document in \`content\`.`,
-                },
-              ],
-              isError: true,
-            };
-          }
-
-          fileContent = content.endsWith('\n') ? content : `${content}\n`;
-        } else {
-          fileContent = `---\n`;
-          fileContent += `title: ${title}\n`;
-          fileContent += `date: ${date}\n`;
-          if (tags && tags.length > 0) {
-            fileContent += `tags:\n${tags.map((t) => `  - ${t}`).join('\n')}\n`;
-          }
-          fileContent += `---\n\n`;
-          fileContent += `# ${title}\n\n`;
-          fileContent += `${content}\n`;
-        }
-
-        if (linked_notes && linked_notes.length > 0) {
-          fileContent += `\n## Related Notes\n\n`;
-          fileContent += linked_notes.map((note) => `- [[${note}]]`).join('\n') + '\n';
-        }
-
-        await fs.writeFile(filePath, fileContent, 'utf-8');
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Successfully created note: ${filename}`,
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error creating knowledge note: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'update_knowledge_note',
-    {
-      description: 'Update an existing knowledge note by appending or replacing content',
-      inputSchema: {
-        path: z
-          .string()
-          .describe('The relative path to the file (e.g., .context/memory/my-note.md)'),
-        content: z.string().describe('The content to append or replace'),
-        mode: z
-          .enum(['append', 'replace'])
-          .describe('Whether to append to or replace the existing content'),
-      },
-    },
-    async ({ path: filePath, content, mode }) => {
-      try {
-        const normalizedPath = path.normalize(filePath);
-        if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
-          throw new Error('Invalid path: Directory traversal is not allowed');
-        }
-
-        if (!normalizedPath.startsWith('docs/') && !normalizedPath.startsWith('.context/')) {
-          throw new Error('Invalid path: Only files in docs/ or .context/ are allowed');
-        }
-
-        const fullPath = path.resolve(process.cwd(), normalizedPath);
-
-        await fs.mkdir(path.dirname(fullPath), { recursive: true });
-
-        if (mode === 'append') {
-          let textToAppend = content;
-          try {
-            const existingContent = await fs.readFile(fullPath, 'utf-8');
-            if (existingContent.length > 0 && !existingContent.endsWith('\n')) {
-              textToAppend = '\n' + textToAppend;
-            }
-          } catch {
-            // ignore error if file doesn't exist
-          }
-
-          if (!textToAppend.endsWith('\n')) {
-            textToAppend += '\n';
-          }
-
-          await fs.appendFile(fullPath, textToAppend, 'utf-8');
-        } else {
-          await fs.writeFile(fullPath, content, 'utf-8');
-        }
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Successfully updated note: ${normalizedPath} (mode: ${mode})`,
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error updating knowledge note: ${error instanceof Error ? error.message : String(error)}`,
+              text: `Error running smoke check: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
           isError: true,
@@ -451,76 +121,95 @@ export function startMcpServer() {
   server.registerTool(
     'submit_turn_complete',
     {
-      description: 'Mark the current turn as complete after verifying all required steps',
+      description:
+        'Mark the current turn as complete after verifying all configured quality gate signal files are present and fresh.',
       inputSchema: {
-        daily_note_update_proof: z
-          .string()
-          .optional()
-          .describe(
-            "Provide the file path of the updated daily note, or explicitly write 'skipped' if no update was needed."
-          ),
-        knowledge_note_proof: z
-          .string()
-          .optional()
-          .describe(
-            "Provide the file path of the created knowledge note, or explicitly write 'skipped' if no note was created."
-          ),
         quality_check_output: z
           .string()
           .describe(
-            'Provide the last 5 lines of the `mise run lint && mise run test` execution output to prove quality checks passed.'
+            'Output evidence that quality checks passed (e.g., last lines of npm test + npm run lint output).'
           ),
         checkpoint_commit_hashes: z
           .string()
-          .describe(
-            'Provide the output of `git log -1 --oneline` or an explanation if the task was too small for checkpoints.'
-          ),
+          .describe('Output of `git log -1 --oneline` or explanation if no commit was needed.'),
         scope_review_notes: z
           .string()
           .describe(
-            'Provide a brief sentence confirming the scope check and that the work did not exceed the intended boundaries.'
+            'Brief sentence confirming scope was not exceeded and work stayed within intended boundaries.'
           ),
       },
     },
-    async ({
-      daily_note_update_proof,
-      knowledge_note_proof,
-      quality_check_output,
-      checkpoint_commit_hashes,
-      scope_review_notes,
-    }) => {
+    async ({ quality_check_output, checkpoint_commit_hashes, scope_review_notes }) => {
       const missingSteps: string[] = [];
-      const warnings: string[] = [];
-
-      if (!daily_note_update_proof || daily_note_update_proof.toLowerCase() === 'skipped') {
-        warnings.push(
-          'Warning: Daily note was skipped. This is allowed, but ensure no important context is lost.'
-        );
-      } else if (daily_note_update_proof.length < 5) {
-        missingSteps.push('daily_note_update_proof (too short)');
-      }
-
-      if (!knowledge_note_proof || knowledge_note_proof.toLowerCase() === 'skipped') {
-        warnings.push(
-          'Warning: Knowledge note was skipped. This is allowed, but ensure no important context is lost.'
-        );
-      } else if (knowledge_note_proof.length < 5) {
-        missingSteps.push('knowledge_note_proof (too short)');
-      }
 
       if (!quality_check_output || quality_check_output.length < 20)
-        missingSteps.push('quality_check_output');
+        missingSteps.push('quality_check_output (too short)');
       if (!checkpoint_commit_hashes || checkpoint_commit_hashes.length < 7)
-        missingSteps.push('checkpoint_commit_hashes');
+        missingSteps.push('checkpoint_commit_hashes (too short)');
       if (!scope_review_notes || scope_review_notes.length < 10)
-        missingSteps.push('scope_review_notes');
+        missingSteps.push('scope_review_notes (too short)');
 
       if (missingSteps.length > 0) {
         return {
           content: [
             {
               type: 'text',
-              text: `Error: The following required steps were not completed or provided insufficient proof: ${missingSteps.join(', ')}. You must provide valid proof for all steps before finishing the turn.`,
+              text: `Error: missing required fields: ${missingSteps.join(', ')}. Provide valid values before submitting.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Verify configured signal files
+      const config = loadConfig(process.cwd());
+      const checks = config.checks ?? [];
+      const signalErrors: string[] = [];
+      const now = Date.now();
+
+      for (const check of checks) {
+        try {
+          guardSignalPath(check.signal);
+          const signalPath = path.resolve(process.cwd(), check.signal);
+          const raw = await fs.readFile(signalPath, 'utf-8');
+          const { sessionId, timestamp } = parseSignalFile(raw);
+
+          if (timestamp === 0) {
+            signalErrors.push(`check "${check.name}": signal file has no valid timestamp`);
+            continue;
+          }
+
+          if (now - timestamp > SIGNAL_TTL_MS) {
+            signalErrors.push(
+              `check "${check.name}": signal file is stale (age: ${Math.round((now - timestamp) / 60_000)}min, TTL: 60min). Re-run run_smoke_check("${check.name}").`
+            );
+            continue;
+          }
+
+          if (SESSION_ID && sessionId && sessionId !== SESSION_ID) {
+            signalErrors.push(
+              `check "${check.name}": signal file is from a different session. Re-run run_smoke_check("${check.name}").`
+            );
+          }
+        } catch (err) {
+          if ((err as { code?: string }).code === 'ENOENT') {
+            signalErrors.push(
+              `check "${check.name}": signal file not found at ${check.signal}. Run run_smoke_check("${check.name}") first.`
+            );
+          } else {
+            signalErrors.push(
+              `check "${check.name}": ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+        }
+      }
+
+      if (signalErrors.length > 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: quality gate checks failed:\n${signalErrors.map((e) => `- ${e}`).join('\n')}`,
             },
           ],
           isError: true,
@@ -533,14 +222,14 @@ export function startMcpServer() {
 
         await fs.mkdir(dirPath, { recursive: true });
 
-        const content = `timestamp=${Date.now()}\n`;
+        const content = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`;
         await fs.writeFile(filePath, content, 'utf-8');
 
         return {
           content: [
             {
               type: 'text',
-              text: `Turn successfully marked as complete.${warnings.length > 0 ? '\n\n' + warnings.join('\n') : ''}`,
+              text: 'Turn successfully marked as complete.',
             },
           ],
         };

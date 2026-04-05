@@ -136,14 +136,13 @@ describe('onHookEvent', () => {
     expect(content).toContain('# Existing AGENTS');
     expect(content).toContain('<!-- context:start -->');
     expect(content).toContain('<!-- context:end -->');
-    expect(content).toContain('## Knowledge Context');
+    expect(content).toContain('## Quality Gate (작업 완료 요건)');
     expect(content).toContain(
-      '이 프로젝트는 **제텔카스텐(Zettelkasten)** 방식으로 지식을 관리합니다.'
+      '이 프로젝트는 **워크플로우 강제(Workflow Enforcement)** 방식으로 품질을 관리합니다.'
     );
-    expect(content).toContain('### 제텔카스텐 핵심 원칙');
-    expect(content).toContain('### 작업 전 필수');
-    expect(content).toContain('### 개발 원칙');
-    expect(content).toContain('### 우선순위');
+    expect(content).toContain('### 필수 워크플로우');
+    expect(content).toContain('### MCP Tools (context-mcp)');
+    expect(content).toContain('### 작업 완료 프로토콜');
     expect(sdk.log.info).toHaveBeenCalledTimes(1);
   });
 
@@ -294,7 +293,7 @@ describe('onHookEvent', () => {
     expect(sdk.tmux.sendKeys).toHaveBeenCalledTimes(1);
     expect(sdk.tmux.sendKeys).toHaveBeenCalledWith({
       sessionName: 'leader',
-      text: `<system-reminder>\nTURN END. You MUST call the 'submit_turn_complete' MCP tool to finalize your work and record notes. Do not wait for user input.\n</system-reminder>`,
+      text: `<system-reminder>\nTURN END. You MUST call the 'submit_turn_complete' MCP tool to verify quality gates and finalize your work. Do not wait for user input.\n</system-reminder>`,
       submit: false,
     });
     expect(sendTmuxSubmitSequence).toHaveBeenCalledWith('%10');
