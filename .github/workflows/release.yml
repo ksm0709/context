@@ -52,13 +52,16 @@ jobs:
           BUMP_MINOR=0
           BUMP_PATCH=0
 
+          # Non-release scopes: ci, build, docs, style, test, refactor, chore
+          NON_RELEASE_SCOPE="(ci|build|docs|style|test|refactor|chore)"
+
           while IFS= read -r commit; do
             [ -z "$commit" ] && continue
             if echo "$commit" | grep -qE "BREAKING[ -]CHANGE|!:"; then
               BUMP_MAJOR=1
-            elif echo "$commit" | grep -qE "^feat(\([^)]+\))?:"; then
+            elif echo "$commit" | grep -qE "^feat(\([^)]+\))?:" && ! echo "$commit" | grep -qE "^feat\(${NON_RELEASE_SCOPE}\):"; then
               [ $BUMP_MAJOR -eq 0 ] && BUMP_MINOR=1
-            elif echo "$commit" | grep -qE "^(fix|perf)(\([^)]+\))?:"; then
+            elif echo "$commit" | grep -qE "^(fix|perf)(\([^)]+\))?:" && ! echo "$commit" | grep -qE "^(fix|perf)\(${NON_RELEASE_SCOPE}\):"; then
               [ $BUMP_MAJOR -eq 0 ] && [ $BUMP_MINOR -eq 0 ] && BUMP_PATCH=1
             fi
           done <<< "$COMMITS"
