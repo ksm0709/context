@@ -7,41 +7,98 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
-  pull-requests: write
+  id-token: write
 
 jobs:
-  process:
+  release:
     runs-on: ubuntu-latest
-    outputs:
-      releases_created: ${{ steps.release-please.outputs.releases_created }}
-      prs_created: ${{ steps.release-please.outputs.prs_created }}
     steps:
-      - uses: googleapis/release-please-action@v4
-        id: release-please
+      - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: node
 
-  dispatch-publish:
-    needs: process
-    runs-on: ubuntu-latest
-    if: needs.process.outputs.releases_created == 'true' || needs.process.outputs.prs_created == 'true'
-    steps:
-      - name: Dispatch publish for releases
-        if: needs.process.outputs.releases_created == 'true'
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: publish-package
-          client-payload: '{"tag": "latest"}'
+      - name: Skip release commits
+        id: check
+        run: |
+          MSG=$(git log -1 --pretty=format:"%s")
+          if echo "$MSG" | grep -qE "^chore: release v"; then
+            echo "Skipping release commit: $MSG"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Dispatch publish for prerelease
-        if: needs.process.outputs.prs_created == 'true'
-        uses: peter-evans/repository-dispatch@v2
+      - uses: jdx/mise-action@d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd
+        if: steps.check.outputs.skip != 'true'
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: publish-package
-          client-payload: '{"tag": "next"}'
+          install: true
+          cache: true
+          experimental: true
+
+      - name: Compute next version
+        if: steps.check.outputs.skip != 'true'
+        id: version
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          CURRENT=$(node -p "require('./package.json').version")
+          COMMITS=$(git log "${LAST_TAG}..HEAD" --pretty=format:"%s")
+
+          BUMP_MAJOR=0
+          BUMP_MINOR=0
+          BUMP_PATCH=0
+
+          while IFS= read -r commit; do
+            [ -z "$commit" ] && continue
+            if echo "$commit" | grep -qE "BREAKING[ -]CHANGE|!:"; then
+              BUMP_MAJOR=1
+            elif echo "$commit" | grep -qE "^feat(\([^)]+\))?:"; then
+              [ $BUMP_MAJOR -eq 0 ] && BUMP_MINOR=1
+            elif echo "$commit" | grep -qE "^(fix|perf)(\([^)]+\))?:"; then
+              [ $BUMP_MAJOR -eq 0 ] && [ $BUMP_MINOR -eq 0 ] && BUMP_PATCH=1
+            fi
+          done <<< "$COMMITS"
+
+          IFS='.' read -r -a PARTS <<< "$CURRENT"
+          MAJ="${PARTS[0]}"; MIN="${PARTS[1]}"; PAT="${PARTS[2]}"
+
+          if [ "$BUMP_MAJOR" -eq 1 ]; then
+            MAJ=$((MAJ + 1)); MIN=0; PAT=0
+          elif [ "$BUMP_MINOR" -eq 1 ]; then
+            MIN=$((MIN + 1)); PAT=0
+          elif [ "$BUMP_PATCH" -eq 1 ]; then
+            PAT=$((PAT + 1))
+          else
+            echo "No releasable commits since $LAST_TAG — skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          NEW_VERSION="${MAJ}.${MIN}.${PAT}"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "Bumping $CURRENT → $NEW_VERSION (since $LAST_TAG)"
+
+      - name: Commit and tag release
+        if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          npm version "$NEW_VERSION" --no-git-tag-version
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: release v${NEW_VERSION}"
+          git tag "v${NEW_VERSION}"
+          git push origin main --follow-tags
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
+        run: npm run build
+
+      - name: Publish to npm
+        if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
+        run: npm publish --tag latest --provenance --access public
