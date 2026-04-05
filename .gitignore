@@ -16,4 +16,10 @@ coverage/
 .mise/
 .context/*
 !.context/memory/
-
+!.context/guides/
+!.context/templates/
+!.context/prompts/
+!.context/.version
+!.context/config.jsonc
+.omc/
+state/

@@ -1,7 +1,5 @@
-# 데일리 노트 기록 가이드
+# 세션 기록 가이드
 
-- [ ] `context_mcp_append_daily_note` 도구를 사용하여 기록을 추가하세요.
-- [ ] **주의**: 데일리 노트의 기존 내용은 절대 수정하거나 삭제하지 마세요.
-- [ ] 기록은 다음과 같은 형식으로 추가됩니다:
-  `[{{currentTimestamp}}] <기억 할 내용>`
-- [ ] `<기억 할 내용>`에는 완벽한 컨텍스트 인계를 위해 오늘 완료한 핵심 작업 요약, 미해결 이슈(TODO), 중요 메모, 지식 노트 `[[wikilink]]` 등을 포함하세요.
+- [ ] 세션 완료 후 `submit_turn_complete` MCP 도구를 호출하여 작업을 기록하세요.
+- [ ] 필요한 인자: `quality_check_output`, `checkpoint_commit_hashes`, `scope_review_notes`
+- [ ] smoke check가 완료된 후 호출해야 signal 파일 검증이 통과됩니다.
