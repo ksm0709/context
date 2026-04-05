@@ -1,3 +1,8 @@
+export const BUILTIN_SIGNALS = {
+  hash: '.context/.check-hash-passed',
+  scope: '.context/.check-scope-passed',
+} as const;
+
 export const DEFAULTS = {
   configPath: '.context/config.jsonc',
   signalDir: '.context',

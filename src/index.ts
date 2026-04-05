@@ -6,7 +6,7 @@ import { resolveContextDir } from './lib/context-dir.js';
 import { loadConfig } from './lib/config.js';
 import { resolveProjectPaths } from './lib/project-root.js';
 import { scaffoldIfNeeded, autoUpdateTemplates } from './lib/scaffold.js';
-import { DEFAULTS } from './constants.js';
+import { BUILTIN_SIGNALS, DEFAULTS } from './constants.js';
 
 const DOC_EXTENSIONS = new Set(['.md', '.mdx', '.txt', '.rst', '.csv']);
 
@@ -100,15 +100,16 @@ const plugin: Plugin = async ({ directory, client }) => {
         return;
       }
 
-      // 6. Necessity gate: smoke check 없이 pass 가능한지 판단 후 skip signal 자동 생성
-      try {
-        const config = loadConfig(projectRoot);
-        const checks = config.checks ?? [];
-        if (checks.length > 0 && !hasSourceCodeChanges(output.messages)) {
-          writeSkipSignals(projectRoot, checks, lastUserMsg.info.sessionID);
+      // 6. Necessity gate: 소스 코드 변경 없으면 빌트인 + config checks 모두 skip signal 자동 생성
+      if (!hasSourceCodeChanges(output.messages)) {
+        try {
+          const config = loadConfig(projectRoot);
+          const configChecks = config.checks ?? [];
+          const builtinChecks = Object.values(BUILTIN_SIGNALS).map((signal) => ({ signal }));
+          writeSkipSignals(projectRoot, [...builtinChecks, ...configChecks], lastUserMsg.info.sessionID);
+        } catch {
+          // config 로드 실패 시 기존 동작 유지
         }
-      } catch {
-        // config 로드 실패 시 기존 동작 유지
       }
 
       // 7. turn-end: inject as separate user message (hot-reload)

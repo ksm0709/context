@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { loadConfig } from './config.js';
-import { LIMITS } from '../constants.js';
+import { BUILTIN_SIGNALS, LIMITS } from '../constants.js';
 
 const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? process.env.OPENCODE_SESSION_ID ?? '';
 const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -119,89 +119,162 @@ export function startMcpServer() {
   );
 
   server.registerTool(
-    'submit_turn_complete',
+    'check_hash',
     {
       description:
-        'Mark the current turn as complete after verifying all configured quality gate signal files are present and fresh.',
+        'Verify all changes are committed. Errors if uncommitted changes exist, records the latest commit hash on success, or auto-passes if no code was changed this session.',
+      inputSchema: {},
+    },
+    async () => {
+      const signalPath = path.resolve(process.cwd(), BUILTIN_SIGNALS.hash);
+      const skipContent = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\nskipped=true\n`;
+
+      try {
+        let status = '';
+        try {
+          status = execSync('git status --porcelain', {
+            cwd: process.cwd(),
+            timeout: 10_000,
+            stdio: 'pipe',
+          })
+            .toString()
+            .trim();
+        } catch {
+          // Not a git repo — auto-pass
+          await fs.mkdir(path.dirname(signalPath), { recursive: true });
+          await fs.writeFile(signalPath, skipContent, 'utf-8');
+          return { content: [{ type: 'text', text: 'check_hash: skipped (not a git repo).' }] };
+        }
+
+        if (status) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `check_hash failed: uncommitted changes detected:\n${status}\n\nCommit or stash your changes before calling submit_turn_complete.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        let gitLog = '(no commits)';
+        try {
+          gitLog = execSync('git log -1 --oneline', { cwd: process.cwd(), stdio: 'pipe' })
+            .toString()
+            .trim();
+        } catch {
+          // no commits yet — still pass
+        }
+
+        await fs.mkdir(path.dirname(signalPath), { recursive: true });
+        await fs.writeFile(
+          signalPath,
+          `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\ngit_log=${gitLog}\n`,
+          'utf-8'
+        );
+        return { content: [{ type: 'text', text: `check_hash passed. Commit: ${gitLog}` }] };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error running check_hash: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    'check_scope',
+    {
+      description:
+        'Record scope review notes confirming work stayed within intended boundaries. Always succeeds and writes a result file consumed by submit_turn_complete.',
       inputSchema: {
-        quality_check_output: z
-          .string()
-          .describe(
-            'Output evidence that quality checks passed (e.g., last lines of npm test + npm run lint output).'
-          ),
-        checkpoint_commit_hashes: z
-          .string()
-          .describe('Output of `git log -1 --oneline` or explanation if no commit was needed.'),
-        scope_review_notes: z
+        notes: z
           .string()
           .describe(
             'Brief sentence confirming scope was not exceeded and work stayed within intended boundaries.'
           ),
       },
     },
-    async ({ quality_check_output, checkpoint_commit_hashes, scope_review_notes }) => {
-      const missingSteps: string[] = [];
-
-      if (!quality_check_output || quality_check_output.length < 20)
-        missingSteps.push('quality_check_output (too short)');
-      if (!checkpoint_commit_hashes || checkpoint_commit_hashes.length < 7)
-        missingSteps.push('checkpoint_commit_hashes (too short)');
-      if (!scope_review_notes || scope_review_notes.length < 10)
-        missingSteps.push('scope_review_notes (too short)');
-
-      if (missingSteps.length > 0) {
+    async ({ notes }) => {
+      if (!notes || (notes as string).length < 10) {
         return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: missing required fields: ${missingSteps.join(', ')}. Provide valid values before submitting.`,
-            },
-          ],
+          content: [{ type: 'text', text: 'Error: notes must be at least 10 characters.' }],
           isError: true,
         };
       }
+      const signalPath = path.resolve(process.cwd(), BUILTIN_SIGNALS.scope);
+      await fs.mkdir(path.dirname(signalPath), { recursive: true });
+      await fs.writeFile(
+        signalPath,
+        `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\nnotes=${notes}\n`,
+        'utf-8'
+      );
+      return { content: [{ type: 'text', text: 'check_scope recorded.' }] };
+    }
+  );
 
-      // Verify configured signal files
-      const config = loadConfig(process.cwd());
-      const checks = config.checks ?? [];
-      const signalErrors: string[] = [];
+  server.registerTool(
+    'submit_turn_complete',
+    {
+      description:
+        'Mark the current turn as complete after verifying all quality gate signal files (built-in: check_hash + check_scope, plus any configured smoke checks) are present and fresh.',
+      inputSchema: {},
+    },
+    async () => {
       const now = Date.now();
+      const signalErrors: string[] = [];
 
-      for (const check of checks) {
+      // Helper: validate a single signal file
+      async function validateSignal(name: string, signal: string, retryTool: string) {
         try {
-          guardSignalPath(check.signal);
-          const signalPath = path.resolve(process.cwd(), check.signal);
+          const signalPath = path.resolve(process.cwd(), signal);
           const raw = await fs.readFile(signalPath, 'utf-8');
           const { sessionId, timestamp } = parseSignalFile(raw);
 
           if (timestamp === 0) {
-            signalErrors.push(`check "${check.name}": signal file has no valid timestamp`);
-            continue;
+            signalErrors.push(`"${name}": signal file has no valid timestamp`);
+            return;
           }
-
           if (now - timestamp > SIGNAL_TTL_MS) {
             signalErrors.push(
-              `check "${check.name}": signal file is stale (age: ${Math.round((now - timestamp) / 60_000)}min, TTL: 60min). Re-run run_smoke_check("${check.name}").`
+              `"${name}": signal file is stale (age: ${Math.round((now - timestamp) / 60_000)}min, TTL: 60min). Re-run ${retryTool}.`
             );
-            continue;
+            return;
           }
-
           if (SESSION_ID && sessionId && sessionId !== SESSION_ID) {
             signalErrors.push(
-              `check "${check.name}": signal file is from a different session. Re-run run_smoke_check("${check.name}").`
+              `"${name}": signal file is from a different session. Re-run ${retryTool}.`
             );
           }
         } catch (err) {
           if ((err as { code?: string }).code === 'ENOENT') {
-            signalErrors.push(
-              `check "${check.name}": signal file not found at ${check.signal}. Run run_smoke_check("${check.name}") first.`
-            );
+            signalErrors.push(`"${name}": signal file not found. Run ${retryTool} first.`);
           } else {
-            signalErrors.push(
-              `check "${check.name}": ${err instanceof Error ? err.message : String(err)}`
-            );
+            signalErrors.push(`"${name}": ${err instanceof Error ? err.message : String(err)}`);
           }
         }
+      }
+
+      // Built-in checks
+      await validateSignal('check_hash', BUILTIN_SIGNALS.hash, 'check_hash()');
+      await validateSignal('check_scope', BUILTIN_SIGNALS.scope, 'check_scope()');
+
+      // Config-defined checks
+      const config = loadConfig(process.cwd());
+      for (const check of config.checks ?? []) {
+        try {
+          guardSignalPath(check.signal);
+        } catch (e) {
+          signalErrors.push(`"${check.name}": ${e instanceof Error ? e.message : String(e)}`);
+          continue;
+        }
+        await validateSignal(check.name, check.signal, `run_smoke_check("${check.name}")`);
       }
 
       if (signalErrors.length > 0) {
@@ -219,20 +292,9 @@ export function startMcpServer() {
       try {
         const dirPath = path.resolve(process.cwd(), '.context');
         const filePath = path.join(dirPath, '.work-complete');
-
         await fs.mkdir(dirPath, { recursive: true });
-
-        const content = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`;
-        await fs.writeFile(filePath, content, 'utf-8');
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Turn successfully marked as complete.',
-            },
-          ],
-        };
+        await fs.writeFile(filePath, `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`, 'utf-8');
+        return { content: [{ type: 'text', text: 'Turn successfully marked as complete.' }] };
       } catch (error) {
         return {
           content: [

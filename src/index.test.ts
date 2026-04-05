@@ -154,56 +154,51 @@ describe('context plugin', () => {
       };
     }
 
-    it('auto-creates skip signal files when checks configured but no source code changed', async () => {
+    it('auto-creates skip signals for built-in + config checks when no source code changed', async () => {
       makeConfigWithCheck(tmpDir);
       const hooks = await plugin(createMockInput(tmpDir) as never);
       const output = {
-        messages: [
-          patchMessage(['README.md', 'docs/guide.md']),
-          createUserMessage(),
-        ],
+        messages: [patchMessage(['README.md', 'docs/guide.md']), createUserMessage()],
       };
 
       await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
 
-      const signalPath = join(tmpDir, '.context', '.check-tests-passed');
-      expect(existsSync(signalPath)).toBe(true);
-      const content = readFileSync(signalPath, 'utf-8');
-      expect(content).toContain('session_id=sess-1');
-      expect(content).toContain('skipped=true');
+      // config check
+      const testsSignal = join(tmpDir, '.context', '.check-tests-passed');
+      expect(existsSync(testsSignal)).toBe(true);
+      expect(readFileSync(testsSignal, 'utf-8')).toContain('skipped=true');
+      // built-in checks
+      expect(existsSync(join(tmpDir, '.context', '.check-hash-passed'))).toBe(true);
+      expect(existsSync(join(tmpDir, '.context', '.check-scope-passed'))).toBe(true);
       // turn-end still injected
       expect(output.messages).toHaveLength(3);
+    });
+
+    it('auto-creates built-in skip signals even when config checks is empty', async () => {
+      mkdirSync(join(tmpDir, '.context'), { recursive: true });
+      writeFileSync(join(tmpDir, '.context', 'config.jsonc'), JSON.stringify({ checks: [] }));
+      const hooks = await plugin(createMockInput(tmpDir) as never);
+      const output = { messages: [createUserMessage()] };
+
+      await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+      expect(existsSync(join(tmpDir, '.context', '.check-hash-passed'))).toBe(true);
+      expect(existsSync(join(tmpDir, '.context', '.check-scope-passed'))).toBe(true);
+      expect(output.messages).toHaveLength(2);
     });
 
     it('does NOT auto-create skip signals when source code files were changed', async () => {
       makeConfigWithCheck(tmpDir);
       const hooks = await plugin(createMockInput(tmpDir) as never);
       const output = {
-        messages: [
-          patchMessage(['src/index.ts', 'README.md']),
-          createUserMessage(),
-        ],
+        messages: [patchMessage(['src/index.ts', 'README.md']), createUserMessage()],
       };
 
       await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
 
-      const signalPath = join(tmpDir, '.context', '.check-tests-passed');
-      expect(existsSync(signalPath)).toBe(false);
-    });
-
-    it('skips necessity gate when checks is empty', async () => {
-      mkdirSync(join(tmpDir, '.context'), { recursive: true });
-      writeFileSync(
-        join(tmpDir, '.context', 'config.jsonc'),
-        JSON.stringify({ checks: [] })
-      );
-      const hooks = await plugin(createMockInput(tmpDir) as never);
-      const output = { messages: [createUserMessage()] };
-
-      await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
-
-      // No signal files created, turn-end still injected
-      expect(output.messages).toHaveLength(2);
+      expect(existsSync(join(tmpDir, '.context', '.check-tests-passed'))).toBe(false);
+      expect(existsSync(join(tmpDir, '.context', '.check-hash-passed'))).toBe(false);
+      expect(existsSync(join(tmpDir, '.context', '.check-scope-passed'))).toBe(false);
     });
   });
 

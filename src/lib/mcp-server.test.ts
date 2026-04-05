@@ -64,10 +64,12 @@ describe('mcp-server (Workflow Enforcer)', () => {
     startMcpServer();
   });
 
-  it('registers exactly 2 tools: run_smoke_check and submit_turn_complete', () => {
+  it('registers exactly 4 tools', () => {
     const toolNames = mockRegisterTool.mock.calls.map((c) => c[0]);
-    expect(toolNames).toHaveLength(2);
+    expect(toolNames).toHaveLength(4);
     expect(toolNames).toContain('run_smoke_check');
+    expect(toolNames).toContain('check_hash');
+    expect(toolNames).toContain('check_scope');
     expect(toolNames).toContain('submit_turn_complete');
   });
 
@@ -147,31 +149,96 @@ describe('mcp-server (Workflow Enforcer)', () => {
     });
   });
 
+  describe('check_hash tool', () => {
+    let handler: ToolHandler;
+
+    beforeEach(() => {
+      handler = getRegisteredToolCall('check_hash')[2];
+    });
+
+    it('passes and writes signal file when working tree is clean', async () => {
+      vi.mocked(execSync)
+        .mockReturnValueOnce(Buffer.from('')) // git status --porcelain
+        .mockReturnValueOnce(Buffer.from('abc1234 feat: something')); // git log
+
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('passed');
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.check-hash-passed'),
+        expect.stringContaining('git_log='),
+        'utf-8'
+      );
+    });
+
+    it('fails when there are uncommitted changes', async () => {
+      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(' M src/index.ts'));
+
+      const result = await handler({});
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('uncommitted changes');
+    });
+
+    it('auto-passes (skip) when not in a git repo', async () => {
+      vi.mocked(execSync).mockImplementationOnce(() => {
+        throw new Error('not a git repository');
+      });
+
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('skipped');
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.check-hash-passed'),
+        expect.stringContaining('skipped=true'),
+        'utf-8'
+      );
+    });
+  });
+
+  describe('check_scope tool', () => {
+    let handler: ToolHandler;
+
+    beforeEach(() => {
+      handler = getRegisteredToolCall('check_scope')[2];
+    });
+
+    it('writes scope signal file with provided notes', async () => {
+      const result = await handler({ notes: 'Scope stayed within intended boundaries.' });
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('recorded');
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.check-scope-passed'),
+        expect.stringContaining('notes=Scope stayed'),
+        'utf-8'
+      );
+    });
+
+    it('fails when notes are too short', async () => {
+      const result = await handler({ notes: 'short' });
+      expect(result.isError).toBe(true);
+    });
+  });
+
   describe('submit_turn_complete tool', () => {
     let handler: ToolHandler;
 
     beforeEach(() => {
-      const call = getRegisteredToolCall('submit_turn_complete');
-      handler = call[2];
+      handler = getRegisteredToolCall('submit_turn_complete')[2];
     });
 
-    it('schema has no daily_note_update_proof or knowledge_note_proof', () => {
-      const call = getRegisteredToolCall('submit_turn_complete');
-      const schema = call[1].inputSchema;
-      expect(schema).not.toHaveProperty('daily_note_update_proof');
-      expect(schema).not.toHaveProperty('knowledge_note_proof');
-      expect(schema).toHaveProperty('quality_check_output');
-      expect(schema).toHaveProperty('checkpoint_commit_hashes');
-      expect(schema).toHaveProperty('scope_review_notes');
+    it('schema has no manual input fields', () => {
+      const schema = getRegisteredToolCall('submit_turn_complete')[1].inputSchema;
+      expect(schema).not.toHaveProperty('quality_check_output');
+      expect(schema).not.toHaveProperty('checkpoint_commit_hashes');
+      expect(schema).not.toHaveProperty('scope_review_notes');
     });
 
-    it('succeeds with empty checks config', async () => {
+    it('succeeds when all built-in + config signal files are fresh', async () => {
       vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
-      const result = await handler({
-        quality_check_output: 'All 42 tests passed. Lint: 0 errors.',
-        checkpoint_commit_hashes: 'abc1234',
-        scope_review_notes: 'Scope stayed within intended boundaries.',
-      });
+      const freshTimestamp = Date.now() - 5 * 60 * 1000;
+      vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${freshTimestamp}\n` as never);
+
+      const result = await handler({});
       expect(result.isError).toBeUndefined();
       expect(result.content[0].text).toContain('complete');
       expect(fs.writeFile).toHaveBeenCalledWith(
@@ -181,80 +248,41 @@ describe('mcp-server (Workflow Enforcer)', () => {
       );
     });
 
-    it('fails when signal file is missing', async () => {
-      vi.mocked(loadConfig).mockReturnValue({
-        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-        smokeChecks: [],
-      });
+    it('fails when built-in check_hash signal is missing', async () => {
+      vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
       vi.mocked(fs.readFile).mockRejectedValue(
         Object.assign(new Error('not found'), { code: 'ENOENT' })
       );
 
-      const result = await handler({
-        quality_check_output: 'All 42 tests passed. Lint: 0 errors.',
-        checkpoint_commit_hashes: 'abc1234',
-        scope_review_notes: 'Scope stayed within intended boundaries.',
-      });
-
+      const result = await handler({});
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('not found');
+      expect(result.content[0].text).toContain('check_hash');
     });
 
-    it('fails when signal file is stale (older than 1 hour)', async () => {
-      vi.mocked(loadConfig).mockReturnValue({
-        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-        smokeChecks: [],
-      });
-      const staleTimestamp = Date.now() - 2 * 60 * 60 * 1000; // 2 hours ago
-      vi.mocked(fs.readFile).mockResolvedValue(
-        `session_id=\ntimestamp=${staleTimestamp}\n` as never
-      );
+    it('fails when built-in signal is stale', async () => {
+      vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
+      const staleTimestamp = Date.now() - 2 * 60 * 60 * 1000;
+      vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${staleTimestamp}\n` as never);
 
-      const result = await handler({
-        quality_check_output: 'All 42 tests passed. Lint: 0 errors.',
-        checkpoint_commit_hashes: 'abc1234',
-        scope_review_notes: 'Scope stayed within intended boundaries.',
-      });
-
+      const result = await handler({});
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('stale');
     });
 
-    it('succeeds when all signal files are fresh', async () => {
+    it('fails when config check signal is missing', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
         smokeChecks: [],
       });
-      const freshTimestamp = Date.now() - 5 * 60 * 1000; // 5 minutes ago
-      vi.mocked(fs.readFile).mockResolvedValue(
-        `session_id=\ntimestamp=${freshTimestamp}\n` as never
-      );
+      const freshTimestamp = Date.now() - 5 * 60 * 1000;
+      vi.mocked(fs.readFile)
+        .mockResolvedValueOnce(`session_id=\ntimestamp=${freshTimestamp}\n` as never) // hash
+        .mockResolvedValueOnce(`session_id=\ntimestamp=${freshTimestamp}\n` as never) // scope
+        .mockRejectedValueOnce(Object.assign(new Error('not found'), { code: 'ENOENT' })); // tests
 
-      const result = await handler({
-        quality_check_output: 'All 42 tests passed. Lint: 0 errors.',
-        checkpoint_commit_hashes: 'abc1234',
-        scope_review_notes: 'Scope stayed within intended boundaries.',
-      });
-
-      expect(result.isError).toBeUndefined();
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('.work-complete'),
-        expect.stringContaining('timestamp='),
-        'utf-8'
-      );
-    });
-
-    it('fails when required fields are missing or too short', async () => {
-      const result = await handler({
-        quality_check_output: 'short',
-        checkpoint_commit_hashes: 'abc',
-        scope_review_notes: 'short',
-      });
-
+      const result = await handler({});
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('quality_check_output');
-      expect(result.content[0].text).toContain('checkpoint_commit_hashes');
-      expect(result.content[0].text).toContain('scope_review_notes');
+      expect(result.content[0].text).toContain('tests');
     });
   });
 });
