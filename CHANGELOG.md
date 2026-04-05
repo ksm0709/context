@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0](https://github.com/ksm0709/context/compare/v0.3.0...v0.4.0) (2026-04-05)
+
+
+### Features
+
+* replace memory MCP tools with workflow enforcer quality gates ([f5a59e4](https://github.com/ksm0709/context/commit/f5a59e4ae05d1c4c896e53243cc8e4005051ba04))
+
 ## [0.3.0](https://github.com/ksm0709/context/compare/v0.2.0...v0.3.0) (2026-04-03)
 
 
