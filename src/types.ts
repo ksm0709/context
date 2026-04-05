@@ -7,6 +7,7 @@ export interface SmokeCheckEntry {
   name: string;
   command: string;
   signal: string; // path to signal file, must be under .context/
+  timeout?: number; // ms, overrides LIMITS.smokeCheckTimeout if set (1000–600000)
 }
 
 export interface ContextConfig {

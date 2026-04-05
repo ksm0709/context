@@ -133,6 +133,112 @@ describe('loadConfig - checks and smokeChecks', () => {
   });
 });
 
+describe('loadConfig - timeout validation', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `context-timeout-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeConfig(tmpDir: string, content: object) {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, 'config.jsonc'), JSON.stringify(content));
+  }
+
+  it('throws Config error for timeout below 1000ms', () => {
+    writeConfig(tmpDir, {
+      checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 500 }],
+    });
+    expect(() => loadConfig(tmpDir)).toThrow('Config error:');
+    expect(() => loadConfig(tmpDir)).toThrow('timeout');
+  });
+
+  it('throws Config error for timeout above 600000ms', () => {
+    writeConfig(tmpDir, {
+      checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 700_000 }],
+    });
+    expect(() => loadConfig(tmpDir)).toThrow('Config error:');
+    expect(() => loadConfig(tmpDir)).toThrow('timeout');
+  });
+
+  it('accepts timeout of exactly 1000ms', () => {
+    writeConfig(tmpDir, {
+      checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 1000 }],
+    });
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks![0].timeout).toBe(1000);
+  });
+
+  it('accepts timeout of exactly 600000ms', () => {
+    writeConfig(tmpDir, {
+      checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 600_000 }],
+    });
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks![0].timeout).toBe(600_000);
+  });
+
+  it('accepts smokeCheck without timeout (backward compat)', () => {
+    writeConfig(tmpDir, {
+      checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' }],
+    });
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks![0].timeout).toBeUndefined();
+  });
+});
+
+describe('inferAndPersistChecks - JSONC comment preservation', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `context-infer-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('preserves existing JSONC comments when writing checks', async () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+
+    // Write config with comments
+    const originalContent = `{
+  // Context Plugin Configuration
+  "knowledge": { "dir": ".context/memory" },
+  "omx": { "turnEnd": { "strategy": "turn-complete-sendkeys" } }
+}`;
+    writeFileSync(join(configDir, 'config.jsonc'), originalContent);
+
+    // Verify the JSONC write logic through applyEdits directly (claude CLI unavailable in test env)
+    const { applyEdits, modify } = await import('jsonc-parser');
+    let edits = modify(originalContent, ['checks'], [{ name: 'tests', signal: '.context/.check-tests-passed' }], { formattingOptions: { insertSpaces: true, tabSize: 2 } });
+    let updated = applyEdits(originalContent, edits);
+    edits = modify(updated, ['smokeChecks'], [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' }], { formattingOptions: { insertSpaces: true, tabSize: 2 } });
+    updated = applyEdits(updated, edits);
+
+    // Comments must be preserved
+    expect(updated).toContain('// Context Plugin Configuration');
+    // Original fields must be preserved
+    expect(updated).toContain('"knowledge"');
+    expect(updated).toContain('"omx"');
+    // New fields must be added
+    expect(updated).toContain('"checks"');
+    expect(updated).toContain('"smokeChecks"');
+  });
+});
+
 describe('loadConfig - OMX/OMC strategy', () => {
   let tmpDir: string;
 

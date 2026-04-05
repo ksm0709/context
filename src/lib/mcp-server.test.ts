@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { startMcpServer } from './mcp-server.js';
-import * as fs from 'fs/promises';
+import * as fs from 'node:fs/promises';
 
 const mockRegisterTool = vi.fn();
 type ToolHandler = (input: Record<string, unknown>) => Promise<{
@@ -32,13 +32,13 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
   },
 }));
 
-vi.mock('fs/promises', () => ({
+vi.mock('node:fs/promises', () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn(),
   writeFile: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('child_process', () => ({
+vi.mock('node:child_process', () => ({
   execSync: vi.fn(),
 }));
 
@@ -46,7 +46,7 @@ vi.mock('./config.js', () => ({
   loadConfig: vi.fn(),
 }));
 
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import { loadConfig } from './config.js';
 
 function getRegisteredToolCall(name: string): RegisteredToolCall {
@@ -64,13 +64,14 @@ describe('mcp-server (Workflow Enforcer)', () => {
     startMcpServer();
   });
 
-  it('registers exactly 4 tools', () => {
+  it('registers exactly 5 tools', () => {
     const toolNames = mockRegisterTool.mock.calls.map((c) => c[0]);
-    expect(toolNames).toHaveLength(4);
+    expect(toolNames).toHaveLength(5);
     expect(toolNames).toContain('run_smoke_check');
     expect(toolNames).toContain('check_hash');
     expect(toolNames).toContain('check_scope');
     expect(toolNames).toContain('submit_turn_complete');
+    expect(toolNames).toContain('infer_smoke_checks');
   });
 
   it('does not register any memory tools', () => {
@@ -118,6 +119,59 @@ describe('mcp-server (Workflow Enforcer)', () => {
       );
     });
 
+    it('writes caller=agent in signal file by default', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
+      });
+      vi.mocked(execSync).mockReturnValue(Buffer.from(''));
+
+      await handler({ name: 'tests' });
+
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.check-tests-passed'),
+        expect.stringContaining('caller=agent'),
+        'utf-8'
+      );
+    });
+
+    it('writes caller=reviewer in signal file when caller is reviewer', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
+      });
+      vi.mocked(execSync).mockReturnValue(Buffer.from(''));
+
+      await handler({ name: 'tests', caller: 'reviewer' });
+
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.check-tests-passed'),
+        expect.stringContaining('caller=reviewer'),
+        'utf-8'
+      );
+    });
+
+    it('uses entry.timeout when configured', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 60_000 },
+        ],
+      });
+      vi.mocked(execSync).mockReturnValue(Buffer.from(''));
+
+      await handler({ name: 'tests' });
+
+      expect(execSync).toHaveBeenCalledWith(
+        'npm test',
+        expect.objectContaining({ timeout: 60_000 })
+      );
+    });
+
     it('does not write signal file when command fails', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
@@ -146,6 +200,46 @@ describe('mcp-server (Workflow Enforcer)', () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('.context/');
+    });
+  });
+
+  describe('infer_smoke_checks tool', () => {
+    it('is registered', () => {
+      const toolNames = mockRegisterTool.mock.calls.map((c) => c[0]);
+      expect(toolNames).toContain('infer_smoke_checks');
+    });
+
+    it('returns already-configured message when checks exist', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [],
+      });
+      const handler = getRegisteredToolCall('infer_smoke_checks')[2];
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('already configured');
+    });
+  });
+
+  describe('parseSignalFile backward compat', () => {
+    it('run_smoke_check signal without caller field defaults to agent in written content', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
+      });
+      vi.mocked(execSync).mockReturnValue(Buffer.from(''));
+      const handler = getRegisteredToolCall('run_smoke_check')[2];
+
+      // No caller provided — should default to 'agent'
+      await handler({ name: 'tests' });
+
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.check-tests-passed'),
+        expect.stringContaining('caller=agent'),
+        'utf-8'
+      );
     });
   });
 
@@ -233,9 +327,23 @@ describe('mcp-server (Workflow Enforcer)', () => {
       expect(schema).not.toHaveProperty('scope_review_notes');
     });
 
-    it('succeeds when all built-in + config signal files are fresh', async () => {
+    it('returns warning (not error) when no checks configured', async () => {
       vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
       const freshTimestamp = Date.now() - 5 * 60 * 1000;
+      vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${freshTimestamp}\n` as never);
+
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('Warning');
+      expect(result.content[0].text).toContain('infer_smoke_checks');
+    });
+
+    it('succeeds when all built-in + config signal files are fresh', async () => {
+      const freshTimestamp = Date.now() - 5 * 60 * 1000;
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [],
+      });
       vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${freshTimestamp}\n` as never);
 
       const result = await handler({});
@@ -249,7 +357,11 @@ describe('mcp-server (Workflow Enforcer)', () => {
     });
 
     it('fails when built-in check_hash signal is missing', async () => {
-      vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
+      // Need at least one configured check so submit proceeds past empty-checks warning
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [],
+      });
       vi.mocked(fs.readFile).mockRejectedValue(
         Object.assign(new Error('not found'), { code: 'ENOENT' })
       );
@@ -260,7 +372,11 @@ describe('mcp-server (Workflow Enforcer)', () => {
     });
 
     it('fails when built-in signal is stale', async () => {
-      vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
+      // Need at least one configured check so submit proceeds past empty-checks warning
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [],
+      });
       const staleTimestamp = Date.now() - 2 * 60 * 60 * 1000;
       vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${staleTimestamp}\n` as never);
 

@@ -2,21 +2,23 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { execSync } from 'child_process';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { execSync } from 'node:child_process';
 import { loadConfig } from './config.js';
 import { BUILTIN_SIGNALS, LIMITS } from '../constants.js';
 
 const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? process.env.OPENCODE_SESSION_ID ?? '';
 const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-function parseSignalFile(content: string): { sessionId: string; timestamp: number } {
+function parseSignalFile(content: string): { sessionId: string; timestamp: number; caller: 'agent' | 'reviewer' } {
   const sessionMatch = content.match(/^session_id=(.*)$/m);
   const timestampMatch = content.match(/^timestamp=(\d+)$/m);
+  const callerMatch = content.match(/^caller=(agent|reviewer)$/m);
   return {
     sessionId: sessionMatch?.[1]?.trim() ?? '',
     timestamp: timestampMatch ? parseInt(timestampMatch[1], 10) : 0,
+    caller: (callerMatch?.[1] as 'agent' | 'reviewer') ?? 'agent',
   };
 }
 
@@ -49,9 +51,15 @@ export function startMcpServer() {
           .describe(
             'The name of the smokeCheck entry to run (must match a smokeChecks[].name in config)'
           ),
+        caller: z
+          .enum(['agent', 'reviewer'])
+          .optional()
+          .describe(
+            'Caller context. Use "reviewer" when invoked from a reviewer agent. Defaults to "agent".'
+          ),
       },
     },
-    async ({ name }) => {
+    async ({ name, caller }) => {
       try {
         const config = loadConfig(process.cwd());
         const smokeChecks = config.smokeChecks ?? [];
@@ -75,7 +83,7 @@ export function startMcpServer() {
         try {
           execSync(entry.command, {
             cwd: process.cwd(),
-            timeout: LIMITS.smokeCheckTimeout,
+            timeout: entry.timeout ?? LIMITS.smokeCheckTimeout,
             stdio: 'pipe',
           });
         } catch (cmdError) {
@@ -93,7 +101,8 @@ export function startMcpServer() {
 
         const signalPath = path.resolve(process.cwd(), entry.signal);
         await fs.mkdir(path.dirname(signalPath), { recursive: true });
-        const signalContent = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`;
+        const callerValue = caller ?? 'agent';
+        const signalContent = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\ncaller=${callerValue}\n`;
         await fs.writeFile(signalPath, signalContent, 'utf-8');
 
         return {
@@ -220,6 +229,66 @@ export function startMcpServer() {
   );
 
   server.registerTool(
+    'infer_smoke_checks',
+    {
+      description:
+        '[experimental] Analyze the current project and infer appropriate smoke checks. ' +
+        'Writes checks and smokeChecks to .context/config.jsonc permanently. ' +
+        'Idempotent: if checks or smokeChecks are already configured, returns early. ' +
+        'Requires claude CLI to be available on PATH.',
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const config = loadConfig(process.cwd());
+        if ((config.checks ?? []).length > 0 || (config.smokeChecks ?? []).length > 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Checks already configured. No inference needed. To re-infer, clear checks/smokeChecks from .context/config.jsonc first.',
+              },
+            ],
+          };
+        }
+
+        const { inferAndPersistChecks } = await import('./config.js');
+        const result = await inferAndPersistChecks(process.cwd());
+        if (!result) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Could not infer checks (analysis failed or claude CLI unavailable). Configure manually in .context/config.jsonc.',
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Inferred and saved ${result.checks.length} check(s): ${result.checks.map((c) => c.name).join(', ')}. Run run_smoke_check() for each, then submit_turn_complete.`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  server.registerTool(
     'submit_turn_complete',
     {
       description:
@@ -267,7 +336,21 @@ export function startMcpServer() {
 
       // Config-defined checks
       const config = loadConfig(process.cwd());
-      for (const check of config.checks ?? []) {
+      const configuredChecks = config.checks ?? [];
+
+      if (configuredChecks.length === 0) {
+        // No smoke checks configured — warn but allow submission
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Warning: no quality checks configured. Call infer_smoke_checks() to auto-configure, or add checks/smokeChecks to .context/config.jsonc. Proceeding without smoke check validation.',
+            },
+          ],
+        };
+      }
+
+      for (const check of configuredChecks) {
         try {
           guardSignalPath(check.signal);
         } catch (e) {
