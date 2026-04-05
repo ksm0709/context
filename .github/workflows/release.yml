@@ -95,6 +95,10 @@ jobs:
           git tag "v${NEW_VERSION}"
           git push origin main --follow-tags
 
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
+        run: bun install --frozen-lockfile
+
       - name: Build
         if: steps.check.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
         run: npm run build
