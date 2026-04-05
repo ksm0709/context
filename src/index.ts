@@ -80,7 +80,7 @@ const plugin: Plugin = async ({ directory, client }) => {
           // 다른 세션의 signal file — 무시
         } else {
           const { mtimeMs } = statSync(signalPath);
-          const userCreatedAt = lastUserMsg.info.time.created;
+          const userCreatedAt = lastUserMsg.info?.time?.created ?? 0;
 
           if (mtimeMs >= userCreatedAt) {
             // signal file이 현재 user message 이후에 생성됨 = 아직 같은 user turn
