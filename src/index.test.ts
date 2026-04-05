@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import plugin from './index.js';
@@ -136,6 +136,75 @@ describe('context plugin', () => {
     // Should be suppressed
     expect(output.messages).toHaveLength(1);
     expect(existsSync(signalPath)).toBe(true);
+  });
+
+  describe('necessity gate', () => {
+    function makeConfigWithCheck(dir: string, signal = '.context/.check-tests-passed') {
+      mkdirSync(join(dir, '.context'), { recursive: true });
+      writeFileSync(
+        join(dir, '.context', 'config.jsonc'),
+        JSON.stringify({ checks: [{ name: 'tests', signal }] })
+      );
+    }
+
+    function patchMessage(files: string[]) {
+      return {
+        info: { id: 'assistant-1', sessionID: 'sess-1', role: 'assistant' as const },
+        parts: [{ type: 'patch', files }],
+      };
+    }
+
+    it('auto-creates skip signal files when checks configured but no source code changed', async () => {
+      makeConfigWithCheck(tmpDir);
+      const hooks = await plugin(createMockInput(tmpDir) as never);
+      const output = {
+        messages: [
+          patchMessage(['README.md', 'docs/guide.md']),
+          createUserMessage(),
+        ],
+      };
+
+      await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+      const signalPath = join(tmpDir, '.context', '.check-tests-passed');
+      expect(existsSync(signalPath)).toBe(true);
+      const content = readFileSync(signalPath, 'utf-8');
+      expect(content).toContain('session_id=sess-1');
+      expect(content).toContain('skipped=true');
+      // turn-end still injected
+      expect(output.messages).toHaveLength(3);
+    });
+
+    it('does NOT auto-create skip signals when source code files were changed', async () => {
+      makeConfigWithCheck(tmpDir);
+      const hooks = await plugin(createMockInput(tmpDir) as never);
+      const output = {
+        messages: [
+          patchMessage(['src/index.ts', 'README.md']),
+          createUserMessage(),
+        ],
+      };
+
+      await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+      const signalPath = join(tmpDir, '.context', '.check-tests-passed');
+      expect(existsSync(signalPath)).toBe(false);
+    });
+
+    it('skips necessity gate when checks is empty', async () => {
+      mkdirSync(join(tmpDir, '.context'), { recursive: true });
+      writeFileSync(
+        join(tmpDir, '.context', 'config.jsonc'),
+        JSON.stringify({ checks: [] })
+      );
+      const hooks = await plugin(createMockInput(tmpDir) as never);
+      const output = { messages: [createUserMessage()] };
+
+      await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+      // No signal files created, turn-end still injected
+      expect(output.messages).toHaveLength(2);
+    });
   });
 
   it('deletes stale .work-complete files and re-enables injection', async () => {
