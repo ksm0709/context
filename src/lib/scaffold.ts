@@ -33,18 +33,21 @@ const DEFAULT_CONFIG = `{
   ],
 
   // Smoke checks run before submit_turn_complete is accepted.
-  // Set "enabled": true to activate a check. All checks below are disabled by default.
-  // Each check writes a signal file when it passes.
+  // Set "enabled": true to activate a check. All checks are disabled by default.
+  // triggerCommand: exit 0 = run the check, non-zero = auto-skip with signal.
+  // agent checks: PASS/FAIL instruction is auto-injected — omit from prompt.
   "smokeChecks": [
 
     // === TESTING ===
     {
       "name": "tests",
       "enabled": false,
+      // skip if no test script defined in package.json
+      "triggerCommand": "node -e \\"require('./package.json').scripts?.test || process.exit(1)\\"",
       "command": "npm test",
-      // "command": "go test ./...",        // Go projects
-      // "command": "pytest",               // Python projects
-      // "command": "cargo test",           // Rust projects
+      // "command": "go test ./...",       // Go
+      // "command": "pytest",              // Python
+      // "command": "cargo test",          // Rust
       "signal": ".context/.check-tests-passed"
     },
 
@@ -52,27 +55,35 @@ const DEFAULT_CONFIG = `{
     {
       "name": "lint",
       "enabled": false,
+      // skip if no ESLint config found
+      "triggerCommand": "ls .eslintrc* eslint.config* 2>/dev/null | head -1 | grep -q .",
       "command": "npm run lint",
-      // "command": "golangci-lint run",    // Go projects
-      // "command": "ruff check .",         // Python projects
+      // "command": "golangci-lint run",   // Go
+      // "command": "ruff check .",        // Python
       "signal": ".context/.check-lint-passed"
     },
     {
       "name": "typecheck",
       "enabled": false,
+      // skip if no tsconfig.json
+      "triggerCommand": "test -f tsconfig.json",
       "command": "npx tsc --noEmit",
       "signal": ".context/.check-typecheck-passed"
     },
     {
       "name": "format",
       "enabled": false,
+      // skip if no Prettier config found
+      "triggerCommand": "ls .prettierrc* prettier.config* 2>/dev/null | head -1 | grep -q .",
       "command": "npx prettier --check .",
-      // "command": "gofmt -l . | grep . && exit 1 || exit 0",  // Go projects
+      // "command": "gofmt -l . | grep . && exit 1 || exit 0",  // Go
       "signal": ".context/.check-format-passed"
     },
     {
       "name": "build",
       "enabled": false,
+      // skip if no build script defined in package.json
+      "triggerCommand": "node -e \\"require('./package.json').scripts?.build || process.exit(1)\\"",
       "command": "npm run build",
       "signal": ".context/.check-build-passed"
     },
@@ -81,12 +92,16 @@ const DEFAULT_CONFIG = `{
     {
       "name": "security-audit",
       "enabled": false,
+      // skip if no package-lock.json (non-npm projects)
+      "triggerCommand": "test -f package-lock.json",
       "command": "npm audit --audit-level=high",
       "signal": ".context/.check-security-audit-passed"
     },
     {
       "name": "secrets-scan",
       "enabled": false,
+      // skip if no commits yet
+      "triggerCommand": "git log -1 --oneline",
       "command": "git diff HEAD~1 --name-only | xargs grep -l -E '(password|secret|api_key|token)\\\\s*=' 2>/dev/null && exit 1 || exit 0",
       "signal": ".context/.check-secrets-scan-passed"
     },
@@ -95,16 +110,23 @@ const DEFAULT_CONFIG = `{
     {
       "name": "git-clean",
       "enabled": false,
+      // skip if not inside a git repo
+      "triggerCommand": "git rev-parse --is-inside-work-tree",
       "command": "git diff --exit-code && git diff --cached --exit-code",
       "signal": ".context/.check-git-clean-passed"
     },
 
     // === AI AGENT CHECKS (type: agent) ===
+    // PASS/FAIL output instruction is auto-injected by run_smoke_check.
+    // "cli" selects the agent binary (default: "claude"). e.g. "codex", "gemini".
     {
       "name": "code-review",
       "enabled": false,
       "type": "agent",
-      "prompt": "Review the recent git diff (run: git diff HEAD~1) for code quality issues, potential bugs, unclear naming, missing error handling, and SOLID principle violations. Be specific. Output PASS if the code looks good, FAIL if there are significant issues.",
+      // "cli": "claude",  // default; change to "codex", "gemini", etc.
+      // skip if no commits to diff
+      "triggerCommand": "git log -1 --oneline",
+      "prompt": "Review the recent git diff (run: git diff HEAD~1)\\nfor code quality issues, potential bugs, unclear naming,\\nmissing error handling, and SOLID principle violations.\\nBe specific about any issues found.",
       "signal": ".context/.check-code-review-passed",
       "timeout": 120000
     },
@@ -112,7 +134,9 @@ const DEFAULT_CONFIG = `{
       "name": "scope-review",
       "enabled": false,
       "type": "agent",
-      "prompt": "Review the recent git diff (run: git diff HEAD~1) and compare it against the task description in AGENTS.md or CLAUDE.md. Check if the changes stay within the intended scope and don't include unrelated modifications. Output PASS if scope is maintained, FAIL if there is scope creep.",
+      // skip if no commits to diff
+      "triggerCommand": "git log -1 --oneline",
+      "prompt": "Review the recent git diff (run: git diff HEAD~1)\\nand compare it against the task description in AGENTS.md\\nor CLAUDE.md. Check if changes stay within the intended\\nscope without unrelated modifications.",
       "signal": ".context/.check-scope-review-passed",
       "timeout": 120000
     },
@@ -120,7 +144,9 @@ const DEFAULT_CONFIG = `{
       "name": "memory-update",
       "enabled": false,
       "type": "agent",
-      "prompt": "Review recent changes (git diff HEAD~1) and check if any important architectural decisions, patterns, or context has been added that should be documented in AGENTS.md or CLAUDE.md. If documentation is up to date, output PASS. If important context is missing from the docs, output FAIL and describe what should be added.",
+      // skip if no commits to diff
+      "triggerCommand": "git log -1 --oneline",
+      "prompt": "Review recent changes (run: git diff HEAD~1) and check\\nif any important architectural decisions, patterns, or\\ncontext should be documented in AGENTS.md or CLAUDE.md.\\nIf the docs are up to date, that is fine. Otherwise\\ndescribe what is missing.",
       "signal": ".context/.check-memory-update-passed",
       "timeout": 120000
     },
@@ -128,7 +154,9 @@ const DEFAULT_CONFIG = `{
       "name": "test-coverage",
       "enabled": false,
       "type": "agent",
-      "prompt": "Review the recent git diff (run: git diff HEAD~1). For each new function or method added, check if there is a corresponding test. Check if edge cases are covered. Output PASS if test coverage is adequate, FAIL if significant test coverage is missing.",
+      // skip if no commits to diff
+      "triggerCommand": "git log -1 --oneline",
+      "prompt": "Review the recent git diff (run: git diff HEAD~1).\\nFor each new function or method added, check if there\\nis a corresponding test. Verify that edge cases are\\ncovered. Report any significant gaps in coverage.",
       "signal": ".context/.check-test-coverage-passed",
       "timeout": 120000
     }

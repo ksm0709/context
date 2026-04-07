@@ -168,7 +168,8 @@ export function startMcpServer() {
             promptText +
             '\n\nIMPORTANT: You MUST output exactly PASS or FAIL as the very last line of your response. No other text on that line.';
           const escaped = fullPrompt.replace(/'/g, "'\\''");
-          cmd = `claude -p '${escaped}' 2>&1 | tail -5 | grep -q 'PASS'`;
+          const agentCli = entry.cli ?? 'claude';
+          cmd = `${agentCli} -p '${escaped}' 2>&1 | tail -5 | grep -q 'PASS'`;
         } else {
           if (!entry.command) {
             return {
