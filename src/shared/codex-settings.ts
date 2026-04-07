@@ -129,8 +129,10 @@ export function ensureContextMcpRegistered(command: string, mcpPath: string): bo
   const managedSectionPattern =
     /# BEGIN (?:OMC|CONTEXT) MANAGED MCP REGISTRY[\s\S]*?# END (?:OMC|CONTEXT) MANAGED MCP REGISTRY/;
 
+  // Strip ALL existing managed blocks (both CONTEXT and OMC variants) before re-inserting
+  const stripped = normalized.replace(new RegExp(managedSectionPattern.source + '\\n?', 'g'), '').trimEnd();
   const next = managedSectionPattern.test(normalized)
-    ? normalized.replace(managedSectionPattern, block)
+    ? `${stripped}\n\n${block}\n`
     : `${normalized}${normalized.endsWith('\n') || normalized.length === 0 ? '' : '\n'}\n${block}\n`;
 
   if (next === current) {
