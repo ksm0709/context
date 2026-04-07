@@ -5,7 +5,9 @@ export interface CheckEntry {
 
 export interface SmokeCheckEntry {
   name: string;
-  command: string;
+  command?: string;
+  type?: 'command' | 'agent'; // default: 'command'
+  prompt?: string; // required when type is 'agent'; PASS/FAIL suffix appended automatically
   signal: string; // path to signal file, must be under .context/
   timeout?: number; // ms, overrides LIMITS.smokeCheckTimeout if set (1000–600000)
 }

@@ -80,8 +80,42 @@ export function startMcpServer() {
 
         guardSignalPath(entry.signal);
 
+        const entryType = entry.type ?? 'command';
+        let cmd: string;
+        if (entryType === 'agent') {
+          if (!entry.prompt) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Error: smokeCheck "${name}" has type "agent" but no "prompt" field.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          const fullPrompt =
+            entry.prompt +
+            '\n\nIMPORTANT: You MUST output exactly PASS or FAIL as the very last line of your response. No other text on that line.';
+          const escaped = fullPrompt.replace(/'/g, "'\\''");
+          cmd = `claude -p '${escaped}' 2>&1 | tail -5 | grep -q 'PASS'`;
+        } else {
+          if (!entry.command) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Error: smokeCheck "${name}" has type "command" but no "command" field.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          cmd = entry.command;
+        }
+
         try {
-          execSync(entry.command, {
+          execSync(cmd, {
             cwd: process.cwd(),
             timeout: entry.timeout ?? LIMITS.smokeCheckTimeout,
             stdio: 'pipe',
