@@ -94,8 +94,19 @@ export function startMcpServer() {
               isError: true,
             };
           }
+          let promptText = entry.prompt;
+          // If prompt looks like a file path, read its contents
+          const promptPath = path.resolve(process.cwd(), entry.prompt);
+          try {
+            const stat = await fs.stat(promptPath);
+            if (stat.isFile()) {
+              promptText = (await fs.readFile(promptPath, 'utf-8')).trim();
+            }
+          } catch {
+            // Not a file path — use prompt string as-is
+          }
           const fullPrompt =
-            entry.prompt +
+            promptText +
             '\n\nIMPORTANT: You MUST output exactly PASS or FAIL as the very last line of your response. No other text on that line.';
           const escaped = fullPrompt.replace(/'/g, "'\\''");
           cmd = `claude -p '${escaped}' 2>&1 | tail -5 | grep -q 'PASS'`;
