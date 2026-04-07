@@ -51,9 +51,8 @@ function writeOpenCodeGlobalConfig(updates: Record<string, unknown>): void {
 
 export function registerOpenCodeMcp(command: string[]): void {
   const config = readOpenCodeGlobalConfig();
-  const mcp = config.mcp ?? {};
-  mcp['context-mcp'] = { type: 'local', command };
-  writeOpenCodeGlobalConfig({ ...config, mcp });
+  const mcp = { ...(config.mcp ?? {}), 'context-mcp': { type: 'local' as const, command } };
+  writeOpenCodeGlobalConfig({ mcp });
 }
 
 export function removeOpenCodePlugin(pluginName: string): void {
@@ -61,5 +60,5 @@ export function removeOpenCodePlugin(pluginName: string): void {
   if (!Array.isArray(config.plugin)) return;
   const filtered = config.plugin.filter((p) => p !== pluginName);
   if (filtered.length === config.plugin.length) return;
-  writeOpenCodeGlobalConfig({ ...config, plugin: filtered });
+  writeOpenCodeGlobalConfig({ plugin: filtered });
 }

@@ -42,7 +42,7 @@ export function runUpdate(args: string[]): void {
 }
 
 export function isCodexInstalled(): boolean {
-  return existsSync(getCodexHooksDir() + '/context-stop-hook.js');
+  return existsSync(join(getCodexHooksDir(), 'context-stop-hook.js'));
 }
 
 export const isOmxInstalled = isCodexInstalled;
