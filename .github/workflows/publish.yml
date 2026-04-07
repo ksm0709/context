@@ -63,3 +63,16 @@ jobs:
         run: |
           TAG="${{ github.event.inputs.tag || github.event.client_payload.tag || 'latest' }}"
           npm publish --tag "$TAG" --provenance --access public
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --latest
+          else
+            gh release create "$TAG" --generate-notes --latest --title "$TAG"
+          fi

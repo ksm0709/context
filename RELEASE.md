@@ -193,7 +193,8 @@ When you merge a release PR, the GitHub Actions workflow will automatically:
 1. Build the module
 2. Publish to NPM with OIDC authentication
 3. Generate and attach provenance attestations
-4. Create a GitHub release
+4. Push the release tag to GitHub
+5. Create a GitHub release
 
 ### Manual Releases
 
