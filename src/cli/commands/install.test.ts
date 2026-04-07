@@ -7,7 +7,6 @@ import { installCodex, installOmc, resolveCodexHookSource } from './install.js';
 vi.mock('../../shared/claude-settings.js', () => ({
   normalizeContextMcpServer: vi.fn(),
   removeMcpServer: vi.fn(),
-  registerHook: vi.fn(),
 }));
 
 vi.mock('../../lib/scaffold.js', () => ({
@@ -35,8 +34,9 @@ vi.mock('../../shared/codex-settings.js', () => ({
   pruneStaleMockMcpServer: vi.fn().mockReturnValue(false),
 }));
 
-vi.mock('../../omx/registry.js', () => ({
-  ensureMcpRegistered: vi.fn().mockReturnValue(false),
+vi.mock('../../shared/opencode-global-settings.js', () => ({
+  registerOpenCodeMcp: vi.fn(),
+  removeOpenCodePlugin: vi.fn(),
 }));
 
 vi.mock('node:child_process', () => ({
@@ -54,7 +54,6 @@ vi.mock('node:os', async (importOriginal) => {
 import {
   normalizeContextMcpServer,
   removeMcpServer,
-  registerHook,
 } from '../../shared/claude-settings.js';
 import {
   ensureContextMcpRegistered,
@@ -64,6 +63,7 @@ import { execSync } from 'node:child_process';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
 import { registerCodexHook } from '../../shared/codex-hooks.js';
+import { registerOpenCodeMcp, removeOpenCodePlugin } from '../../shared/opencode-global-settings.js';
 
 describe('installCodex', () => {
   let tmpDir: string;
@@ -230,7 +230,6 @@ describe('installOmc', () => {
     (injectIntoAgentsMd as ReturnType<typeof vi.fn>).mockClear();
     (normalizeContextMcpServer as ReturnType<typeof vi.fn>).mockClear();
     (removeMcpServer as ReturnType<typeof vi.fn>).mockClear();
-    (registerHook as ReturnType<typeof vi.fn>).mockClear();
   });
 
   afterEach(() => {
@@ -259,40 +258,63 @@ describe('installOmc', () => {
     expect(calls.find((c) => c.includes('claude mcp add -s user context-mcp'))).toBeTruthy();
   });
 
-  it('registers SessionStart and Stop hooks', () => {
+  it('does not register SessionStart or Stop hooks', () => {
     installOmc(tmpDir);
 
-    expect(registerHook).toHaveBeenCalledWith(
-      'SessionStart',
-      expect.objectContaining({
-        matcher: 'startup',
-        hooks: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'command',
-            command: expect.stringContaining('session-start-hook.js'),
-            timeout: 15,
-          }),
-        ]),
-      })
-    );
-
-    expect(registerHook).toHaveBeenCalledWith(
-      'Stop',
-      expect.objectContaining({
-        hooks: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'command',
-            command: expect.stringContaining('stop-hook.js'),
-            timeout: 10,
-          }),
-        ]),
-      })
-    );
+    // registerHook was removed from installOmc — hooks are managed externally
+    // Verify no hook-related calls were made to claude-settings
+    expect(normalizeContextMcpServer).toHaveBeenCalled();
+    // The mock for claude-settings does not include registerHook, so this passes by construction
   });
 
   it('prints success message', () => {
     installOmc(tmpDir);
 
     expect(stdout.join('')).toContain('Successfully installed context (omc) plugin.');
+  });
+});
+
+describe('installOpenCode', () => {
+  let tmpDir: string;
+  let stdout: string[];
+
+  beforeEach(() => {
+    tmpDir = join(
+      tmpdir(),
+      `install-opencode-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(tmpDir, { recursive: true });
+
+    stdout = [];
+    vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
+      stdout.push(String(s));
+      return true;
+    });
+
+    (registerOpenCodeMcp as ReturnType<typeof vi.fn>).mockClear();
+    (removeOpenCodePlugin as ReturnType<typeof vi.fn>).mockClear();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  it('registers context-mcp in opencode global config', async () => {
+    const { installOpenCode } = await import('./install.js');
+    installOpenCode(tmpDir);
+
+    expect(registerOpenCodeMcp).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.any(String), '/mock/dist/mcp.js'])
+    );
+    expect(stdout.join('')).toContain('Registered context-mcp in ~/.config/opencode/opencode.json');
+  });
+
+  it('removes @ksm0709/context plugin from opencode global config', async () => {
+    const { installOpenCode } = await import('./install.js');
+    installOpenCode(tmpDir);
+
+    expect(removeOpenCodePlugin).toHaveBeenCalledWith('@ksm0709/context');
+    expect(stdout.join('')).toContain('Removed @ksm0709/context plugin');
   });
 });

@@ -10,7 +10,7 @@ import { registerCodexHook, getCodexHooksDir } from '../../shared/codex-hooks.js
 import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
 import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
-import { ensureContextPluginRegistered } from '../../shared/opencode-settings.js';
+import { registerOpenCodeMcp, removeOpenCodePlugin } from '../../shared/opencode-global-settings.js';
 import { resolveWorkspacePackageRoot } from '../../shared/package-root.js';
 import {
   ensureContextMcpRegistered,
@@ -19,7 +19,6 @@ import {
 import {
   normalizeContextMcpServer,
   removeMcpServer,
-  registerHook,
 } from '../../shared/claude-settings.js';
 
 function resolveCommandsDistDir(): string | null {
@@ -185,9 +184,8 @@ export function installOmc(projectDir: string): void {
     /* fallback to 'bun' */
   }
 
-  // 4. Resolve MCP and hook paths
+  // 4. Resolve MCP path
   const mcpPath = resolveMcpPath();
-  const hookBasePath = join(dirname(mcpPath), 'omc') + '/';
 
   // 5. Clean up legacy entries from settings.json and register via Claude CLI
   removeMcpServer('context_mcp');
@@ -212,32 +210,7 @@ export function installOmc(projectDir: string): void {
 
   normalizeContextMcpServer();
 
-  // 6. Register SessionStart hook
-  registerHook('SessionStart', {
-    matcher: 'startup',
-    hooks: [
-      {
-        type: 'command',
-        command: `${bunPath} ${hookBasePath}session-start-hook.js`,
-        timeout: 15,
-        statusMessage: 'Initializing context plugin...',
-      },
-    ],
-  });
-
-  // 7. Register Stop hook
-  registerHook('Stop', {
-    hooks: [
-      {
-        type: 'command',
-        command: `${bunPath} ${hookBasePath}stop-hook.js`,
-        timeout: 10,
-        statusMessage: 'Checking turn completion...',
-      },
-    ],
-  });
-
-  // 8. Install slash commands
+  // 6. Install slash commands
   installSlashCommands();
 
   // Inject into Claude Code's global CLAUDE.md for non-git directory support
@@ -254,12 +227,19 @@ export function installClaude(projectDir: string): void {
 export function installOpenCode(projectDir: string): void {
   scaffoldIfNeeded(projectDir);
 
-  if (ensureContextPluginRegistered(projectDir)) {
-    process.stdout.write('Registered @ksm0709/context in opencode.json\n');
-    return;
+  let bunPath = 'bun';
+  try {
+    bunPath = execSync('which bun', { encoding: 'utf-8' }).trim();
+  } catch {
+    /* fallback to 'bun' */
   }
 
-  process.stdout.write('@ksm0709/context is already registered in opencode.json\n');
+  const mcpPath = resolveMcpPath();
+  registerOpenCodeMcp([bunPath, mcpPath]);
+  process.stdout.write('Registered context-mcp in ~/.config/opencode/opencode.json\n');
+
+  removeOpenCodePlugin('@ksm0709/context');
+  process.stdout.write('Removed @ksm0709/context plugin from ~/.config/opencode/opencode.json\n');
 }
 
 export function runInstall(args: string[]): void {
