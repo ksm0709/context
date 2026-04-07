@@ -20,6 +20,10 @@ vi.mock('../../shared/agents-md.js', () => ({
 
 vi.mock('../../shared/codex-hooks.js', () => ({
   registerCodexHook: vi.fn(),
+  getCodexHooksDir: vi.fn(() => {
+    const { tmpdir } = require('node:os');
+    return require('node:path').join(tmpdir(), '.codex', 'hooks');
+  }),
 }));
 
 vi.mock('../../shared/mcp-path.js', () => ({
@@ -97,45 +101,41 @@ describe('installCodex', () => {
     vi.restoreAllMocks();
   });
 
-  it('copies hook sources to .codex/hooks/', () => {
+  it('copies hook sources to ~/.codex/hooks/', () => {
     const projectDir = join(tmpDir, 'project');
     mkdirSync(projectDir, { recursive: true });
 
     installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
 
-    expect(existsSync(join(projectDir, '.codex', 'hooks', 'context-session-start-hook.js'))).toBe(
-      true
-    );
-    expect(existsSync(join(projectDir, '.codex', 'hooks', 'context-stop-hook.js'))).toBe(true);
+    const globalHooksDir = join(tmpdir(), '.codex', 'hooks');
+    expect(existsSync(join(globalHooksDir, 'context-session-start-hook.js'))).toBe(true);
+    expect(existsSync(join(globalHooksDir, 'context-stop-hook.js'))).toBe(true);
     expect(stdout.join('')).toContain(
-      'Installed context hooks to .codex/hooks/ and .codex/hooks.json'
+      'Installed context hooks to ~/.codex/hooks/ and ~/.codex/hooks.json'
     );
   });
 
-  it('auto-creates .codex/hooks/ when directory does not exist', () => {
+  it('auto-creates ~/.codex/hooks/ when directory does not exist', () => {
     const projectDir = join(tmpDir, 'project');
     mkdirSync(projectDir, { recursive: true });
 
-    expect(existsSync(join(projectDir, '.codex', 'hooks'))).toBe(false);
-
+    const globalHooksDir = join(tmpdir(), '.codex', 'hooks');
     installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
 
-    expect(existsSync(join(projectDir, '.codex', 'hooks'))).toBe(true);
+    expect(existsSync(globalHooksDir)).toBe(true);
   });
 
-  it('registers SessionStart and Stop hooks in .codex/hooks.json', () => {
+  it('registers SessionStart and Stop hooks in ~/.codex/hooks.json', () => {
     const projectDir = join(tmpDir, 'project');
     mkdirSync(projectDir, { recursive: true });
 
     installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
 
     expect(registerCodexHook).toHaveBeenCalledWith(
-      projectDir,
       'SessionStart',
       expect.objectContaining({ matcher: 'startup|resume' })
     );
     expect(registerCodexHook).toHaveBeenCalledWith(
-      projectDir,
       'Stop',
       expect.objectContaining({ hooks: expect.any(Array) })
     );

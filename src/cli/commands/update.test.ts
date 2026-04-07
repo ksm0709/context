@@ -17,12 +17,14 @@ vi.mock('../../lib/scaffold.js', () => ({
 
 vi.mock('./install.js', () => ({
   installOmc: vi.fn(),
-  installOmx: vi.fn(),
   installOpenCode: vi.fn(),
   installClaude: vi.fn(),
   installCodex: vi.fn(),
   resolveCodexHookSource: vi.fn().mockReturnValue('/mock/dist/codex/stop-hook.js'),
-  resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
+}));
+
+vi.mock('../../shared/codex-hooks.js', () => ({
+  getCodexHooksDir: vi.fn(() => '/mock/home/.codex/hooks'),
 }));
 vi.mock('../../../package.json', () => ({
   default: { version: '1.14.0' },
@@ -91,18 +93,18 @@ describe('isGloballyInstalled', () => {
 });
 
 describe('isOmxInstalled', () => {
-  it('returns true when projectDir/.codex/hooks/context-stop-hook.js exists', () => {
+  it('returns true when ~/.codex/hooks/context-stop-hook.js exists', () => {
     vi.mocked(fs.existsSync).mockImplementation(
-      (path) => String(path) === '/my/project/.codex/hooks/context-stop-hook.js'
+      (path) => String(path) === '/mock/home/.codex/hooks/context-stop-hook.js'
     );
-    expect(isOmxInstalled('/my/project')).toBe(true);
-    expect(isCodexInstalled('/my/project')).toBe(true);
+    expect(isOmxInstalled()).toBe(true);
+    expect(isCodexInstalled()).toBe(true);
   });
 
-  it('returns false when projectDir/.codex/hooks/context-stop-hook.js does not exist', () => {
+  it('returns false when ~/.codex/hooks/context-stop-hook.js does not exist', () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
-    expect(isOmxInstalled('/my/project')).toBe(false);
-    expect(isCodexInstalled('/my/project')).toBe(false);
+    expect(isOmxInstalled()).toBe(false);
+    expect(isCodexInstalled()).toBe(false);
   });
 });
 

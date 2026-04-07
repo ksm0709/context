@@ -8,29 +8,6 @@ const PLUGIN_VERSION: string = pkg.version;
 const DEFAULT_CONFIG = `{
   // Context Plugin Configuration
   // See: https://github.com/ksm0709/context
-  "codex": {
-    // Continue the turn at Stop until submit_turn_complete has been called
-    "turnEnd": {
-      "strategy": "stop-hook"
-    }
-  },
-
-  // Required for backward compatibility with older installed versions.
-  // Each smokeCheck entry must have a matching checks entry by name.
-  "checks": [
-    { "name": "tests",          "signal": ".context/.check-tests-passed" },
-    { "name": "lint",           "signal": ".context/.check-lint-passed" },
-    { "name": "typecheck",      "signal": ".context/.check-typecheck-passed" },
-    { "name": "format",         "signal": ".context/.check-format-passed" },
-    { "name": "build",          "signal": ".context/.check-build-passed" },
-    { "name": "security-audit", "signal": ".context/.check-security-audit-passed" },
-    { "name": "secrets-scan",   "signal": ".context/.check-secrets-scan-passed" },
-    { "name": "git-clean",      "signal": ".context/.check-git-clean-passed" },
-    { "name": "code-review",    "signal": ".context/.check-code-review-passed" },
-    { "name": "scope-review",   "signal": ".context/.check-scope-review-passed" },
-    { "name": "memory-update",  "signal": ".context/.check-memory-update-passed" },
-    { "name": "test-coverage",  "signal": ".context/.check-test-coverage-passed" }
-  ],
 
   // Smoke checks run before submit_turn_complete is accepted.
   // Set "enabled": true to activate a check. All checks are disabled by default.

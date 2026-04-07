@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
-import { registerCodexHook } from '../../shared/codex-hooks.js';
+import { registerCodexHook, getCodexHooksDir } from '../../shared/codex-hooks.js';
 import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
 import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
@@ -125,7 +125,7 @@ export function installCodex(
 
   scaffoldIfNeeded(projectDir);
 
-  const targetDir = join(projectDir, '.codex', 'hooks');
+  const targetDir = getCodexHooksDir();
   mkdirSync(targetDir, { recursive: true });
   const sessionStartTarget = join(targetDir, 'context-session-start-hook.js');
   const stopTarget = join(targetDir, 'context-stop-hook.js');
@@ -133,7 +133,7 @@ export function installCodex(
   copyFileSync(stopSource, stopTarget);
 
   const bunPath = resolveBunPath();
-  registerCodexHook(projectDir, 'SessionStart', {
+  registerCodexHook('SessionStart', {
     matcher: 'startup|resume',
     hooks: [
       {
@@ -143,7 +143,7 @@ export function installCodex(
       },
     ],
   });
-  registerCodexHook(projectDir, 'Stop', {
+  registerCodexHook('Stop', {
     hooks: [
       {
         type: 'command',
@@ -153,7 +153,7 @@ export function installCodex(
     ],
   });
 
-  process.stdout.write('Installed context hooks to .codex/hooks/ and .codex/hooks.json\n');
+  process.stdout.write('Installed context hooks to ~/.codex/hooks/ and ~/.codex/hooks.json\n');
 
   if (ensureContextMcpRegistered(bunPath, resolveMcpPath())) {
     process.stdout.write('Successfully registered context-mcp in ~/.codex/config.toml\n');
@@ -168,21 +168,6 @@ export function installCodex(
   // Inject into Codex's global instructions for non-git directory support
   injectIntoGlobalInstructions('codex', STATIC_WORKFLOW_CONTEXT);
   process.stdout.write('Injected workflow context into ~/.codex/instructions.md\n');
-}
-
-export function resolveOmxSource(): string | null {
-  return resolveCodexHookSource('stop-hook.js');
-}
-
-export function installOmx(projectDir: string, sourcePath: string): void {
-  const sessionStartSource = resolveCodexHookSource('session-start-hook.js');
-  if (!sessionStartSource) {
-    process.stderr.write('Could not find Codex session-start hook source file.\n');
-    process.exit(1);
-    return;
-  }
-
-  installCodex(projectDir, sessionStartSource, sourcePath);
 }
 
 export function installOmc(projectDir: string): void {

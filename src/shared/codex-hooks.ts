@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { homedir } from 'node:os';
 
 export interface CodexHookCommand {
   type: 'command';
@@ -17,12 +18,16 @@ export interface CodexHooksConfig {
   hooks?: Record<string, CodexHookRule[]>;
 }
 
-export function getCodexHooksPath(projectDir: string): string {
-  return join(projectDir, '.codex', 'hooks.json');
+export function getCodexHooksPath(): string {
+  return join(homedir(), '.codex', 'hooks.json');
 }
 
-export function readCodexHooks(projectDir: string): CodexHooksConfig {
-  const hooksPath = getCodexHooksPath(projectDir);
+export function getCodexHooksDir(): string {
+  return join(homedir(), '.codex', 'hooks');
+}
+
+export function readCodexHooks(): CodexHooksConfig {
+  const hooksPath = getCodexHooksPath();
   if (!existsSync(hooksPath)) {
     return {};
   }
@@ -30,8 +35,8 @@ export function readCodexHooks(projectDir: string): CodexHooksConfig {
   return JSON.parse(readFileSync(hooksPath, 'utf8')) as CodexHooksConfig;
 }
 
-export function writeCodexHooks(projectDir: string, config: CodexHooksConfig): void {
-  const hooksPath = getCodexHooksPath(projectDir);
+export function writeCodexHooks(config: CodexHooksConfig): void {
+  const hooksPath = getCodexHooksPath();
   const dir = dirname(hooksPath);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -48,8 +53,8 @@ function scriptBasename(command: string): string {
   return last.split('/').pop() ?? last;
 }
 
-export function registerCodexHook(projectDir: string, event: string, rule: CodexHookRule): void {
-  const config = readCodexHooks(projectDir);
+export function registerCodexHook(event: string, rule: CodexHookRule): void {
+  const config = readCodexHooks();
   config.hooks ??= {};
   config.hooks[event] ??= [];
 
@@ -68,5 +73,5 @@ export function registerCodexHook(projectDir: string, event: string, rule: Codex
     break;
   }
 
-  writeCodexHooks(projectDir, config);
+  writeCodexHooks(config);
 }

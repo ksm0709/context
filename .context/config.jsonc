@@ -6,19 +6,6 @@
     "sources": ["AGENTS.md"]
   },
 
-  // Required by older installed versions: each smokeCheck must have a matching checks entry.
-  // Safe to keep for backward compatibility.
-  "checks": [
-    { "name": "tests",        "signal": ".context/.check-tests-passed" },
-    { "name": "typecheck",    "signal": ".context/.check-typecheck-passed" },
-    { "name": "build",        "signal": ".context/.check-build-passed" },
-    { "name": "lint",         "signal": ".context/.check-lint-passed" },
-    { "name": "git-clean",    "signal": ".context/.check-git-clean-passed" },
-    { "name": "code-review",  "signal": ".context/.check-code-review-passed" },
-    { "name": "scope-review", "signal": ".context/.check-scope-review-passed" },
-    { "name": "memory-update","signal": ".context/.check-memory-update-passed" }
-  ],
-
   // Smoke checks run before submit_turn_complete is accepted.
   // Set "enabled": true to activate a check. All checks are disabled by default.
   // triggerCommand: exit 0 = run the check, non-zero = auto-skip with signal.

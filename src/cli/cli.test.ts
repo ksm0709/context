@@ -9,12 +9,10 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 vi.mock('./commands/install.js', () => ({
   installOmc: vi.fn(),
-  installOmx: vi.fn(),
   installOpenCode: vi.fn(),
   installClaude: vi.fn(),
   installCodex: vi.fn(),
   resolveCodexHookSource: vi.fn().mockReturnValue('/mock/dist/codex/stop-hook.js'),
-  resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
 }));
 import { isRemoteVersionNewer, printHelp, printUpdateNoticeIfAvailable, runCli } from './index.js';
 import { getSettingsPath, setSettingsPath } from '../shared/claude-settings.js';

@@ -1,6 +1,7 @@
 import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { getCodexHooksDir } from '../../shared/codex-hooks.js';
 import { getStoredVersion, updateScaffold } from '../../lib/scaffold.js';
 import { installClaude, installCodex, installOpenCode, resolveCodexHookSource } from './install.js';
 import pkg from '../../../package.json';
@@ -40,8 +41,8 @@ export function runUpdate(args: string[]): void {
   }
 }
 
-export function isCodexInstalled(projectDir: string): boolean {
-  return existsSync(join(projectDir, '.codex', 'hooks', 'context-stop-hook.js'));
+export function isCodexInstalled(): boolean {
+  return existsSync(getCodexHooksDir() + '/context-stop-hook.js');
 }
 
 export const isOmxInstalled = isCodexInstalled;
