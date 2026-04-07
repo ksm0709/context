@@ -72,6 +72,24 @@ describe('loadConfig - checks and smokeChecks', () => {
     expect(config.smokeChecks![0].command).toBe('npm test');
   });
 
+  it('accepts smokeCheck with triggerCommand string', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
+        smokeChecks: [{
+          name: 'lint', command: 'npm run lint',
+          signal: '.context/.check-lint-passed',
+          triggerCommand: 'git diff --name-only | grep -q .ts',
+        }],
+      })
+    );
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks![0].triggerCommand).toBe('git diff --name-only | grep -q .ts');
+  });
+
   it('throws when smokeChecks entry has no matching checks entry by name', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });

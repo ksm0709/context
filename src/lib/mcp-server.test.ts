@@ -190,6 +190,66 @@ describe('mcp-server (Workflow Enforcer)', () => {
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
 
+    it('runs command when triggerCommand exits 0', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
+        smokeChecks: [{
+          name: 'lint', command: 'npm run lint',
+          signal: '.context/.check-lint-passed',
+          triggerCommand: 'test -f src/index.ts',
+        }],
+      });
+      vi.mocked(execSync).mockReturnValue(Buffer.from(''));
+      const result = await handler({ name: 'lint' });
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('passed');
+      expect(execSync).toHaveBeenCalledTimes(2);
+    });
+
+    it('writes skip signal when triggerCommand exits non-zero', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
+        smokeChecks: [{
+          name: 'lint', command: 'npm run lint',
+          signal: '.context/.check-lint-passed',
+          triggerCommand: 'git diff --name-only | grep -q .cpp',
+        }],
+      });
+      vi.mocked(execSync).mockImplementation((cmd) => {
+        if (typeof cmd === 'string' && cmd.includes('grep')) throw new Error('exit 1');
+        return Buffer.from('');
+      });
+      const result = await handler({ name: 'lint' });
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('skipped');
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.check-lint-passed'),
+        expect.stringContaining('skipped=true'),
+        'utf-8',
+      );
+      expect(execSync).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns error when triggerCommand times out', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
+        smokeChecks: [{
+          name: 'lint', command: 'npm run lint',
+          signal: '.context/.check-lint-passed',
+          triggerCommand: 'sleep 999',
+        }],
+      });
+      vi.mocked(execSync).mockImplementation(() => {
+        const err = new Error('Command timed out');
+        (err as Error & { killed: boolean }).killed = true;
+        throw err;
+      });
+      const result = await handler({ name: 'lint' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('timed out');
+      expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
     it('rejects signal paths outside .context/', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'bad', signal: '/tmp/escape' }],
@@ -354,6 +414,21 @@ describe('mcp-server (Workflow Enforcer)', () => {
         expect.stringContaining('timestamp='),
         'utf-8'
       );
+    });
+
+    it('accepts skip signal (skipped=true) as valid', async () => {
+      const freshTimestamp = Date.now() - 5 * 60 * 1000;
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+        smokeChecks: [],
+      });
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `session_id=\ntimestamp=${freshTimestamp}\nskipped=true\n` as never
+      );
+
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('complete');
     });
 
     it('fails when built-in check_hash signal is missing', async () => {

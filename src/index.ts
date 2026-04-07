@@ -104,7 +104,13 @@ const plugin: Plugin = async ({ directory, client }) => {
       if (!hasSourceCodeChanges(output.messages)) {
         try {
           const config = loadConfig(projectRoot);
-          const configChecks = config.checks ?? [];
+          const smokeChecks = config.smokeChecks ?? [];
+          const triggerCommandNames = new Set(
+            smokeChecks.filter((sc) => sc.triggerCommand).map((sc) => sc.name)
+          );
+          const configChecks = (config.checks ?? []).filter(
+            (c) => !triggerCommandNames.has(c.name)
+          );
           const builtinChecks = Object.values(BUILTIN_SIGNALS).map((signal) => ({ signal }));
           writeSkipSignals(projectRoot, [...builtinChecks, ...configChecks], lastUserMsg.info.sessionID);
         } catch {

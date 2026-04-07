@@ -10,6 +10,7 @@ export interface SmokeCheckEntry {
   prompt?: string; // required when type is 'agent'; PASS/FAIL suffix appended automatically
   signal: string; // path to signal file, must be under .context/
   timeout?: number; // ms, overrides LIMITS.smokeCheckTimeout if set (1000–600000)
+  triggerCommand?: string; // shell command; exit 0 = run check, non-zero = auto-skip
 }
 
 export interface ContextConfig {

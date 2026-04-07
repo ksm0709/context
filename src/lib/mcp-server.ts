@@ -80,6 +80,49 @@ export function startMcpServer() {
 
         guardSignalPath(entry.signal);
 
+        // Evaluate triggerCommand if present
+        if (entry.triggerCommand) {
+          try {
+            execSync(entry.triggerCommand, {
+              cwd: process.cwd(),
+              timeout: 10_000,
+              stdio: 'pipe',
+            });
+            // exit 0 — trigger condition met, proceed to run the check
+          } catch (triggerError) {
+            const err = triggerError instanceof Error ? triggerError : new Error(String(triggerError));
+            const isTimeout = 'killed' in err && (err as { killed?: boolean }).killed;
+
+            if (isTimeout) {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `Smoke check "${name}" trigger timed out (10s). Check your triggerCommand: ${entry.triggerCommand}`,
+                  },
+                ],
+                isError: true,
+              };
+            }
+
+            // non-zero exit — condition not met, write skip signal
+            const signalPath = path.resolve(process.cwd(), entry.signal);
+            await fs.mkdir(path.dirname(signalPath), { recursive: true });
+            const callerValue = caller ?? 'agent';
+            const signalContent = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\ncaller=${callerValue}\nskipped=true\n`;
+            await fs.writeFile(signalPath, signalContent, 'utf-8');
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Smoke check "${name}" skipped (trigger condition not met). Skip signal written to ${entry.signal}.`,
+                },
+              ],
+            };
+          }
+        }
+
         const entryType = entry.type ?? 'command';
         let cmd: string;
         if (entryType === 'agent') {

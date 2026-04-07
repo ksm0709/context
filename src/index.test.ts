@@ -187,6 +187,35 @@ describe('context plugin', () => {
       expect(output.messages).toHaveLength(2);
     });
 
+    it('does NOT auto-skip checks with triggerCommand when no source code changed', async () => {
+      mkdirSync(join(tmpDir, '.context'), { recursive: true });
+      writeFileSync(
+        join(tmpDir, '.context', 'config.jsonc'),
+        JSON.stringify({
+          checks: [
+            { name: 'tests', signal: '.context/.check-tests-passed' },
+            { name: 'lint', signal: '.context/.check-lint-passed' },
+          ],
+          smokeChecks: [
+            { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+            { name: 'lint', command: 'npm run lint', signal: '.context/.check-lint-passed', triggerCommand: 'git diff --name-only | grep -q .ts' },
+          ],
+        })
+      );
+      const hooks = await plugin(createMockInput(tmpDir) as never);
+      const output = {
+        messages: [patchMessage(['README.md']), createUserMessage()],
+      };
+      await hooks['experimental.chat.messages.transform']?.({} as never, output as never);
+
+      // tests (no triggerCommand) should be auto-skipped
+      expect(existsSync(join(tmpDir, '.context', '.check-tests-passed'))).toBe(true);
+      // lint (has triggerCommand) should NOT be auto-skipped
+      expect(existsSync(join(tmpDir, '.context', '.check-lint-passed'))).toBe(false);
+      // built-in checks still auto-skipped
+      expect(existsSync(join(tmpDir, '.context', '.check-hash-passed'))).toBe(true);
+    });
+
     it('does NOT auto-create skip signals when source code files were changed', async () => {
       makeConfigWithCheck(tmpDir);
       const hooks = await plugin(createMockInput(tmpDir) as never);

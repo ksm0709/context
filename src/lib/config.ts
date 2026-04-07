@@ -28,6 +28,11 @@ function validateConfig(config: ContextConfig): void {
         `Config error: smokeChecks[${JSON.stringify(sc.name)}].timeout must be between 1000 and 600000ms (got: ${sc.timeout})`
       );
     }
+    if (sc.triggerCommand !== undefined && typeof sc.triggerCommand !== 'string') {
+      throw new Error(
+        `Config error: smokeChecks[${JSON.stringify(sc.name)}].triggerCommand must be a string`
+      );
+    }
   }
 
   const checkNames = new Set(checks.map((c) => c.name));
