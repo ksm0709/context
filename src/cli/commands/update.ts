@@ -1,11 +1,13 @@
 import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { updateScaffold } from '../../lib/scaffold.js';
-import { installOmc, installOmx, resolveOmxSource } from './install.js';
+import { getStoredVersion, updateScaffold } from '../../lib/scaffold.js';
+import { installOmc, installOmx, installOpenCode, resolveOmxSource } from './install.js';
+import pkg from '../../../package.json';
 import { hasContextMcpServer, readClaudeSettings } from '../../shared/claude-settings.js';
 
-const KNOWN_SUBCOMMANDS = ['all', 'prompt', 'plugin', 'omx'];
+const KNOWN_SUBCOMMANDS = ['all', 'plugin', 'omx'];
+const PLUGIN_VERSION = pkg.version;
 
 export function runUpdate(args: string[]): void {
   const [subcommand, ...rest] = args;
@@ -14,9 +16,6 @@ export function runUpdate(args: string[]): void {
     case undefined:
     case 'all':
       runUpdateAll(resolve(rest[0] ?? process.cwd()));
-      break;
-    case 'prompt':
-      process.stdout.write('Prompt update is no longer supported.\n');
       break;
     case 'plugin':
       runUpdatePlugin(rest[0] ?? 'latest');
@@ -72,18 +71,23 @@ function reinstallOmx(projectDir: string): void {
 }
 
 function runUpdateAll(projectDir: string): void {
+  const previousVersion = getStoredVersion(projectDir);
   const updated = updateScaffold(projectDir);
   writeUpdatedFiles(updated);
 
-  // Auto-reinstall omc/omx if already installed
-  if (isOmcInstalled()) {
-    process.stdout.write('\nRe-installing omc hooks and settings...\n');
-    installOmc(projectDir);
+  if (previousVersion && previousVersion !== PLUGIN_VERSION) {
+    process.stdout.write(
+      `\nDetected plugin version change: ${previousVersion} -> ${PLUGIN_VERSION}\n`
+    );
   }
 
-  if (isOmxInstalled(projectDir)) {
-    reinstallOmx(projectDir);
-  }
+  process.stdout.write('\nInstalling OpenCode integration...\n');
+  installOpenCode(projectDir);
+
+  process.stdout.write('\nInstalling Claude integration...\n');
+  installOmc(projectDir);
+
+  reinstallOmx(projectDir);
 }
 
 function runUpdateOmx(projectDir: string): void {

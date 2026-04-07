@@ -11,7 +11,9 @@ import { BUILTIN_SIGNALS, DEFAULTS } from './constants.js';
 const DOC_EXTENSIONS = new Set(['.md', '.mdx', '.txt', '.rst', '.csv']);
 
 /** PatchPart 기반으로 이번 세션에서 소스 코드 파일이 변경됐는지 확인 */
-function hasSourceCodeChanges(messages: Array<{ parts: Array<{ type?: string; files?: string[] }> }>): boolean {
+function hasSourceCodeChanges(
+  messages: Array<{ parts: Array<{ type?: string; files?: string[] }> }>
+): boolean {
   for (const msg of messages) {
     for (const part of msg.parts) {
       if (part.type === 'patch' && Array.isArray(part.files)) {
@@ -112,7 +114,11 @@ const plugin: Plugin = async ({ directory, client }) => {
             (c) => !triggerCommandNames.has(c.name)
           );
           const builtinChecks = Object.values(BUILTIN_SIGNALS).map((signal) => ({ signal }));
-          writeSkipSignals(projectRoot, [...builtinChecks, ...configChecks], lastUserMsg.info.sessionID);
+          writeSkipSignals(
+            projectRoot,
+            [...builtinChecks, ...configChecks],
+            lastUserMsg.info.sessionID
+          );
         } catch {
           // config 로드 실패 시 기존 동작 유지
         }

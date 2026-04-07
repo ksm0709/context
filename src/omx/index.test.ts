@@ -49,11 +49,7 @@ function setupProject(projectDir: string): void {
   mkdirSync(join(projectDir, '.context'), { recursive: true });
   mkdirSync(join(projectDir, 'docs'), { recursive: true });
 
-  writeFileSync(
-    join(projectDir, '.context', 'config.jsonc'),
-    JSON.stringify({}),
-    'utf-8'
-  );
+  writeFileSync(join(projectDir, '.context', 'config.jsonc'), JSON.stringify({}), 'utf-8');
   writeFileSync(
     join(projectDir, 'docs', 'architecture.md'),
     '# Architecture\n\nSystem overview.',

@@ -11,16 +11,21 @@ import {
 
 vi.mock('../../lib/scaffold.js', () => ({
   updateScaffold: vi.fn().mockReturnValue([]),
+  getStoredVersion: vi.fn().mockReturnValue('1.14.0'),
 }));
 
 vi.mock('./install.js', () => ({
   installOmc: vi.fn(),
   installOmx: vi.fn(),
+  installOpenCode: vi.fn(),
   resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
 }));
+vi.mock('../../../package.json', () => ({
+  default: { version: '1.14.0' },
+}));
 import { readClaudeSettings } from '../../shared/claude-settings.js';
-import { updateScaffold } from '../../lib/scaffold.js';
-import { installOmc, installOmx } from './install.js';
+import { getStoredVersion, updateScaffold } from '../../lib/scaffold.js';
+import { installOmc, installOmx, installOpenCode, resolveOmxSource } from './install.js';
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
@@ -133,8 +138,11 @@ describe('isOmcInstalled', () => {
 describe('runUpdate', () => {
   beforeEach(() => {
     vi.mocked(updateScaffold).mockReturnValue([]);
+    vi.mocked(getStoredVersion).mockReturnValue('1.14.0');
     vi.mocked(installOmc).mockClear();
     vi.mocked(installOmx).mockClear();
+    vi.mocked(installOpenCode).mockClear();
+    vi.mocked(resolveOmxSource).mockReturnValue('/mock/dist/omx/index.mjs');
   });
 
   afterEach(() => {
@@ -154,6 +162,29 @@ describe('runUpdate', () => {
     expect(updateScaffold).toHaveBeenCalledWith('/my/project');
     expect(installOmx).toHaveBeenCalledWith('/my/project', '/mock/dist/omx/index.mjs');
     expect(installOmc).not.toHaveBeenCalled();
+    expect(installOpenCode).not.toHaveBeenCalled();
+  });
+
+  it('update all installs OpenCode, Claude, and Codex integrations', () => {
+    runUpdate(['/my/project']);
+
+    expect(updateScaffold).toHaveBeenCalledWith('/my/project');
+    expect(installOpenCode).toHaveBeenCalledWith('/my/project');
+    expect(installOmc).toHaveBeenCalledWith('/my/project');
+    expect(installOmx).toHaveBeenCalledWith('/my/project', '/mock/dist/omx/index.mjs');
+  });
+
+  it('reports plugin version changes before reinstalling integrations', () => {
+    const stdout: string[] = [];
+    vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
+      stdout.push(String(s));
+      return true;
+    });
+    vi.mocked(getStoredVersion).mockReturnValue('1.13.0');
+
+    runUpdate(['/my/project']);
+
+    expect(stdout.join('')).toContain('Detected plugin version change: 1.13.0 -> 1.14.0');
   });
 });
 

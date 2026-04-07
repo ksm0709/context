@@ -74,11 +74,14 @@ describe('loadConfig - checks and smokeChecks', () => {
       join(configDir, 'config.jsonc'),
       JSON.stringify({
         checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
-        smokeChecks: [{
-          name: 'lint', command: 'npm run lint',
-          signal: '.context/.check-lint-passed',
-          triggerCommand: 'git diff --name-only | grep -q .ts',
-        }],
+        smokeChecks: [
+          {
+            name: 'lint',
+            command: 'npm run lint',
+            signal: '.context/.check-lint-passed',
+            triggerCommand: 'git diff --name-only | grep -q .ts',
+          },
+        ],
       })
     );
     const config = loadConfig(tmpDir);
@@ -167,7 +170,14 @@ describe('loadConfig - timeout validation', () => {
   it('throws Config error for timeout below 1000ms', () => {
     writeConfig(tmpDir, {
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 500 }],
+      smokeChecks: [
+        {
+          name: 'tests',
+          command: 'npm test',
+          signal: '.context/.check-tests-passed',
+          timeout: 500,
+        },
+      ],
     });
     expect(() => loadConfig(tmpDir)).toThrow('Config error:');
     expect(() => loadConfig(tmpDir)).toThrow('timeout');
@@ -176,7 +186,14 @@ describe('loadConfig - timeout validation', () => {
   it('throws Config error for timeout above 600000ms', () => {
     writeConfig(tmpDir, {
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 700_000 }],
+      smokeChecks: [
+        {
+          name: 'tests',
+          command: 'npm test',
+          signal: '.context/.check-tests-passed',
+          timeout: 700_000,
+        },
+      ],
     });
     expect(() => loadConfig(tmpDir)).toThrow('Config error:');
     expect(() => loadConfig(tmpDir)).toThrow('timeout');
@@ -185,7 +202,14 @@ describe('loadConfig - timeout validation', () => {
   it('accepts timeout of exactly 1000ms', () => {
     writeConfig(tmpDir, {
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 1000 }],
+      smokeChecks: [
+        {
+          name: 'tests',
+          command: 'npm test',
+          signal: '.context/.check-tests-passed',
+          timeout: 1000,
+        },
+      ],
     });
     const config = loadConfig(tmpDir);
     expect(config.smokeChecks![0].timeout).toBe(1000);
@@ -194,7 +218,14 @@ describe('loadConfig - timeout validation', () => {
   it('accepts timeout of exactly 600000ms', () => {
     writeConfig(tmpDir, {
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-      smokeChecks: [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 600_000 }],
+      smokeChecks: [
+        {
+          name: 'tests',
+          command: 'npm test',
+          signal: '.context/.check-tests-passed',
+          timeout: 600_000,
+        },
+      ],
     });
     const config = loadConfig(tmpDir);
     expect(config.smokeChecks![0].timeout).toBe(600_000);
@@ -235,9 +266,19 @@ describe('inferAndPersistChecks - JSONC comment preservation', () => {
 
     // Verify the JSONC write logic through applyEdits directly (claude CLI unavailable in test env)
     const { applyEdits, modify } = await import('jsonc-parser');
-    let edits = modify(originalContent, ['checks'], [{ name: 'tests', signal: '.context/.check-tests-passed' }], { formattingOptions: { insertSpaces: true, tabSize: 2 } });
+    let edits = modify(
+      originalContent,
+      ['checks'],
+      [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+      { formattingOptions: { insertSpaces: true, tabSize: 2 } }
+    );
     let updated = applyEdits(originalContent, edits);
-    edits = modify(updated, ['smokeChecks'], [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' }], { formattingOptions: { insertSpaces: true, tabSize: 2 } });
+    edits = modify(
+      updated,
+      ['smokeChecks'],
+      [{ name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' }],
+      { formattingOptions: { insertSpaces: true, tabSize: 2 } }
+    );
     updated = applyEdits(updated, edits);
 
     // Comments must be preserved

@@ -98,7 +98,12 @@ export function loadConfig(projectDir: string): ContextConfig {
   }
 }
 
-function spawnWithStdin(cmd: string, args: string[], input: string, timeout: number): Promise<string> {
+function spawnWithStdin(
+  cmd: string,
+  args: string[],
+  input: string,
+  timeout: number
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { timeout });
     const chunks: Buffer[] = [];
@@ -216,9 +221,13 @@ export async function inferAndPersistChecks(projectDir: string): Promise<{
   try {
     const configPath = join(projectDir, resolveContextDir(projectDir), 'config.jsonc');
     const raw = existsSync(configPath) ? readFileSyncNode(configPath, 'utf-8') : '{}';
-    let edits = modify(raw, ['checks'], inferred.checks, { formattingOptions: { insertSpaces: true, tabSize: 2 } });
+    let edits = modify(raw, ['checks'], inferred.checks, {
+      formattingOptions: { insertSpaces: true, tabSize: 2 },
+    });
     let updated = applyEdits(raw, edits);
-    edits = modify(updated, ['smokeChecks'], inferred.smokeChecks, { formattingOptions: { insertSpaces: true, tabSize: 2 } });
+    edits = modify(updated, ['smokeChecks'], inferred.smokeChecks, {
+      formattingOptions: { insertSpaces: true, tabSize: 2 },
+    });
     updated = applyEdits(updated, edits);
     writeFileSync(configPath, updated, 'utf-8');
   } catch {

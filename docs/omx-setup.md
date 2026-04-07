@@ -6,8 +6,9 @@ This plugin supports OMX (OpenCode Managed eXtension) to provide enhanced functi
 
 ## Setup
 
-1. Run `context install omx` to automatically register the MCP server.
-2. Run `omx setup` to apply the changes in Claude Code.
+1. Run `context update` to install all integrations, including Codex/OMX.
+2. If you only want the Codex/OMX target, run `context install omx`.
+3. Run `omx setup` to apply the changes in Claude Code.
 
 **Note**: You MUST run `omx setup` after installing for the changes to take effect.
 

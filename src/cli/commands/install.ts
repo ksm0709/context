@@ -9,6 +9,7 @@ import { injectIntoAgentsMd } from '../../shared/agents-md.js';
 import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
 import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
+import { ensureContextPluginRegistered } from '../../shared/opencode-settings.js';
 import { pruneStaleMockMcpServer } from '../../shared/codex-settings.js';
 import {
   normalizeContextMcpServer,
@@ -134,6 +135,17 @@ export function installOmc(projectDir: string): void {
   process.stdout.write('Injected workflow context into ~/.claude/CLAUDE.md\n');
 
   process.stdout.write('Successfully installed context (omc) plugin.\n');
+}
+
+export function installOpenCode(projectDir: string): void {
+  scaffoldIfNeeded(projectDir);
+
+  if (ensureContextPluginRegistered(projectDir)) {
+    process.stdout.write('Registered @ksm0709/context in opencode.json\n');
+    return;
+  }
+
+  process.stdout.write('@ksm0709/context is already registered in opencode.json\n');
 }
 
 export function runInstall(args: string[]): void {

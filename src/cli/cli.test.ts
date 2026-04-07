@@ -7,6 +7,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+vi.mock('./commands/install.js', () => ({
+  installOmc: vi.fn(),
+  installOmx: vi.fn(),
+  installOpenCode: vi.fn(),
+  resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
+}));
 import { printHelp, runCli } from './index.js';
 import { getSettingsPath, setSettingsPath } from '../shared/claude-settings.js';
 
@@ -18,9 +24,8 @@ describe('printHelp', () => {
 
     expect(output).toContain('Usage: context <command>');
     expect(output).toContain('update [all] [path]');
-    expect(output).toContain('reinstall installed targets');
+    expect(output).toContain('Claude/Codex/OpenCode integrations');
     expect(output).toContain('update omx [path]');
-    expect(output).toContain('update prompt [path]');
     expect(output).toContain('update plugin [version]');
     expect(output).toContain('install omc');
   });
@@ -77,18 +82,6 @@ describe('runCli', () => {
 
     runCli(['update', 'all', tmpDir]);
     expect(out.join('')).toMatch(/Updated \d+ file\(s\)/);
-  });
-
-  it('update prompt: reports no longer supported', () => {
-    const out: string[] = [];
-    vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
-      out.push(String(s));
-      return true;
-    });
-
-    runCli(['update', 'prompt', tmpDir]);
-    const output = out.join('');
-    expect(output).toContain('Prompt update is no longer supported.');
   });
 
   it('update plugin: calls Bun.spawnSync with correct args', () => {

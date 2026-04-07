@@ -41,28 +41,28 @@ Agent calls submit_turn_complete → validates all signals are fresh
 npm install -g @ksm0709/context
 ```
 
-### For Claude Code
+### Recommended
 
 ```bash
-context install omc
+context update
 ```
 
 This will:
 1. Scaffold `.context/` directory in your project
-2. Register `context-mcp` MCP server via Claude CLI
-3. Register SessionStart and Stop hooks
-4. Inject workflow context into `~/.claude/CLAUDE.md`
+2. Register `@ksm0709/context` in `opencode.json`
+3. Register `context-mcp` MCP server via Claude CLI
+4. Register Claude SessionStart and Stop hooks
+5. Install the Codex/OMX hook plugin and register `context-mcp`
+6. Inject workflow context into global instructions where needed
 
-### For Codex (OMX)
+### Individual installers
 
 ```bash
+context install omc
 context install omx
 ```
 
-This will:
-1. Scaffold `.context/` directory
-2. Copy the OMX hook plugin to `.omx/hooks/context.mjs`
-3. Register `context-mcp` in `~/.omx/mcp-registry.json`
+Use these only when you want to reinstall a single integration target.
 
 ## Configuration
 
@@ -195,11 +195,8 @@ Checks with `triggerCommand` are excluded from this auto-skip — their `trigger
 ## CLI Commands
 
 ```bash
-# Update scaffold templates and reinstall hooks
-context update all
-
-# Update prompt files only
-context update prompt
+# Update scaffold and install Claude/Codex/OpenCode integrations
+context update
 
 # Update the plugin package itself
 context update plugin

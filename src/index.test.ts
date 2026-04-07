@@ -198,7 +198,12 @@ describe('context plugin', () => {
           ],
           smokeChecks: [
             { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
-            { name: 'lint', command: 'npm run lint', signal: '.context/.check-lint-passed', triggerCommand: 'git diff --name-only | grep -q .ts' },
+            {
+              name: 'lint',
+              command: 'npm run lint',
+              signal: '.context/.check-lint-passed',
+              triggerCommand: 'git diff --name-only | grep -q .ts',
+            },
           ],
         })
       );

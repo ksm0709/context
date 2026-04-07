@@ -11,7 +11,11 @@ import { BUILTIN_SIGNALS, LIMITS } from '../constants.js';
 const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? process.env.OPENCODE_SESSION_ID ?? '';
 const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-function parseSignalFile(content: string): { sessionId: string; timestamp: number; caller: 'agent' | 'reviewer' } {
+function parseSignalFile(content: string): {
+  sessionId: string;
+  timestamp: number;
+  caller: 'agent' | 'reviewer';
+} {
   const sessionMatch = content.match(/^session_id=(.*)$/m);
   const timestampMatch = content.match(/^timestamp=(\d+)$/m);
   const callerMatch = content.match(/^caller=(agent|reviewer)$/m);
@@ -90,7 +94,8 @@ export function startMcpServer() {
             });
             // exit 0 — trigger condition met, proceed to run the check
           } catch (triggerError) {
-            const err = triggerError instanceof Error ? triggerError : new Error(String(triggerError));
+            const err =
+              triggerError instanceof Error ? triggerError : new Error(String(triggerError));
             const isTimeout = 'killed' in err && (err as { killed?: boolean }).killed;
 
             if (isTimeout) {
@@ -464,7 +469,11 @@ export function startMcpServer() {
         const dirPath = path.resolve(process.cwd(), '.context');
         const filePath = path.join(dirPath, '.work-complete');
         await fs.mkdir(dirPath, { recursive: true });
-        await fs.writeFile(filePath, `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`, 'utf-8');
+        await fs.writeFile(
+          filePath,
+          `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`,
+          'utf-8'
+        );
         return { content: [{ type: 'text', text: 'Turn successfully marked as complete.' }] };
       } catch (error) {
         return {

@@ -149,7 +149,12 @@ describe('mcp-server (Workflow Enforcer)', () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
         smokeChecks: [
-          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', timeout: 60_000 },
+          {
+            name: 'tests',
+            command: 'npm test',
+            signal: '.context/.check-tests-passed',
+            timeout: 60_000,
+          },
         ],
       });
       vi.mocked(execSync).mockReturnValue(Buffer.from(''));
@@ -183,11 +188,14 @@ describe('mcp-server (Workflow Enforcer)', () => {
     it('runs command when triggerCommand exits 0', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
-        smokeChecks: [{
-          name: 'lint', command: 'npm run lint',
-          signal: '.context/.check-lint-passed',
-          triggerCommand: 'test -f src/index.ts',
-        }],
+        smokeChecks: [
+          {
+            name: 'lint',
+            command: 'npm run lint',
+            signal: '.context/.check-lint-passed',
+            triggerCommand: 'test -f src/index.ts',
+          },
+        ],
       });
       vi.mocked(execSync).mockReturnValue(Buffer.from(''));
       const result = await handler({ name: 'lint' });
@@ -199,11 +207,14 @@ describe('mcp-server (Workflow Enforcer)', () => {
     it('writes skip signal when triggerCommand exits non-zero', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
-        smokeChecks: [{
-          name: 'lint', command: 'npm run lint',
-          signal: '.context/.check-lint-passed',
-          triggerCommand: 'git diff --name-only | grep -q .cpp',
-        }],
+        smokeChecks: [
+          {
+            name: 'lint',
+            command: 'npm run lint',
+            signal: '.context/.check-lint-passed',
+            triggerCommand: 'git diff --name-only | grep -q .cpp',
+          },
+        ],
       });
       vi.mocked(execSync).mockImplementation((cmd) => {
         if (typeof cmd === 'string' && cmd.includes('grep')) throw new Error('exit 1');
@@ -215,7 +226,7 @@ describe('mcp-server (Workflow Enforcer)', () => {
       expect(fs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining('.check-lint-passed'),
         expect.stringContaining('skipped=true'),
-        'utf-8',
+        'utf-8'
       );
       expect(execSync).toHaveBeenCalledTimes(1);
     });
@@ -223,11 +234,14 @@ describe('mcp-server (Workflow Enforcer)', () => {
     it('returns error when triggerCommand times out', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'lint', signal: '.context/.check-lint-passed' }],
-        smokeChecks: [{
-          name: 'lint', command: 'npm run lint',
-          signal: '.context/.check-lint-passed',
-          triggerCommand: 'sleep 999',
-        }],
+        smokeChecks: [
+          {
+            name: 'lint',
+            command: 'npm run lint',
+            signal: '.context/.check-lint-passed',
+            triggerCommand: 'sleep 999',
+          },
+        ],
       });
       vi.mocked(execSync).mockImplementation(() => {
         const err = new Error('Command timed out');
@@ -380,7 +394,9 @@ describe('mcp-server (Workflow Enforcer)', () => {
     it('returns warning (not error) when no checks configured', async () => {
       vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
       const freshTimestamp = Date.now() - 5 * 60 * 1000;
-      vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${freshTimestamp}\n` as never);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `session_id=\ntimestamp=${freshTimestamp}\n` as never
+      );
 
       const result = await handler({});
       expect(result.isError).toBeUndefined();
@@ -394,7 +410,9 @@ describe('mcp-server (Workflow Enforcer)', () => {
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
         smokeChecks: [],
       });
-      vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${freshTimestamp}\n` as never);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `session_id=\ntimestamp=${freshTimestamp}\n` as never
+      );
 
       const result = await handler({});
       expect(result.isError).toBeUndefined();
@@ -443,7 +461,9 @@ describe('mcp-server (Workflow Enforcer)', () => {
         smokeChecks: [],
       });
       const staleTimestamp = Date.now() - 2 * 60 * 60 * 1000;
-      vi.mocked(fs.readFile).mockResolvedValue(`session_id=\ntimestamp=${staleTimestamp}\n` as never);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `session_id=\ntimestamp=${staleTimestamp}\n` as never
+      );
 
       const result = await handler({});
       expect(result.isError).toBe(true);
