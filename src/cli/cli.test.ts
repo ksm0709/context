@@ -13,7 +13,7 @@ vi.mock('./commands/install.js', () => ({
   installOpenCode: vi.fn(),
   resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
 }));
-import { printHelp, runCli } from './index.js';
+import { isRemoteVersionNewer, printHelp, printUpdateNoticeIfAvailable, runCli } from './index.js';
 import { getSettingsPath, setSettingsPath } from '../shared/claude-settings.js';
 
 describe('printHelp', () => {
@@ -31,6 +31,35 @@ describe('printHelp', () => {
   });
 });
 
+describe('version checks', () => {
+  it('detects when the remote version is newer', () => {
+    expect(isRemoteVersionNewer('1.14.0', '1.15.0')).toBe(true);
+    expect(isRemoteVersionNewer('1.14.0', '1.14.1')).toBe(true);
+  });
+
+  it('does not report older or equal versions as newer', () => {
+    expect(isRemoteVersionNewer('1.14.0', '1.14.0')).toBe(false);
+    expect(isRemoteVersionNewer('1.14.0', '1.13.9')).toBe(false);
+    expect(isRemoteVersionNewer('1.14.0', 'invalid')).toBe(false);
+  });
+
+  it('prints an update notice when npm reports a newer published version', () => {
+    const out: string[] = [];
+    vi.mocked(
+      (globalThis as { Bun?: { spawnSync: typeof Bun.spawnSync } }).Bun!.spawnSync
+    ).mockReturnValueOnce({
+      exitCode: 0,
+      stdout: Buffer.from('9.9.9\n'),
+      stderr: Buffer.from(''),
+    } as never);
+
+    printUpdateNoticeIfAvailable((s) => out.push(s));
+
+    expect(out.join('')).toContain('Update available');
+    expect(out.join('')).toContain('context update plugin');
+  });
+});
+
 describe('runCli', () => {
   let tmpDir: string;
   let originalSettingsPath: string;
@@ -40,6 +69,11 @@ describe('runCli', () => {
     mkdirSync(tmpDir, { recursive: true });
     originalSettingsPath = getSettingsPath();
     setSettingsPath(join(tmpDir, '.claude', 'settings.json'));
+    vi.mocked(
+      (globalThis as { Bun?: { spawnSync: typeof Bun.spawnSync } }).Bun!.spawnSync
+    ).mockImplementation((_cmd: string[]) => {
+      return { exitCode: 1, stdout: Buffer.from(''), stderr: Buffer.from('') } as never;
+    });
   });
 
   afterEach(() => {
