@@ -31,9 +31,8 @@ describe('printHelp', () => {
     expect(output).toContain('update claude [path]');
     expect(output).toContain('update codex [path]');
     expect(output).toContain('update plugin [version]');
-    expect(output).toContain('update migrate [path]');
     expect(output).not.toContain('install omc');
-    expect(output).not.toContain('migrate [path] [--keep]');
+    expect(output).not.toContain('migrate');
   });
 });
 
@@ -122,17 +121,6 @@ describe('runCli', () => {
 
     runCli(['update', 'all', tmpDir]);
     expect(out.join('')).toMatch(/Updated \d+ file\(s\)/);
-  });
-
-  it('migrate top-level command routes through update migrate', () => {
-    const out: string[] = [];
-    vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
-      out.push(String(s));
-      return true;
-    });
-
-    runCli(['migrate', tmpDir]);
-    expect(out.join('')).toContain('Nothing to migrate');
   });
 
   it('install codex alias routes through update codex', () => {

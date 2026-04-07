@@ -81,7 +81,6 @@ export function printHelp(out?: (s: string) => void): void {
   write('  update claude [path]       Reinstall Claude/OpenCode integrations only\n');
   write('  update codex [path]        Reinstall Codex integrations only\n');
   write('  update plugin [version]    Update @ksm0709/context package\n');
-  write('  update migrate [path]      Migrate .opencode/context/ → .context/\n');
   write('\n');
 }
 
@@ -97,9 +96,6 @@ export function runCli(argv: string[]): void {
   switch (command) {
     case 'update':
       runUpdate(rest);
-      break;
-    case 'migrate':
-      runUpdate(['migrate', ...rest]);
       break;
     case 'install':
       if (rest[0] === 'codex' || rest[0] === 'omx') {

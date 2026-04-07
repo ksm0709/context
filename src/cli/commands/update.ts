@@ -3,11 +3,10 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { getStoredVersion, updateScaffold } from '../../lib/scaffold.js';
 import { installClaude, installCodex, installOpenCode, resolveCodexHookSource } from './install.js';
-import { runMigrate } from './migrate.js';
 import pkg from '../../../package.json';
 import { hasContextMcpServer, readClaudeSettings } from '../../shared/claude-settings.js';
 
-const KNOWN_SUBCOMMANDS = ['all', 'plugin', 'codex', 'omx', 'claude', 'omc', 'migrate'];
+const KNOWN_SUBCOMMANDS = ['all', 'plugin', 'codex', 'omx', 'claude', 'omc'];
 const PLUGIN_VERSION = pkg.version;
 
 export function runUpdate(args: string[]): void {
@@ -28,9 +27,6 @@ export function runUpdate(args: string[]): void {
     case 'claude':
     case 'omc':
       runUpdateClaude(resolve(rest[0] ?? process.cwd()));
-      break;
-    case 'migrate':
-      runMigrate(rest);
       break;
     default:
       // Backward compat: if subcommand is not a known subcommand, treat as projectDir
