@@ -22,16 +22,7 @@ vi.mock('../lib/config.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/config.js')>();
   return {
     ...actual,
-    loadConfig: vi.fn((dir: string) => {
-      const config = actual.loadConfig(dir);
-      return {
-        ...config,
-        prompts: {
-          turnStart: join(dir, '.context', 'prompts', 'turn-start.md'),
-          turnEnd: join(dir, '.context', 'prompts', 'turn-end.md'),
-        },
-      };
-    }),
+    loadConfig: vi.fn((dir: string) => actual.loadConfig(dir)),
   };
 });
 
@@ -55,31 +46,12 @@ function createTempProjectDir(): string {
 }
 
 function setupProject(projectDir: string): void {
-  mkdirSync(join(projectDir, '.context', 'prompts'), { recursive: true });
+  mkdirSync(join(projectDir, '.context'), { recursive: true });
   mkdirSync(join(projectDir, 'docs'), { recursive: true });
 
   writeFileSync(
     join(projectDir, '.context', 'config.jsonc'),
-    JSON.stringify({
-      prompts: {
-        turnStart: 'prompts/turn-start.md',
-        turnEnd: 'prompts/turn-end.md',
-      },
-      knowledge: {
-        dir: 'docs',
-        sources: ['AGENTS.md'],
-      },
-    }),
-    'utf-8'
-  );
-  writeFileSync(
-    join(projectDir, '.context', 'prompts', 'turn-start.md'),
-    '## OMX Knowledge Context\n\nRead from {{knowledgeDir}} first.',
-    'utf-8'
-  );
-  writeFileSync(
-    join(projectDir, '.context', 'prompts', 'turn-end.md'),
-    '## OMX Turn End\n\nSave notes to {{knowledgeDir}}.',
+    JSON.stringify({}),
     'utf-8'
   );
   writeFileSync(
@@ -109,7 +81,7 @@ afterEach(() => {
 });
 
 describe('onHookEvent', () => {
-  it('injects turn-start and knowledge index into AGENTS.md on session-start', async () => {
+  it('injects workflow context into AGENTS.md on session-start', async () => {
     const projectDir = createTempProjectDir();
     setupProject(projectDir);
 
@@ -242,14 +214,6 @@ describe('onHookEvent', () => {
     writeFileSync(
       join(projectDir, '.context', 'config.jsonc'),
       JSON.stringify({
-        prompts: {
-          turnStart: 'prompts/turn-start.md',
-          turnEnd: 'prompts/turn-end.md',
-        },
-        knowledge: {
-          dir: 'notes',
-          sources: ['AGENTS.md'],
-        },
         omx: {
           turnEnd: {
             strategy: 'turn-complete-sendkeys',
@@ -495,9 +459,6 @@ describe('onHookEvent', () => {
             strategy: 'off',
           },
         },
-        knowledge: {
-          sources: ['AGENTS.md'],
-        },
       }),
       'utf-8'
     );
@@ -537,12 +498,6 @@ describe('onHookEvent', () => {
     writeFileSync(
       join(projectDir, '.context', 'config.jsonc'),
       JSON.stringify({
-        prompts: {
-          turnEnd: 'prompts/turn-end.md',
-        },
-        knowledge: {
-          sources: ['AGENTS.md'],
-        },
         omx: {
           turnEnd: {
             strategy: 'turn-complete-sendkeys',
@@ -598,9 +553,6 @@ describe('onHookEvent', () => {
             turnEnd: {
               strategy: 'turn-complete-sendkeys',
             },
-          },
-          knowledge: {
-            sources: ['AGENTS.md'],
           },
         }),
         'utf-8'
@@ -660,9 +612,6 @@ describe('onHookEvent', () => {
           turnEnd: {
             strategy: 'turn-complete-sendkeys',
           },
-        },
-        knowledge: {
-          sources: ['AGENTS.md'],
         },
       }),
       'utf-8'
@@ -727,16 +676,10 @@ describe('onHookEvent', () => {
     writeFileSync(
       join(projectDir, '.context', 'config.jsonc'),
       JSON.stringify({
-        prompts: {
-          turnEnd: 'prompts/turn-end.md',
-        },
         omx: {
           turnEnd: {
             strategy: 'turn-complete-sendkeys',
           },
-        },
-        knowledge: {
-          sources: ['AGENTS.md'],
         },
       }),
       'utf-8'
@@ -806,16 +749,10 @@ describe('onHookEvent', () => {
     writeFileSync(
       join(projectDir, '.context', 'config.jsonc'),
       JSON.stringify({
-        prompts: {
-          turnEnd: 'prompts/turn-end.md',
-        },
         omx: {
           turnEnd: {
             strategy: 'turn-complete-sendkeys',
           },
-        },
-        knowledge: {
-          sources: ['AGENTS.md'],
         },
       }),
       'utf-8'

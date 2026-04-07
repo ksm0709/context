@@ -74,16 +74,6 @@ describe('mcp-server (Workflow Enforcer)', () => {
     expect(toolNames).toContain('infer_smoke_checks');
   });
 
-  it('does not register any memory tools', () => {
-    const toolNames = mockRegisterTool.mock.calls.map((c) => c[0]);
-    expect(toolNames).not.toContain('search_knowledge');
-    expect(toolNames).not.toContain('read_knowledge');
-    expect(toolNames).not.toContain('append_daily_note');
-    expect(toolNames).not.toContain('read_daily_note');
-    expect(toolNames).not.toContain('create_knowledge_note');
-    expect(toolNames).not.toContain('update_knowledge_note');
-  });
-
   describe('run_smoke_check tool', () => {
     let handler: ToolHandler;
 

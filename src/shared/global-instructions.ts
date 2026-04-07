@@ -22,7 +22,7 @@ export function getGlobalInstructionPath(tool: CliTool): string {
 }
 
 /**
- * Inject knowledge context into a CLI tool's global instruction file.
+ * Inject workflow context into a CLI tool's global instruction file.
  * Uses marker-based injection (<!-- context:start/end -->) for idempotency.
  */
 export function injectIntoGlobalInstructions(tool: CliTool, content: string): void {

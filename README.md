@@ -221,22 +221,8 @@ context --version
 
 ```
 .context/
-├── config.jsonc          # Plugin configuration
-├── prompts/
-│   ├── turn-start.md     # Injected at session start
-│   └── turn-end.md       # Injected at turn boundary
-├── guides/               # Reference guides for the agent
-│   ├── quality-check.md
-│   ├── scope-review.md
-│   └── ...
-├── memory/               # Knowledge base (notes, ADRs, patterns)
-│   ├── INDEX.md
-│   └── ...
-├── templates/            # Note templates
-│   ├── adr.md
-│   ├── bug.md
-│   ├── pattern.md
-│   └── ...
+├── config.jsonc          # Plugin configuration (checks, smokeChecks, strategies)
+├── .version              # Plugin version tracker for auto-updates
 ├── .check-*-passed       # Signal files (auto-generated, gitignored)
 └── .work-complete        # Turn completion marker (auto-generated)
 ```

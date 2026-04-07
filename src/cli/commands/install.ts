@@ -66,7 +66,7 @@ export function installOmc(projectDir: string): void {
   // 1. Scaffold project context directory
   scaffoldIfNeeded(projectDir);
 
-  // 2. Inject knowledge context into AGENTS.md
+  // 2. Inject workflow context into AGENTS.md
   injectIntoAgentsMd(join(projectDir, 'AGENTS.md'), STATIC_WORKFLOW_CONTEXT);
 
   // 3. Resolve bun path

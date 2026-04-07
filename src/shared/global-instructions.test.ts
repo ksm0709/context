@@ -47,11 +47,11 @@ describe('injectIntoGlobalInstructions', () => {
 
     // Use injectIntoAgentsMd directly to test the mechanism with a custom path
     const { injectIntoAgentsMd } = await import('./agents-md.js');
-    injectIntoAgentsMd(fakePath, 'Test knowledge context');
+    injectIntoAgentsMd(fakePath, 'Test workflow context');
 
     expect(existsSync(fakePath)).toBe(true);
     const content = readFileSync(fakePath, 'utf-8');
-    expect(content).toBe(`${START_MARKER}\nTest knowledge context\n${END_MARKER}\n`);
+    expect(content).toBe(`${START_MARKER}\nTest workflow context\n${END_MARKER}\n`);
   });
 
   it('preserves existing content in the global instruction file', async () => {

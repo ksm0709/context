@@ -25,11 +25,6 @@ describe('loadConfig - defaults', () => {
     expect(config.omc?.turnEnd?.strategy).toBe('stop-hook');
   });
 
-  it('default config has no knowledge field', () => {
-    const config = loadConfig(tmpDir);
-    expect(config).not.toHaveProperty('knowledge');
-  });
-
   it('returns default config on malformed JSON', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
@@ -234,7 +229,6 @@ describe('inferAndPersistChecks - JSONC comment preservation', () => {
     // Write config with comments
     const originalContent = `{
   // Context Plugin Configuration
-  "knowledge": { "dir": ".context/memory" },
   "omx": { "turnEnd": { "strategy": "turn-complete-sendkeys" } }
 }`;
     writeFileSync(join(configDir, 'config.jsonc'), originalContent);
@@ -249,7 +243,6 @@ describe('inferAndPersistChecks - JSONC comment preservation', () => {
     // Comments must be preserved
     expect(updated).toContain('// Context Plugin Configuration');
     // Original fields must be preserved
-    expect(updated).toContain('"knowledge"');
     expect(updated).toContain('"omx"');
     // New fields must be added
     expect(updated).toContain('"checks"');
