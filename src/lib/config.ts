@@ -49,6 +49,16 @@ function getDefaultConfig(): ContextConfig {
   return {
     checks: [],
     smokeChecks: [],
+    codex: {
+      turnEnd: {
+        strategy: 'stop-hook',
+      },
+    },
+    claude: {
+      turnEnd: {
+        strategy: 'stop-hook',
+      },
+    },
     omx: {
       turnEnd: {
         strategy: 'turn-complete-sendkeys',
@@ -64,9 +74,29 @@ function getDefaultConfig(): ContextConfig {
 
 function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
   const defaults = getDefaultConfig();
+  const codexStrategy =
+    partial.codex?.turnEnd?.strategy ??
+    (partial.omx?.turnEnd?.strategy === 'off' ? 'off' : undefined) ??
+    defaults.codex?.turnEnd?.strategy;
+  const claudeStrategy =
+    partial.claude?.turnEnd?.strategy ??
+    partial.omc?.turnEnd?.strategy ??
+    defaults.claude?.turnEnd?.strategy ??
+    'stop-hook';
+
   return {
     checks: partial.checks ?? defaults.checks,
     smokeChecks: partial.smokeChecks ?? defaults.smokeChecks,
+    codex: {
+      turnEnd: {
+        strategy: codexStrategy,
+      },
+    },
+    claude: {
+      turnEnd: {
+        strategy: claudeStrategy,
+      },
+    },
     omx: {
       turnEnd: {
         strategy: partial.omx?.turnEnd?.strategy ?? defaults.omx?.turnEnd?.strategy,
@@ -74,7 +104,7 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
     },
     omc: {
       turnEnd: {
-        strategy: partial.omc?.turnEnd?.strategy ?? defaults.omc?.turnEnd?.strategy ?? 'stop-hook',
+        strategy: claudeStrategy,
       },
     },
   };

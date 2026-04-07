@@ -7,6 +7,12 @@ const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const projectDir = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 const workCompleteFile = join(projectDir, DEFAULTS.workCompleteFile);
+const config = loadConfig(projectDir);
+const claudeTurnEndStrategy = config.claude?.turnEnd?.strategy ?? config.omc?.turnEnd?.strategy;
+
+if (claudeTurnEndStrategy === 'off') {
+  process.exit(0);
+}
 
 if (!existsSync(workCompleteFile)) {
   process.stderr.write(
@@ -25,7 +31,6 @@ if (!existsSync(workCompleteFile)) {
 }
 
 try {
-  const config = loadConfig(projectDir);
   const checks = config.checks ?? [];
   const now = Date.now();
 

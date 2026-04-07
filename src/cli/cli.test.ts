@@ -11,6 +11,9 @@ vi.mock('./commands/install.js', () => ({
   installOmc: vi.fn(),
   installOmx: vi.fn(),
   installOpenCode: vi.fn(),
+  installClaude: vi.fn(),
+  installCodex: vi.fn(),
+  resolveCodexHookSource: vi.fn().mockReturnValue('/mock/dist/codex/stop-hook.js'),
   resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
 }));
 import { isRemoteVersionNewer, printHelp, printUpdateNoticeIfAvailable, runCli } from './index.js';
@@ -23,11 +26,14 @@ describe('printHelp', () => {
     const output = lines.join('');
 
     expect(output).toContain('Usage: context <command>');
-    expect(output).toContain('update [all] [path]');
+    expect(output).toContain('update [path]');
     expect(output).toContain('Claude/Codex/OpenCode integrations');
-    expect(output).toContain('update omx [path]');
+    expect(output).toContain('update claude [path]');
+    expect(output).toContain('update codex [path]');
     expect(output).toContain('update plugin [version]');
-    expect(output).toContain('install omc');
+    expect(output).toContain('update migrate [path]');
+    expect(output).not.toContain('install omc');
+    expect(output).not.toContain('migrate [path] [--keep]');
   });
 });
 
@@ -116,6 +122,28 @@ describe('runCli', () => {
 
     runCli(['update', 'all', tmpDir]);
     expect(out.join('')).toMatch(/Updated \d+ file\(s\)/);
+  });
+
+  it('migrate top-level command routes through update migrate', () => {
+    const out: string[] = [];
+    vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
+      out.push(String(s));
+      return true;
+    });
+
+    runCli(['migrate', tmpDir]);
+    expect(out.join('')).toContain('Nothing to migrate');
+  });
+
+  it('install codex alias routes through update codex', () => {
+    const out: string[] = [];
+    vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
+      out.push(String(s));
+      return true;
+    });
+
+    runCli(['install', 'omx', tmpDir]);
+    expect(out.join('')).toMatch(/Updated \d+ file\(s\)|up to date/);
   });
 
   it('update plugin: calls Bun.spawnSync with correct args', () => {

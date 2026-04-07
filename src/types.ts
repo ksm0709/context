@@ -16,6 +16,16 @@ export interface SmokeCheckEntry {
 export interface ContextConfig {
   checks?: CheckEntry[];
   smokeChecks?: SmokeCheckEntry[];
+  codex?: {
+    turnEnd?: {
+      strategy?: CodexTurnEndStrategy;
+    };
+  };
+  claude?: {
+    turnEnd?: {
+      strategy: 'off' | 'stop-hook';
+    };
+  };
   omx?: {
     turnEnd?: {
       strategy?: OmxTurnEndStrategy;
@@ -29,3 +39,4 @@ export interface ContextConfig {
 }
 
 export type OmxTurnEndStrategy = 'off' | 'turn-complete-sendkeys';
+export type CodexTurnEndStrategy = 'off' | 'stop-hook';

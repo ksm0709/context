@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installOmx, installOmc } from './install.js';
+import { installCodex, installOmc } from './install.js';
 
 vi.mock('../../shared/claude-settings.js', () => ({
   normalizeContextMcpServer: vi.fn(),
@@ -18,11 +18,16 @@ vi.mock('../../shared/agents-md.js', () => ({
   injectIntoAgentsMd: vi.fn(),
 }));
 
+vi.mock('../../shared/codex-hooks.js', () => ({
+  registerCodexHook: vi.fn(),
+}));
+
 vi.mock('../../shared/mcp-path.js', () => ({
   resolveMcpPath: vi.fn(() => '/mock/dist/mcp.js'),
 }));
 
 vi.mock('../../shared/codex-settings.js', () => ({
+  ensureContextMcpRegistered: vi.fn().mockReturnValue(false),
   pruneStaleMockMcpServer: vi.fn().mockReturnValue(false),
 }));
 
@@ -39,14 +44,19 @@ import {
   removeMcpServer,
   registerHook,
 } from '../../shared/claude-settings.js';
-import { pruneStaleMockMcpServer } from '../../shared/codex-settings.js';
+import {
+  ensureContextMcpRegistered,
+  pruneStaleMockMcpServer,
+} from '../../shared/codex-settings.js';
 import { execSync } from 'node:child_process';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
+import { registerCodexHook } from '../../shared/codex-hooks.js';
 
-describe('installOmx', () => {
+describe('installCodex', () => {
   let tmpDir: string;
-  let sourceFile: string;
+  let stopSourceFile: string;
+  let sessionStartSourceFile: string;
   let stdout: string[];
   let stderr: string[];
 
@@ -56,8 +66,10 @@ describe('installOmx', () => {
 
     const sourceDir = join(tmpDir, 'source');
     mkdirSync(sourceDir, { recursive: true });
-    sourceFile = join(sourceDir, 'index.mjs');
-    writeFileSync(sourceFile, 'export default function hook() {}');
+    stopSourceFile = join(sourceDir, 'stop-hook.js');
+    sessionStartSourceFile = join(sourceDir, 'session-start-hook.js');
+    writeFileSync(stopSourceFile, 'console.log("stop");');
+    writeFileSync(sessionStartSourceFile, 'console.log("start");');
 
     stdout = [];
     stderr = [];
@@ -77,42 +89,61 @@ describe('installOmx', () => {
     vi.restoreAllMocks();
   });
 
-  it('copies source to .omx/hooks/context.mjs', () => {
+  it('copies hook sources to .codex/hooks/', () => {
     const projectDir = join(tmpDir, 'project');
     mkdirSync(projectDir, { recursive: true });
 
-    installOmx(projectDir, sourceFile);
+    installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
 
-    const target = join(projectDir, '.omx', 'hooks', 'context.mjs');
-    expect(existsSync(target)).toBe(true);
-    expect(readFileSync(target, 'utf-8')).toBe('export default function hook() {}');
-    expect(stdout.join('')).toContain('Installed context plugin to .omx/hooks/context.mjs');
-  });
-
-  it('auto-creates .omx/hooks/ when directory does not exist', () => {
-    const projectDir = join(tmpDir, 'project');
-    mkdirSync(projectDir, { recursive: true });
-
-    expect(existsSync(join(projectDir, '.omx', 'hooks'))).toBe(false);
-
-    installOmx(projectDir, sourceFile);
-
-    expect(existsSync(join(projectDir, '.omx', 'hooks'))).toBe(true);
-    expect(existsSync(join(projectDir, '.omx', 'hooks', 'context.mjs'))).toBe(true);
-  });
-
-  it('overwrites existing file when already installed', () => {
-    const projectDir = join(tmpDir, 'project');
-    const hooksDir = join(projectDir, '.omx', 'hooks');
-    mkdirSync(hooksDir, { recursive: true });
-    writeFileSync(join(hooksDir, 'context.mjs'), 'old version');
-
-    installOmx(projectDir, sourceFile);
-
-    expect(readFileSync(join(hooksDir, 'context.mjs'), 'utf-8')).toBe(
-      'export default function hook() {}'
+    expect(existsSync(join(projectDir, '.codex', 'hooks', 'context-session-start-hook.js'))).toBe(
+      true
     );
-    expect(stdout.join('')).toContain('Installed context plugin to .omx/hooks/context.mjs');
+    expect(existsSync(join(projectDir, '.codex', 'hooks', 'context-stop-hook.js'))).toBe(true);
+    expect(stdout.join('')).toContain(
+      'Installed context hooks to .codex/hooks/ and .codex/hooks.json'
+    );
+  });
+
+  it('auto-creates .codex/hooks/ when directory does not exist', () => {
+    const projectDir = join(tmpDir, 'project');
+    mkdirSync(projectDir, { recursive: true });
+
+    expect(existsSync(join(projectDir, '.codex', 'hooks'))).toBe(false);
+
+    installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
+
+    expect(existsSync(join(projectDir, '.codex', 'hooks'))).toBe(true);
+  });
+
+  it('registers SessionStart and Stop hooks in .codex/hooks.json', () => {
+    const projectDir = join(tmpDir, 'project');
+    mkdirSync(projectDir, { recursive: true });
+
+    installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
+
+    expect(registerCodexHook).toHaveBeenCalledWith(
+      projectDir,
+      'SessionStart',
+      expect.objectContaining({ matcher: 'startup|resume' })
+    );
+    expect(registerCodexHook).toHaveBeenCalledWith(
+      projectDir,
+      'Stop',
+      expect.objectContaining({ hooks: expect.any(Array) })
+    );
+  });
+
+  it('registers context-mcp in ~/.codex/config.toml', () => {
+    const projectDir = join(tmpDir, 'project');
+    mkdirSync(projectDir, { recursive: true });
+
+    vi.mocked(ensureContextMcpRegistered).mockReturnValue(true);
+    installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
+
+    expect(ensureContextMcpRegistered).toHaveBeenCalledTimes(1);
+    expect(stdout.join('')).toContain(
+      'Successfully registered context-mcp in ~/.codex/config.toml'
+    );
   });
 
   it('removes stale mock-mcp from Codex config when present', () => {
@@ -120,7 +151,7 @@ describe('installOmx', () => {
     mkdirSync(projectDir, { recursive: true });
     vi.mocked(pruneStaleMockMcpServer).mockReturnValue(true);
 
-    installOmx(projectDir, sourceFile);
+    installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
 
     expect(pruneStaleMockMcpServer).toHaveBeenCalledTimes(1);
     expect(stdout.join('')).toContain('Removed stale mock-mcp from ~/.codex/config.toml');
@@ -130,11 +161,11 @@ describe('installOmx', () => {
     const projectDir = join(tmpDir, 'project');
     mkdirSync(projectDir, { recursive: true });
 
-    installOmx(projectDir, '/nonexistent/path/source.mjs');
+    installCodex(projectDir, '/nonexistent/path/start.js', '/nonexistent/path/stop.js');
 
-    expect(stderr.join('')).toContain('Could not find OMX plugin source');
+    expect(stderr.join('')).toContain('Could not find Codex hook source files');
     expect(process.exit).toHaveBeenCalledWith(1);
-    expect(existsSync(join(projectDir, '.omx', 'hooks', 'context.mjs'))).toBe(false);
+    expect(existsSync(join(projectDir, '.codex', 'hooks', 'context-stop-hook.js'))).toBe(false);
   });
 });
 

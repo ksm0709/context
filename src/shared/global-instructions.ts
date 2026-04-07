@@ -9,7 +9,7 @@ export type CliTool = 'claude' | 'codex';
  * These are the files CLI tools read regardless of project context.
  *
  * - Claude Code: ~/.claude/CLAUDE.md
- * - Codex (OMX): ~/.codex/instructions.md
+ * - Codex: ~/.codex/instructions.md
  */
 export function getGlobalInstructionPath(tool: CliTool): string {
   const home = homedir();

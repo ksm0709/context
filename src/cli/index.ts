@@ -1,7 +1,5 @@
 #!/usr/bin/env bun
 import { runUpdate } from './commands/update.js';
-import { runMigrate } from './commands/migrate.js';
-import { runInstall } from './commands/install.js';
 import pkg from '../../package.json';
 
 const PLUGIN_VERSION = pkg.version;
@@ -78,13 +76,12 @@ export function printHelp(out?: (s: string) => void): void {
   write('Usage: context <command> [options]\n\n');
   write('Commands:\n');
   write(
-    '  update [all] [path]        Update scaffold + install Claude/Codex/OpenCode integrations\n'
+    '  update [path]              Update scaffold + install Claude/Codex/OpenCode integrations\n'
   );
-  write('  update omx [path]          Force-update config + reinstall OMX only\n');
+  write('  update claude [path]       Reinstall Claude/OpenCode integrations only\n');
+  write('  update codex [path]        Reinstall Codex integrations only\n');
   write('  update plugin [version]    Update @ksm0709/context package\n');
-  write('  migrate [path] [--keep]    Migrate .opencode/context/ → .context/\n');
-  write('  install omx                Install OMX hook plugin to .omx/hooks/\n');
-  write('  install omc                Install OMC hooks/MCP to Claude settings\n');
+  write('  update migrate [path]      Migrate .opencode/context/ → .context/\n');
   write('\n');
 }
 
@@ -102,10 +99,22 @@ export function runCli(argv: string[]): void {
       runUpdate(rest);
       break;
     case 'migrate':
-      runMigrate(rest);
+      runUpdate(['migrate', ...rest]);
       break;
     case 'install':
-      runInstall(rest);
+      if (rest[0] === 'codex' || rest[0] === 'omx') {
+        runUpdate(['codex', ...rest.slice(1)]);
+        return;
+      }
+
+      if (rest[0] === 'omc' || rest[0] === 'claude') {
+        runUpdate(['claude', ...rest.slice(1)]);
+        return;
+      }
+      process.stderr.write(
+        'Use `context update`, `context update codex`, or `context update claude`.\n'
+      );
+      process.exit(1);
       break;
     case '--version':
     case '-v':

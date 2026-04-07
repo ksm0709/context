@@ -8,10 +8,10 @@ const PLUGIN_VERSION: string = pkg.version;
 const DEFAULT_CONFIG = `{
   // Context Plugin Configuration
   // See: https://github.com/ksm0709/context
-  "omx": {
-    // Inject turn-end after native turn-complete via tmux send-keys
+  "codex": {
+    // Continue the turn at Stop until submit_turn_complete has been called
     "turnEnd": {
-      "strategy": "turn-complete-sendkeys"
+      "strategy": "stop-hook"
     }
   }
 }`;
@@ -40,13 +40,7 @@ export function updateScaffold(projectDir: string): string[] {
 
   const updated: string[] = [];
   const configPath = join(contextDir, 'config.jsonc');
-  try {
-    const existing = readFileSync(configPath, 'utf-8');
-    if (existing !== DEFAULT_CONFIG) {
-      writeFileSync(configPath, DEFAULT_CONFIG, 'utf-8');
-      updated.push('config.jsonc');
-    }
-  } catch {
+  if (!existsSync(configPath)) {
     writeFileSync(configPath, DEFAULT_CONFIG, 'utf-8');
     updated.push('config.jsonc');
   }

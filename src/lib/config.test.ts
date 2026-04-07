@@ -291,7 +291,7 @@ describe('inferAndPersistChecks - JSONC comment preservation', () => {
   });
 });
 
-describe('loadConfig - OMX/OMC strategy', () => {
+describe('loadConfig - Codex/Claude strategy', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -303,7 +303,7 @@ describe('loadConfig - OMX/OMC strategy', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('parses custom OMX turn-end strategy', () => {
+  it('parses custom legacy OMX turn-end strategy', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(

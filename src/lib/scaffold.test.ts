@@ -37,7 +37,7 @@ describe('scaffoldIfNeeded', () => {
 
     const content = readFileSync(configPath, 'utf-8');
     expect(content).toContain('Context Plugin Configuration');
-    expect(content).toContain('omx');
+    expect(content).toContain('codex');
   });
 
   it('does not create templates or guides directories', () => {

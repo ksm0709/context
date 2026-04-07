@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import {
   detectPackageManager,
   isGloballyInstalled,
+  isCodexInstalled,
   isOmxInstalled,
   isOmcInstalled,
   runUpdate,
@@ -18,6 +19,9 @@ vi.mock('./install.js', () => ({
   installOmc: vi.fn(),
   installOmx: vi.fn(),
   installOpenCode: vi.fn(),
+  installClaude: vi.fn(),
+  installCodex: vi.fn(),
+  resolveCodexHookSource: vi.fn().mockReturnValue('/mock/dist/codex/stop-hook.js'),
   resolveOmxSource: vi.fn().mockReturnValue('/mock/dist/omx/index.mjs'),
 }));
 vi.mock('../../../package.json', () => ({
@@ -25,7 +29,7 @@ vi.mock('../../../package.json', () => ({
 }));
 import { readClaudeSettings } from '../../shared/claude-settings.js';
 import { getStoredVersion, updateScaffold } from '../../lib/scaffold.js';
-import { installOmc, installOmx, installOpenCode, resolveOmxSource } from './install.js';
+import { installClaude, installCodex, installOpenCode, resolveCodexHookSource } from './install.js';
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
@@ -87,16 +91,18 @@ describe('isGloballyInstalled', () => {
 });
 
 describe('isOmxInstalled', () => {
-  it('returns true when projectDir/.omx/hooks/context.mjs exists', () => {
+  it('returns true when projectDir/.codex/hooks/context-stop-hook.js exists', () => {
     vi.mocked(fs.existsSync).mockImplementation(
-      (path) => String(path) === '/my/project/.omx/hooks/context.mjs'
+      (path) => String(path) === '/my/project/.codex/hooks/context-stop-hook.js'
     );
     expect(isOmxInstalled('/my/project')).toBe(true);
+    expect(isCodexInstalled('/my/project')).toBe(true);
   });
 
-  it('returns false when projectDir/.omx/hooks/context.mjs does not exist', () => {
+  it('returns false when projectDir/.codex/hooks/context-stop-hook.js does not exist', () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
     expect(isOmxInstalled('/my/project')).toBe(false);
+    expect(isCodexInstalled('/my/project')).toBe(false);
   });
 });
 
@@ -139,10 +145,10 @@ describe('runUpdate', () => {
   beforeEach(() => {
     vi.mocked(updateScaffold).mockReturnValue([]);
     vi.mocked(getStoredVersion).mockReturnValue('1.14.0');
-    vi.mocked(installOmc).mockClear();
-    vi.mocked(installOmx).mockClear();
+    vi.mocked(installClaude).mockClear();
+    vi.mocked(installCodex).mockClear();
     vi.mocked(installOpenCode).mockClear();
-    vi.mocked(resolveOmxSource).mockReturnValue('/mock/dist/omx/index.mjs');
+    vi.mocked(resolveCodexHookSource).mockImplementation((file) => `/mock/dist/codex/${file}`);
   });
 
   afterEach(() => {
@@ -151,7 +157,7 @@ describe('runUpdate', () => {
 
   it('treats omx as an explicit subcommand and skips omc reinstall', () => {
     vi.mocked(fs.existsSync).mockImplementation(
-      (path) => String(path) === '/my/project/.omx/hooks/context.mjs'
+      (path) => String(path) === '/my/project/.codex/hooks/context-stop-hook.js'
     );
     vi.mocked(readClaudeSettings).mockReturnValue({
       mcpServers: { context_mcp: { command: 'bun', args: ['mcp.js'] } },
@@ -160,8 +166,12 @@ describe('runUpdate', () => {
     runUpdate(['omx', '/my/project']);
 
     expect(updateScaffold).toHaveBeenCalledWith('/my/project');
-    expect(installOmx).toHaveBeenCalledWith('/my/project', '/mock/dist/omx/index.mjs');
-    expect(installOmc).not.toHaveBeenCalled();
+    expect(installCodex).toHaveBeenCalledWith(
+      '/my/project',
+      '/mock/dist/codex/session-start-hook.js',
+      '/mock/dist/codex/stop-hook.js'
+    );
+    expect(installClaude).not.toHaveBeenCalled();
     expect(installOpenCode).not.toHaveBeenCalled();
   });
 
@@ -170,8 +180,12 @@ describe('runUpdate', () => {
 
     expect(updateScaffold).toHaveBeenCalledWith('/my/project');
     expect(installOpenCode).toHaveBeenCalledWith('/my/project');
-    expect(installOmc).toHaveBeenCalledWith('/my/project');
-    expect(installOmx).toHaveBeenCalledWith('/my/project', '/mock/dist/omx/index.mjs');
+    expect(installClaude).toHaveBeenCalledWith('/my/project');
+    expect(installCodex).toHaveBeenCalledWith(
+      '/my/project',
+      '/mock/dist/codex/session-start-hook.js',
+      '/mock/dist/codex/stop-hook.js'
+    );
   });
 
   it('reports plugin version changes before reinstalling integrations', () => {

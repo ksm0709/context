@@ -2,11 +2,12 @@ import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { getStoredVersion, updateScaffold } from '../../lib/scaffold.js';
-import { installOmc, installOmx, installOpenCode, resolveOmxSource } from './install.js';
+import { installClaude, installCodex, installOpenCode, resolveCodexHookSource } from './install.js';
+import { runMigrate } from './migrate.js';
 import pkg from '../../../package.json';
 import { hasContextMcpServer, readClaudeSettings } from '../../shared/claude-settings.js';
 
-const KNOWN_SUBCOMMANDS = ['all', 'plugin', 'omx'];
+const KNOWN_SUBCOMMANDS = ['all', 'plugin', 'codex', 'omx', 'claude', 'omc', 'migrate'];
 const PLUGIN_VERSION = pkg.version;
 
 export function runUpdate(args: string[]): void {
@@ -20,8 +21,16 @@ export function runUpdate(args: string[]): void {
     case 'plugin':
       runUpdatePlugin(rest[0] ?? 'latest');
       break;
+    case 'codex':
     case 'omx':
-      runUpdateOmx(resolve(rest[0] ?? process.cwd()));
+      runUpdateCodex(resolve(rest[0] ?? process.cwd()));
+      break;
+    case 'claude':
+    case 'omc':
+      runUpdateClaude(resolve(rest[0] ?? process.cwd()));
+      break;
+    case 'migrate':
+      runMigrate(rest);
       break;
     default:
       // Backward compat: if subcommand is not a known subcommand, treat as projectDir
@@ -35,9 +44,11 @@ export function runUpdate(args: string[]): void {
   }
 }
 
-export function isOmxInstalled(projectDir: string): boolean {
-  return existsSync(join(projectDir, '.omx', 'hooks', 'context.mjs'));
+export function isCodexInstalled(projectDir: string): boolean {
+  return existsSync(join(projectDir, '.codex', 'hooks', 'context-stop-hook.js'));
 }
+
+export const isOmxInstalled = isCodexInstalled;
 
 export function isOmcInstalled(): boolean {
   try {
@@ -60,13 +71,16 @@ function writeUpdatedFiles(updated: string[]): void {
   }
 }
 
-function reinstallOmx(projectDir: string): void {
-  const source = resolveOmxSource();
-  if (source) {
-    process.stdout.write('\nRe-installing omx plugin...\n');
-    installOmx(projectDir, source);
+function reinstallCodex(projectDir: string): void {
+  const sessionStartSource = resolveCodexHookSource('session-start-hook.js');
+  const stopSource = resolveCodexHookSource('stop-hook.js');
+  if (sessionStartSource && stopSource) {
+    process.stdout.write('\nInstalling Codex integration...\n');
+    installCodex(projectDir, sessionStartSource, stopSource);
   } else {
-    process.stderr.write('\nWarning: could not resolve omx source; skipping omx reinstall.\n');
+    process.stderr.write(
+      '\nWarning: could not resolve Codex hook sources; skipping Codex install.\n'
+    );
   }
 }
 
@@ -85,21 +99,27 @@ function runUpdateAll(projectDir: string): void {
   installOpenCode(projectDir);
 
   process.stdout.write('\nInstalling Claude integration...\n');
-  installOmc(projectDir);
+  installClaude(projectDir);
 
-  reinstallOmx(projectDir);
+  reinstallCodex(projectDir);
 }
 
-function runUpdateOmx(projectDir: string): void {
+function runUpdateCodex(projectDir: string): void {
   const updated = updateScaffold(projectDir);
   writeUpdatedFiles(updated);
 
-  if (isOmxInstalled(projectDir)) {
-    reinstallOmx(projectDir);
-    return;
-  }
+  reinstallCodex(projectDir);
+}
 
-  process.stdout.write('\nOMX plugin is not installed for this project; skipping omx reinstall.\n');
+function runUpdateClaude(projectDir: string): void {
+  const updated = updateScaffold(projectDir);
+  writeUpdatedFiles(updated);
+
+  process.stdout.write('\nInstalling OpenCode integration...\n');
+  installOpenCode(projectDir);
+
+  process.stdout.write('\nInstalling Claude integration...\n');
+  installClaude(projectDir);
 }
 
 export function detectPackageManager(): string {

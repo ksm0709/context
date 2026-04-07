@@ -3,25 +3,28 @@ import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
-import { ensureMcpRegistered } from '../../omx/registry.js';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
+import { registerCodexHook } from '../../shared/codex-hooks.js';
 import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
 import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
 import { ensureContextPluginRegistered } from '../../shared/opencode-settings.js';
-import { pruneStaleMockMcpServer } from '../../shared/codex-settings.js';
+import {
+  ensureContextMcpRegistered,
+  pruneStaleMockMcpServer,
+} from '../../shared/codex-settings.js';
 import {
   normalizeContextMcpServer,
   removeMcpServer,
   registerHook,
 } from '../../shared/claude-settings.js';
 
-export function resolveOmxSource(): string | null {
+export function resolveCodexHookSource(fileName: string): string | null {
   try {
     const cliDir = dirname(fileURLToPath(import.meta.url));
     const pkgRoot = resolve(cliDir, '..', '..');
-    const source = join(pkgRoot, 'dist', 'omx', 'index.mjs');
+    const source = join(pkgRoot, 'dist', 'codex', fileName);
     if (existsSync(source)) return source;
   } catch {
     /* dirname resolution unavailable */
@@ -29,27 +32,69 @@ export function resolveOmxSource(): string | null {
 
   try {
     const req = createRequire(import.meta.url);
-    return req.resolve('@ksm0709/context/omx');
+    const packageRoot = dirname(req.resolve('@ksm0709/context/package.json'));
+    const source = join(packageRoot, 'dist', 'codex', fileName);
+    return existsSync(source) ? source : null;
   } catch {
     return null;
   }
 }
 
-export function installOmx(projectDir: string, sourcePath: string): void {
-  if (!existsSync(sourcePath)) {
-    process.stderr.write(`Could not find OMX plugin source file: ${sourcePath}\n`);
+function resolveBunPath(): string {
+  try {
+    return execSync('which bun', { encoding: 'utf-8' }).trim();
+  } catch {
+    return 'bun';
+  }
+}
+
+export function installCodex(
+  projectDir: string,
+  sessionStartSource: string,
+  stopSource: string
+): void {
+  if (!existsSync(sessionStartSource) || !existsSync(stopSource)) {
+    process.stderr.write(
+      `Could not find Codex hook source files: ${sessionStartSource}, ${stopSource}\n`
+    );
     process.exit(1);
     return;
   }
 
-  const targetDir = join(projectDir, '.omx', 'hooks');
+  scaffoldIfNeeded(projectDir);
+
+  const targetDir = join(projectDir, '.codex', 'hooks');
   mkdirSync(targetDir, { recursive: true });
-  copyFileSync(sourcePath, join(targetDir, 'context.mjs'));
+  const sessionStartTarget = join(targetDir, 'context-session-start-hook.js');
+  const stopTarget = join(targetDir, 'context-stop-hook.js');
+  copyFileSync(sessionStartSource, sessionStartTarget);
+  copyFileSync(stopSource, stopTarget);
 
-  process.stdout.write('Installed context plugin to .omx/hooks/context.mjs\n');
+  const bunPath = resolveBunPath();
+  registerCodexHook(projectDir, 'SessionStart', {
+    matcher: 'startup|resume',
+    hooks: [
+      {
+        type: 'command',
+        command: `${bunPath} ${sessionStartTarget}`,
+        statusMessage: 'Initializing context plugin...',
+      },
+    ],
+  });
+  registerCodexHook(projectDir, 'Stop', {
+    hooks: [
+      {
+        type: 'command',
+        command: `${bunPath} ${stopTarget}`,
+        timeout: 30,
+      },
+    ],
+  });
 
-  if (ensureMcpRegistered()) {
-    process.stdout.write('Successfully registered context-mcp in ~/.omx/mcp-registry.json\n');
+  process.stdout.write('Installed context hooks to .codex/hooks/ and .codex/hooks.json\n');
+
+  if (ensureContextMcpRegistered(bunPath, resolveMcpPath())) {
+    process.stdout.write('Successfully registered context-mcp in ~/.codex/config.toml\n');
   }
 
   if (pruneStaleMockMcpServer()) {
@@ -61,6 +106,21 @@ export function installOmx(projectDir: string, sourcePath: string): void {
   // Inject into Codex's global instructions for non-git directory support
   injectIntoGlobalInstructions('codex', STATIC_WORKFLOW_CONTEXT);
   process.stdout.write('Injected workflow context into ~/.codex/instructions.md\n');
+}
+
+export function resolveOmxSource(): string | null {
+  return resolveCodexHookSource('stop-hook.js');
+}
+
+export function installOmx(projectDir: string, sourcePath: string): void {
+  const sessionStartSource = resolveCodexHookSource('session-start-hook.js');
+  if (!sessionStartSource) {
+    process.stderr.write('Could not find Codex session-start hook source file.\n');
+    process.exit(1);
+    return;
+  }
+
+  installCodex(projectDir, sessionStartSource, sourcePath);
 }
 
 export function installOmc(projectDir: string): void {
@@ -137,6 +197,10 @@ export function installOmc(projectDir: string): void {
   process.stdout.write('Successfully installed context (omc) plugin.\n');
 }
 
+export function installClaude(projectDir: string): void {
+  installOmc(projectDir);
+}
+
 export function installOpenCode(projectDir: string): void {
   scaffoldIfNeeded(projectDir);
 
@@ -152,22 +216,24 @@ export function runInstall(args: string[]): void {
   const [subcommand] = args;
 
   switch (subcommand) {
+    case 'codex':
     case 'omx': {
-      const source = resolveOmxSource();
-      if (!source) {
-        process.stderr.write('Could not find OMX plugin source file (dist/omx/index.mjs).\n');
+      const sessionStartSource = resolveCodexHookSource('session-start-hook.js');
+      const stopSource = resolveCodexHookSource('stop-hook.js');
+      if (!sessionStartSource || !stopSource) {
+        process.stderr.write('Could not find Codex hook source files (dist/codex/*).\n');
         process.exit(1);
         return;
       }
-      installOmx(process.cwd(), source);
+      installCodex(process.cwd(), sessionStartSource, stopSource);
       break;
     }
-    case 'omc':
     case 'claude':
-      installOmc(process.cwd());
+    case 'omc':
+      installClaude(process.cwd());
       break;
     case undefined:
-      process.stderr.write('Missing install target. Usage: context install <omx|omc>\n');
+      process.stderr.write('Missing install target. Usage: context install <codex|claude>\n');
       process.exit(1);
       break;
     default:

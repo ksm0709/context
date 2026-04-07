@@ -1,18 +1,17 @@
-# OMX Setup Instructions
+# Codex Setup Instructions
 
 ## Overview
 
-This plugin supports OMX (OpenCode Managed eXtension) to provide enhanced functionality.
+This package now supports Codex through native Codex hooks and Codex MCP configuration.
 
 ## Setup
 
-1. Run `context update` to install all integrations, including Codex/OMX.
-2. If you only want the Codex/OMX target, run `context install omx`.
-3. Run `omx setup` to apply the changes in Claude Code.
+1. Run `context update` to install all integrations, including Codex.
+2. If you only want the Codex target, run `context update codex`.
 
-**Note**: You MUST run `omx setup` after installing for the changes to take effect.
+**Note**: Codex native hooks require the `codex_hooks` feature flag in `~/.codex/config.toml`. The installer enables this automatically.
 
 ## Maintenance
 
-- Run `context update omx` to refresh the project scaffold and reinstall only the OMX hook/plugin files.
-- `context update omx` does not reinstall Claude/OMC MCP settings; use `context install omc` for the Claude-side integration.
+- Run `context update codex` to refresh the project scaffold and reinstall only the Codex integration files.
+- `context update codex` does not reinstall Claude integration settings; use `context update claude` for the Claude-side integration.

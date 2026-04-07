@@ -489,7 +489,7 @@ export function startMcpServer() {
     }
   );
 
-  // === OMX(codex) 호환성을 위한 패치 ===
+  // === Codex compatibility patch ===
   // codex는 strict JSON 파싱을 하므로 최신 SDK가 추가하는 execution 필드나 $schema를 인식하지 못하고 툴을 드롭합니다.
   const listToolsMethod = ListToolsRequestSchema.shape.method.value;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

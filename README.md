@@ -2,7 +2,7 @@
 
 Quality gate enforcement plugin for AI coding agents. Ensures every turn produces verified, committed, scope-checked work by requiring smoke checks and signal files before a turn can be marked complete.
 
-Works with **Claude Code** (via plugin system) and **Codex** (via OMX hooks).
+Works with **Claude Code** and **Codex** using their native integration surfaces.
 
 ## How It Works
 
@@ -52,17 +52,17 @@ This will:
 2. Register `@ksm0709/context` in `opencode.json`
 3. Register `context-mcp` MCP server via Claude CLI
 4. Register Claude SessionStart and Stop hooks
-5. Install the Codex/OMX hook plugin and register `context-mcp`
+5. Install native Codex hooks and register `context-mcp`
 6. Inject workflow context into global instructions where needed
 
 ### Individual installers
 
 ```bash
-context install omc
-context install omx
+context update claude
+context update codex
 ```
 
-Use these only when you want to reinstall a single integration target.
+Use these only when you want to reinstall a single integration target. Legacy `install omc` and `install omx` aliases are still accepted for compatibility.
 
 ## Configuration
 
@@ -202,13 +202,13 @@ context update
 context update plugin
 
 # Migrate from legacy .opencode/context/ to .context/
-context migrate
+context update migrate
 
-# Install for Claude Code
-context install omc
+# Reinstall Claude integration only
+context update claude
 
-# Install for Codex
-context install omx
+# Reinstall Codex integration only
+context update codex
 
 # Show version
 context --version
