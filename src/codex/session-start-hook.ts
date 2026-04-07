@@ -33,12 +33,4 @@ if (!findGitRoot(projectDir)) {
   injectIntoGlobalInstructions('codex', STATIC_WORKFLOW_CONTEXT);
 }
 
-process.stdout.write(
-  JSON.stringify({
-    continue: true,
-    hookSpecificOutput: {
-      hookEventName: 'SessionStart',
-      additionalContext: STATIC_WORKFLOW_CONTEXT,
-    },
-  })
-);
+process.stdout.write(JSON.stringify({ continue: true }));
