@@ -39,6 +39,14 @@ vi.mock('node:child_process', () => ({
   execSync: vi.fn(() => '/usr/local/bin/bun'),
 }));
 
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return {
+    ...actual,
+    homedir: vi.fn(() => actual.tmpdir()),
+  };
+});
+
 import {
   normalizeContextMcpServer,
   removeMcpServer,

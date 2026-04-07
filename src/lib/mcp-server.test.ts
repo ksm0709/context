@@ -369,6 +369,11 @@ describe('mcp-server (Workflow Enforcer)', () => {
         expect.stringContaining('timestamp='),
         'utf-8'
       );
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.work-complete'),
+        expect.stringContaining('pid='),
+        'utf-8'
+      );
     });
 
     it('accepts skip signal (skipped=true) as valid', async () => {

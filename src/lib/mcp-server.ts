@@ -7,8 +7,9 @@ import * as path from 'node:path';
 import { execSync } from 'node:child_process';
 import { loadConfig } from './config.js';
 import { LIMITS } from '../constants.js';
+import { getSessionId } from './session.js';
 
-const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? process.env.OPENCODE_SESSION_ID ?? '';
+const SESSION_ID = getSessionId();
 const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function parseSignalFile(content: string): {
@@ -169,6 +170,10 @@ export function startMcpServer() {
             '\n\nIMPORTANT: You MUST output exactly PASS or FAIL as the very last line of your response. No other text on that line.';
           const escaped = fullPrompt.replace(/'/g, "'\\''");
           const agentCli = entry.cli ?? 'claude';
+          // Validate cli field against allowlist pattern
+          if (!/^[a-zA-Z0-9_\-\/\.]+$/.test(agentCli)) {
+            throw new Error(`Invalid cli field value: "${agentCli}". Only alphanumeric characters, hyphens, underscores, dots, and slashes are allowed.`);
+          }
           cmd = `${agentCli} -p '${escaped}' 2>&1 | tail -5 | grep -q 'PASS'`;
         } else {
           if (!entry.command) {
@@ -345,7 +350,7 @@ export function startMcpServer() {
           const dirPath = path.resolve(process.cwd(), '.context');
           const filePath = path.join(dirPath, '.work-complete');
           await fs.mkdir(dirPath, { recursive: true });
-          await fs.writeFile(filePath, `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`, 'utf-8');
+          await fs.writeFile(filePath, `session_id=${SESSION_ID}\npid=${process.ppid}\ntimestamp=${Date.now()}\n`, 'utf-8');
         } catch {
           /* ignore write errors in warning path */
         }
@@ -365,7 +370,7 @@ export function startMcpServer() {
           const dirPath = path.resolve(process.cwd(), '.context');
           const filePath = path.join(dirPath, '.work-complete');
           await fs.mkdir(dirPath, { recursive: true });
-          await fs.writeFile(filePath, `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`, 'utf-8');
+          await fs.writeFile(filePath, `session_id=${SESSION_ID}\npid=${process.ppid}\ntimestamp=${Date.now()}\n`, 'utf-8');
         } catch {
           /* ignore write errors in warning path */
         }
@@ -408,7 +413,7 @@ export function startMcpServer() {
         await fs.mkdir(dirPath, { recursive: true });
         await fs.writeFile(
           filePath,
-          `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`,
+          `session_id=${SESSION_ID}\npid=${process.ppid}\ntimestamp=${Date.now()}\n`,
           'utf-8'
         );
         return { content: [{ type: 'text', text: 'Turn successfully marked as complete.' }] };

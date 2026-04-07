@@ -1,4 +1,5 @@
 import { join, resolve, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -20,6 +21,60 @@ import {
   removeMcpServer,
   registerHook,
 } from '../../shared/claude-settings.js';
+
+function resolveCommandsDistDir(): string | null {
+  const workspaceRoot = resolveWorkspacePackageRoot();
+  if (workspaceRoot) {
+    const dir = join(workspaceRoot, 'dist', 'commands');
+    if (existsSync(dir)) return dir;
+  }
+
+  try {
+    const cliDir = dirname(fileURLToPath(import.meta.url));
+    const pkgRoot = resolve(cliDir, '..', '..');
+    const dir = join(pkgRoot, 'dist', 'commands');
+    if (existsSync(dir)) return dir;
+  } catch {
+    /* dirname resolution unavailable */
+  }
+
+  try {
+    const req = createRequire(import.meta.url);
+    const packageRoot = dirname(req.resolve('@ksm0709/context/package.json'));
+    const dir = join(packageRoot, 'dist', 'commands');
+    return existsSync(dir) ? dir : null;
+  } catch {
+    return null;
+  }
+}
+
+function installSlashCommands(): void {
+  const sourceDir = resolveCommandsDistDir();
+  if (!sourceDir) {
+    process.stderr.write('Warning: Could not find dist/commands/ — skipping slash command install.\n');
+    return;
+  }
+
+  const commandFiles = ['cleanup.md', 'manual-gating.md'];
+  const targetDirs = [
+    join(homedir(), '.claude', 'commands', 'context'),
+    join(homedir(), '.agents', 'commands', 'context'),
+  ];
+
+  for (const targetDir of targetDirs) {
+    mkdirSync(targetDir, { recursive: true });
+    let copiedCount = 0;
+    for (const file of commandFiles) {
+      const src = join(sourceDir, file);
+      if (!existsSync(src)) continue;
+      copyFileSync(src, join(targetDir, file));
+      copiedCount++;
+    }
+    if (copiedCount > 0) {
+      process.stdout.write(`Installed slash commands to ${targetDir}\n`);
+    }
+  }
+}
 
 export function resolveCodexHookSource(fileName: string): string | null {
   const workspaceRoot = resolveWorkspacePackageRoot();
@@ -196,6 +251,9 @@ export function installOmc(projectDir: string): void {
       },
     ],
   });
+
+  // 8. Install slash commands
+  installSlashCommands();
 
   // Inject into Claude Code's global CLAUDE.md for non-git directory support
   injectIntoGlobalInstructions('claude', STATIC_WORKFLOW_CONTEXT);

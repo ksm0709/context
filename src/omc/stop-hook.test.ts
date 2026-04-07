@@ -87,7 +87,7 @@ describe('stop-hook', () => {
 
   it('exits 0 with empty checks array (no signal files to check)', async () => {
     // Create .work-complete so no warning for that
-    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\npid=${process.ppid}\n`);
     vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
     const { exitCode, stderr } = await runStopHook(tmpDir);
     expect(exitCode).toBe(0);
@@ -95,7 +95,7 @@ describe('stop-hook', () => {
   });
 
   it('outputs empty JSON object when work is complete and no warnings', async () => {
-    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\npid=${process.ppid}\n`);
     vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
     const { stdout } = await runStopHook(tmpDir);
     const parsed = JSON.parse(stdout);
@@ -103,7 +103,7 @@ describe('stop-hook', () => {
   });
 
   it('exits 0 but warns when signal file is missing', async () => {
-    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\npid=${process.ppid}\n`);
     vi.mocked(loadConfig).mockReturnValue({
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
       smokeChecks: [
@@ -115,22 +115,24 @@ describe('stop-hook', () => {
     expect(stderr).toContain('tests');
   });
 
-  it('outputs systemMessage when signal file is missing', async () => {
-    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+  it('allows stop with stderr warning when signal file is missing (no systemMessage injection)', async () => {
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\npid=${process.ppid}\n`);
     vi.mocked(loadConfig).mockReturnValue({
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
       smokeChecks: [
         { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
       ],
     });
-    const { stdout } = await runStopHook(tmpDir);
+    const { stdout, stderr } = await runStopHook(tmpDir);
     const parsed = JSON.parse(stdout);
-    expect(parsed).toHaveProperty('systemMessage');
-    expect(parsed.systemMessage).toContain('tests');
+    // Warnings go to stderr only — no systemMessage injection to avoid re-triggering the stop hook
+    expect(parsed).not.toHaveProperty('systemMessage');
+    expect(parsed).not.toHaveProperty('decision');
+    expect(stderr).toContain('tests');
   });
 
   it('exits 0 but warns when signal file is stale', async () => {
-    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\npid=${process.ppid}\n`);
     const staleTimestamp = Date.now() - 2 * 60 * 60 * 1000; // 2 hours ago
     writeFileSync(
       join(tmpDir, '.context', '.check-tests-passed'),
@@ -147,8 +149,41 @@ describe('stop-hook', () => {
     expect(stderr).toContain('stale');
   });
 
+  it('blocks when .work-complete has session_id different from current session', async () => {
+    const origSessionId = process.env.CLAUDE_SESSION_ID;
+    process.env.CLAUDE_SESSION_ID = 'current-session-id';
+    writeFileSync(
+      join(tmpDir, '.context', '.work-complete'),
+      `session_id=other-session-id\ntimestamp=${Date.now()}\n`
+    );
+    vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
+    const { stdout, stderr } = await runStopHook(tmpDir);
+    process.env.CLAUDE_SESSION_ID = origSessionId;
+    const parsed = JSON.parse(stdout);
+    expect(parsed.decision).toBe('block');
+    expect(stderr).toContain('different session');
+  });
+
+  it('deletes .work-complete and blocks when file is >24h old', async () => {
+    const workCompleteFile = join(tmpDir, '.context', '.work-complete');
+    writeFileSync(workCompleteFile, `session_id=\npid=${process.ppid}\ntimestamp=${Date.now()}\n`);
+    // Backdate the mtime to >24h ago
+    const oldTime = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    const { utimesSync } = await import('node:fs');
+    utimesSync(workCompleteFile, oldTime, oldTime);
+
+    vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
+    const { stdout, stderr } = await runStopHook(tmpDir);
+    const parsed = JSON.parse(stdout);
+    expect(parsed.decision).toBe('block');
+    expect(stderr).toContain('stale');
+    // File should have been deleted
+    const { existsSync } = await import('node:fs');
+    expect(existsSync(workCompleteFile)).toBe(false);
+  });
+
   it('exits 0 with fresh signal file (no warnings)', async () => {
-    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\npid=${process.ppid}\n`);
     writeFileSync(
       join(tmpDir, '.context', '.check-tests-passed'),
       `session_id=\ntimestamp=${Date.now()}\n`

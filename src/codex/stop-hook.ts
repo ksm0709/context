@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { DEFAULTS } from '../constants.js';
 import { loadConfig } from '../lib/config.js';
 import { resolveProjectPaths } from '../lib/project-root.js';
+import { getSessionId } from '../lib/session.js';
 
 interface StopInput {
   cwd?: string;
@@ -10,11 +11,13 @@ interface StopInput {
   stop_hook_active?: boolean;
 }
 
-function parseWorkComplete(content: string): { turnId?: string } {
-  const result: { turnId?: string } = {};
+function parseWorkComplete(content: string): { sessionId: string; turnId?: string } {
+  const result: { sessionId: string; turnId?: string } = { sessionId: '' };
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
-    if (trimmed.startsWith('turn_id=')) {
+    if (trimmed.startsWith('session_id=')) {
+      result.sessionId = trimmed.substring('session_id='.length).trim();
+    } else if (trimmed.startsWith('turn_id=')) {
       result.turnId = trimmed.substring('turn_id='.length).trim();
     }
   }
@@ -32,22 +35,32 @@ if (strategy !== 'stop-hook' || input.stop_hook_active) {
   process.exit(0);
 }
 
+const currentSessionId = getSessionId();
+
 const workCompleteFile = join(paths.contextParent, DEFAULTS.workCompleteFile);
 if (existsSync(workCompleteFile)) {
-  const content = readFileSync(workCompleteFile, 'utf8');
-  const { turnId } = parseWorkComplete(content);
-  if (turnId && turnId === input.turn_id) {
-    process.stdout.write(JSON.stringify({ continue: true }));
-    process.exit(0);
-  }
-
+  let staleFile = false;
   try {
     const ageMs = Date.now() - statSync(workCompleteFile).mtimeMs;
-    if (ageMs > 0) {
+    if (ageMs > 24 * 60 * 60 * 1000) {
       unlinkSync(workCompleteFile);
+      staleFile = true;
     }
-  } catch {
-    // ignore cleanup failures
+  } catch { /* ignore */ }
+
+  if (!staleFile) {
+    const content = readFileSync(workCompleteFile, 'utf8');
+    const { sessionId: fileSessionId } = parseWorkComplete(content);
+
+    const sessionMismatch = currentSessionId && fileSessionId && fileSessionId !== currentSessionId;
+
+    if (sessionMismatch) {
+      try { unlinkSync(workCompleteFile); } catch { /* ignore */ }
+    } else {
+      try { unlinkSync(workCompleteFile); } catch { /* ignore */ }
+      process.stdout.write(JSON.stringify({ continue: true }));
+      process.exit(0);
+    }
   }
 }
 
