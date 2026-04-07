@@ -10,6 +10,7 @@ import { injectIntoGlobalInstructions } from '../../shared/global-instructions.j
 import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
 import { ensureContextPluginRegistered } from '../../shared/opencode-settings.js';
+import { resolveWorkspacePackageRoot } from '../../shared/package-root.js';
 import {
   ensureContextMcpRegistered,
   pruneStaleMockMcpServer,
@@ -21,6 +22,12 @@ import {
 } from '../../shared/claude-settings.js';
 
 export function resolveCodexHookSource(fileName: string): string | null {
+  const workspaceRoot = resolveWorkspacePackageRoot();
+  if (workspaceRoot) {
+    const workspaceSource = join(workspaceRoot, 'dist', 'codex', fileName);
+    if (existsSync(workspaceSource)) return workspaceSource;
+  }
+
   try {
     const cliDir = dirname(fileURLToPath(import.meta.url));
     const pkgRoot = resolve(cliDir, '..', '..');

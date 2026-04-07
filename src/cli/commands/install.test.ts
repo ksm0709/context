@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installCodex, installOmc } from './install.js';
+import { installCodex, installOmc, resolveCodexHookSource } from './install.js';
 
 vi.mock('../../shared/claude-settings.js', () => ({
   normalizeContextMcpServer: vi.fn(),
@@ -166,6 +166,38 @@ describe('installCodex', () => {
     expect(stderr.join('')).toContain('Could not find Codex hook source files');
     expect(process.exit).toHaveBeenCalledWith(1);
     expect(existsSync(join(projectDir, '.codex', 'hooks', 'context-stop-hook.js'))).toBe(false);
+  });
+});
+
+describe('resolveCodexHookSource', () => {
+  let tmpDir: string;
+  let originalCwd: string;
+
+  beforeEach(() => {
+    tmpDir = join(
+      tmpdir(),
+      `resolve-codex-hook-source-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(join(tmpDir, 'dist', 'codex'), { recursive: true });
+    writeFileSync(
+      join(tmpDir, 'package.json'),
+      JSON.stringify({ name: '@ksm0709/context', version: '9.9.9' }),
+      'utf8'
+    );
+    writeFileSync(join(tmpDir, 'dist', 'codex', 'stop-hook.js'), 'console.log("workspace");');
+    originalCwd = process.cwd();
+    process.chdir(tmpDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('prefers workspace dist files over the globally installed package', () => {
+    expect(resolveCodexHookSource('stop-hook.js')).toBe(
+      join(tmpDir, 'dist', 'codex', 'stop-hook.js')
+    );
   });
 });
 
