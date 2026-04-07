@@ -10,13 +10,21 @@ vi.mock('../lib/config.js', () => ({
 
 import { loadConfig } from '../lib/config.js';
 
-async function runStopHook(projectDir: string): Promise<{ exitCode: number; stderr: string }> {
+async function runStopHook(
+  projectDir: string
+): Promise<{ exitCode: number; stderr: string; stdout: string }> {
   const stderrMessages: string[] = [];
+  const stdoutMessages: string[] = [];
 
   let exitCode = -1;
 
   vi.spyOn(process.stderr, 'write').mockImplementation((msg: string | Uint8Array) => {
     stderrMessages.push(String(msg));
+    return true;
+  });
+
+  vi.spyOn(process.stdout, 'write').mockImplementation((msg: string | Uint8Array) => {
+    stdoutMessages.push(String(msg));
     return true;
   });
 
@@ -37,10 +45,11 @@ async function runStopHook(projectDir: string): Promise<{ exitCode: number; stde
   } finally {
     process.env.CLAUDE_PROJECT_DIR = origEnv;
     vi.mocked(process.stderr.write).mockRestore?.();
+    vi.mocked(process.stdout.write).mockRestore?.();
     vi.mocked(process.exit).mockRestore?.();
   }
 
-  return { exitCode, stderr: stderrMessages.join('') };
+  return { exitCode, stderr: stderrMessages.join(''), stdout: stdoutMessages.join('') };
 }
 
 describe('stop-hook', () => {
@@ -68,6 +77,15 @@ describe('stop-hook', () => {
     expect(stderr).toContain('submit_turn_complete');
   });
 
+  it('outputs JSON with hookSpecificOutput when .work-complete is missing', async () => {
+    const { stdout } = await runStopHook(tmpDir);
+    const parsed = JSON.parse(stdout);
+    expect(parsed).toHaveProperty('hookSpecificOutput');
+    expect(parsed.hookSpecificOutput.hookEventName).toBe('Stop');
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('submit_turn_complete');
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('TURN END');
+  });
+
   it('exits 0 with empty checks array (no signal files to check)', async () => {
     // Create .work-complete so no warning for that
     writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
@@ -77,15 +95,39 @@ describe('stop-hook', () => {
     expect(stderr).not.toContain('Signal file');
   });
 
+  it('outputs empty JSON object when work is complete and no warnings', async () => {
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+    vi.mocked(loadConfig).mockReturnValue({ checks: [], smokeChecks: [] });
+    const { stdout } = await runStopHook(tmpDir);
+    const parsed = JSON.parse(stdout);
+    expect(parsed).toEqual({});
+  });
+
   it('exits 0 but warns when signal file is missing', async () => {
     writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
     vi.mocked(loadConfig).mockReturnValue({
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-      smokeChecks: [],
+      smokeChecks: [
+        { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+      ],
     });
     const { exitCode, stderr } = await runStopHook(tmpDir);
     expect(exitCode).toBe(0);
     expect(stderr).toContain('tests');
+  });
+
+  it('outputs JSON with additionalContext when signal file is missing', async () => {
+    writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
+    vi.mocked(loadConfig).mockReturnValue({
+      checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
+      smokeChecks: [
+        { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+      ],
+    });
+    const { stdout } = await runStopHook(tmpDir);
+    const parsed = JSON.parse(stdout);
+    expect(parsed).toHaveProperty('hookSpecificOutput');
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('tests');
   });
 
   it('exits 0 but warns when signal file is stale', async () => {
@@ -97,7 +139,9 @@ describe('stop-hook', () => {
     );
     vi.mocked(loadConfig).mockReturnValue({
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-      smokeChecks: [],
+      smokeChecks: [
+        { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+      ],
     });
     const { exitCode, stderr } = await runStopHook(tmpDir);
     expect(exitCode).toBe(0);
@@ -112,7 +156,9 @@ describe('stop-hook', () => {
     );
     vi.mocked(loadConfig).mockReturnValue({
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-      smokeChecks: [],
+      smokeChecks: [
+        { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+      ],
     });
     const { exitCode, stderr } = await runStopHook(tmpDir);
     expect(exitCode).toBe(0);

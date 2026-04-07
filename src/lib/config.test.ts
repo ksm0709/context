@@ -21,7 +21,6 @@ describe('loadConfig - defaults', () => {
     expect(config).toBeDefined();
     expect(config.checks).toEqual([]);
     expect(config.smokeChecks).toEqual([]);
-    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
     expect(config.omc?.turnEnd?.strategy).toBe('stop-hook');
   });
 
@@ -88,7 +87,7 @@ describe('loadConfig - checks and smokeChecks', () => {
     expect(config.smokeChecks![0].triggerCommand).toBe('git diff --name-only | grep -q .ts');
   });
 
-  it('throws when smokeChecks entry has no matching checks entry by name', () => {
+  it('allows smokeChecks entry without a matching checks entry by name', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(
@@ -100,8 +99,54 @@ describe('loadConfig - checks and smokeChecks', () => {
         ],
       })
     );
-    expect(() => loadConfig(tmpDir)).toThrow('Config error:');
-    expect(() => loadConfig(tmpDir)).toThrow('"tests"');
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks).toHaveLength(1);
+    expect(config.smokeChecks![0].name).toBe('tests');
+  });
+
+  it('parses smokeCheck with enabled: false', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: false },
+        ],
+      })
+    );
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks![0].enabled).toBe(false);
+  });
+
+  it('parses smokeCheck with enabled: true', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: true },
+        ],
+      })
+    );
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks![0].enabled).toBe(true);
+  });
+
+  it('parses smokeCheck without enabled (default undefined)', () => {
+    const configDir = join(tmpDir, '.context');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'config.jsonc'),
+      JSON.stringify({
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
+      })
+    );
+    const config = loadConfig(tmpDir);
+    expect(config.smokeChecks![0].enabled).toBeUndefined();
   });
 
   it('throws when checks signal path is outside .context/', () => {
@@ -260,7 +305,7 @@ describe('inferAndPersistChecks - JSONC comment preservation', () => {
     // Write config with comments
     const originalContent = `{
   // Context Plugin Configuration
-  "omx": { "turnEnd": { "strategy": "turn-complete-sendkeys" } }
+  "codex": { "turnEnd": { "strategy": "stop-hook" } }
 }`;
     writeFileSync(join(configDir, 'config.jsonc'), originalContent);
 
@@ -284,7 +329,7 @@ describe('inferAndPersistChecks - JSONC comment preservation', () => {
     // Comments must be preserved
     expect(updated).toContain('// Context Plugin Configuration');
     // Original fields must be preserved
-    expect(updated).toContain('"omx"');
+    expect(updated).toContain('"codex"');
     // New fields must be added
     expect(updated).toContain('"checks"');
     expect(updated).toContain('"smokeChecks"');
@@ -303,15 +348,15 @@ describe('loadConfig - Codex/Claude strategy', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('parses custom legacy OMX turn-end strategy', () => {
+  it('parses custom codex turn-end strategy off', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(
       join(configDir, 'config.jsonc'),
-      JSON.stringify({ omx: { turnEnd: { strategy: 'turn-complete-sendkeys' } } })
+      JSON.stringify({ codex: { turnEnd: { strategy: 'off' } } })
     );
     const config = loadConfig(tmpDir);
-    expect(config.omx?.turnEnd?.strategy).toBe('turn-complete-sendkeys');
+    expect(config.codex?.turnEnd?.strategy).toBe('off');
   });
 });
 

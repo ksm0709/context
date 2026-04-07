@@ -35,14 +35,6 @@ function validateConfig(config: ContextConfig): void {
     }
   }
 
-  const checkNames = new Set(checks.map((c) => c.name));
-  for (const sc of smokeChecks) {
-    if (!checkNames.has(sc.name)) {
-      throw new Error(
-        `Config error: smokeChecks entry "${sc.name}" has no matching checks entry. Add { "name": "${sc.name}", "signal": "..." } to the checks array.`
-      );
-    }
-  }
 }
 
 function getDefaultConfig(): ContextConfig {
@@ -59,11 +51,6 @@ function getDefaultConfig(): ContextConfig {
         strategy: 'stop-hook',
       },
     },
-    omx: {
-      turnEnd: {
-        strategy: 'turn-complete-sendkeys',
-      },
-    },
     omc: {
       turnEnd: {
         strategy: 'stop-hook',
@@ -76,7 +63,6 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
   const defaults = getDefaultConfig();
   const codexStrategy =
     partial.codex?.turnEnd?.strategy ??
-    (partial.omx?.turnEnd?.strategy === 'off' ? 'off' : undefined) ??
     defaults.codex?.turnEnd?.strategy;
   const claudeStrategy =
     partial.claude?.turnEnd?.strategy ??
@@ -95,11 +81,6 @@ function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
     claude: {
       turnEnd: {
         strategy: claudeStrategy,
-      },
-    },
-    omx: {
-      turnEnd: {
-        strategy: partial.omx?.turnEnd?.strategy ?? defaults.omx?.turnEnd?.strategy,
       },
     },
     omc: {

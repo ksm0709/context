@@ -6,7 +6,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
 import { loadConfig } from './config.js';
-import { BUILTIN_SIGNALS, LIMITS } from '../constants.js';
+import { LIMITS } from '../constants.js';
 
 const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? process.env.OPENCODE_SESSION_ID ?? '';
 const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -79,6 +79,17 @@ export function startMcpServer() {
               },
             ],
             isError: true,
+          };
+        }
+
+        if (entry.enabled === false) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Smoke check "${name}" is disabled (enabled: false). Set enabled: true in config to activate.`,
+              },
+            ],
           };
         }
 
@@ -221,107 +232,6 @@ export function startMcpServer() {
   );
 
   server.registerTool(
-    'check_hash',
-    {
-      description:
-        'Verify all changes are committed. Errors if uncommitted changes exist, records the latest commit hash on success, or auto-passes if no code was changed this session.',
-      inputSchema: {},
-    },
-    async () => {
-      const signalPath = path.resolve(process.cwd(), BUILTIN_SIGNALS.hash);
-      const skipContent = `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\nskipped=true\n`;
-
-      try {
-        let status = '';
-        try {
-          status = execSync('git status --porcelain', {
-            cwd: process.cwd(),
-            timeout: 10_000,
-            stdio: 'pipe',
-          })
-            .toString()
-            .trim();
-        } catch {
-          // Not a git repo — auto-pass
-          await fs.mkdir(path.dirname(signalPath), { recursive: true });
-          await fs.writeFile(signalPath, skipContent, 'utf-8');
-          return { content: [{ type: 'text', text: 'check_hash: skipped (not a git repo).' }] };
-        }
-
-        if (status) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `check_hash failed: uncommitted changes detected:\n${status}\n\nCommit or stash your changes before calling submit_turn_complete.`,
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        let gitLog = '(no commits)';
-        try {
-          gitLog = execSync('git log -1 --oneline', { cwd: process.cwd(), stdio: 'pipe' })
-            .toString()
-            .trim();
-        } catch {
-          // no commits yet — still pass
-        }
-
-        await fs.mkdir(path.dirname(signalPath), { recursive: true });
-        await fs.writeFile(
-          signalPath,
-          `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\ngit_log=${gitLog}\n`,
-          'utf-8'
-        );
-        return { content: [{ type: 'text', text: `check_hash passed. Commit: ${gitLog}` }] };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error running check_hash: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'check_scope',
-    {
-      description:
-        'Record scope review notes confirming work stayed within intended boundaries. Always succeeds and writes a result file consumed by submit_turn_complete.',
-      inputSchema: {
-        notes: z
-          .string()
-          .describe(
-            'Brief sentence confirming scope was not exceeded and work stayed within intended boundaries.'
-          ),
-      },
-    },
-    async ({ notes }) => {
-      if (!notes || (notes as string).length < 10) {
-        return {
-          content: [{ type: 'text', text: 'Error: notes must be at least 10 characters.' }],
-          isError: true,
-        };
-      }
-      const signalPath = path.resolve(process.cwd(), BUILTIN_SIGNALS.scope);
-      await fs.mkdir(path.dirname(signalPath), { recursive: true });
-      await fs.writeFile(
-        signalPath,
-        `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\nnotes=${notes}\n`,
-        'utf-8'
-      );
-      return { content: [{ type: 'text', text: 'check_scope recorded.' }] };
-    }
-  );
-
-  server.registerTool(
     'infer_smoke_checks',
     {
       description:
@@ -385,7 +295,7 @@ export function startMcpServer() {
     'submit_turn_complete',
     {
       description:
-        'Mark the current turn as complete after verifying all quality gate signal files (built-in: check_hash + check_scope, plus any configured smoke checks) are present and fresh.',
+        'Mark the current turn as complete after verifying all configured smokeCheck signal files are present and fresh.',
       inputSchema: {},
     },
     async () => {
@@ -423,34 +333,44 @@ export function startMcpServer() {
         }
       }
 
-      // Built-in checks
-      await validateSignal('check_hash', BUILTIN_SIGNALS.hash, 'check_hash()');
-      await validateSignal('check_scope', BUILTIN_SIGNALS.scope, 'check_scope()');
-
-      // Config-defined checks
+      // Verify registered smokeChecks
       const config = loadConfig(process.cwd());
-      const configuredChecks = config.checks ?? [];
+      const smokeChecks = config.smokeChecks ?? [];
+      const activeChecks = smokeChecks.filter((sc) => sc.enabled !== false);
 
-      if (configuredChecks.length === 0) {
+      if (smokeChecks.length === 0) {
         // No smoke checks configured — warn but allow submission
         return {
           content: [
             {
               type: 'text',
-              text: 'Warning: no quality checks configured. Call infer_smoke_checks() to auto-configure, or add checks/smokeChecks to .context/config.jsonc. Proceeding without smoke check validation.',
+              text: 'Warning: no smokeChecks configured. Call infer_smoke_checks() to auto-configure, or add smokeChecks to .context/config.jsonc. Proceeding without smoke check validation.',
             },
           ],
         };
       }
 
-      for (const check of configuredChecks) {
+      if (activeChecks.length === 0) {
+        // All checks are disabled — warn but allow submission
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Warning: all configured smokeChecks are disabled (enabled: false). Set enabled: true on at least one check to activate smoke check validation. Proceeding without smoke check validation.',
+            },
+          ],
+        };
+      }
+
+      // verifying all configured smokeCheck signal files
+      for (const sc of activeChecks) {
         try {
-          guardSignalPath(check.signal);
+          guardSignalPath(sc.signal);
         } catch (e) {
-          signalErrors.push(`"${check.name}": ${e instanceof Error ? e.message : String(e)}`);
+          signalErrors.push(`"${sc.name}": ${e instanceof Error ? e.message : String(e)}`);
           continue;
         }
-        await validateSignal(check.name, check.signal, `run_smoke_check("${check.name}")`);
+        await validateSignal(sc.name, sc.signal, `run_smoke_check("${sc.name}")`);
       }
 
       if (signalErrors.length > 0) {

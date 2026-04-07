@@ -113,7 +113,7 @@ const plugin: Plugin = async ({ directory, client }) => {
           const configChecks = (config.checks ?? []).filter(
             (c) => !triggerCommandNames.has(c.name)
           );
-          const builtinChecks = Object.values(BUILTIN_SIGNALS).map((signal) => ({ signal }));
+          const builtinChecks = Object.values(BUILTIN_SIGNALS).map((signal: string) => ({ signal }));
           writeSkipSignals(
             projectRoot,
             [...builtinChecks, ...configChecks],

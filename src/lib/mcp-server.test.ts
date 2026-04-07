@@ -64,12 +64,10 @@ describe('mcp-server (Workflow Enforcer)', () => {
     startMcpServer();
   });
 
-  it('registers exactly 5 tools', () => {
+  it('registers exactly 3 tools', () => {
     const toolNames = mockRegisterTool.mock.calls.map((c) => c[0]);
-    expect(toolNames).toHaveLength(5);
+    expect(toolNames).toHaveLength(3);
     expect(toolNames).toContain('run_smoke_check');
-    expect(toolNames).toContain('check_hash');
-    expect(toolNames).toContain('check_scope');
     expect(toolNames).toContain('submit_turn_complete');
     expect(toolNames).toContain('infer_smoke_checks');
   });
@@ -254,6 +252,23 @@ describe('mcp-server (Workflow Enforcer)', () => {
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
 
+    it('returns skip message when enabled is false', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: false },
+        ],
+      });
+
+      const result = await handler({ name: 'tests' });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('disabled');
+      expect(result.content[0].text).toContain('enabled: false');
+      expect(execSync).not.toHaveBeenCalled();
+      expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
     it('rejects signal paths outside .context/', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'bad', signal: '/tmp/escape' }],
@@ -307,76 +322,6 @@ describe('mcp-server (Workflow Enforcer)', () => {
     });
   });
 
-  describe('check_hash tool', () => {
-    let handler: ToolHandler;
-
-    beforeEach(() => {
-      handler = getRegisteredToolCall('check_hash')[2];
-    });
-
-    it('passes and writes signal file when working tree is clean', async () => {
-      vi.mocked(execSync)
-        .mockReturnValueOnce(Buffer.from('')) // git status --porcelain
-        .mockReturnValueOnce(Buffer.from('abc1234 feat: something')); // git log
-
-      const result = await handler({});
-      expect(result.isError).toBeUndefined();
-      expect(result.content[0].text).toContain('passed');
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('.check-hash-passed'),
-        expect.stringContaining('git_log='),
-        'utf-8'
-      );
-    });
-
-    it('fails when there are uncommitted changes', async () => {
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(' M src/index.ts'));
-
-      const result = await handler({});
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('uncommitted changes');
-    });
-
-    it('auto-passes (skip) when not in a git repo', async () => {
-      vi.mocked(execSync).mockImplementationOnce(() => {
-        throw new Error('not a git repository');
-      });
-
-      const result = await handler({});
-      expect(result.isError).toBeUndefined();
-      expect(result.content[0].text).toContain('skipped');
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('.check-hash-passed'),
-        expect.stringContaining('skipped=true'),
-        'utf-8'
-      );
-    });
-  });
-
-  describe('check_scope tool', () => {
-    let handler: ToolHandler;
-
-    beforeEach(() => {
-      handler = getRegisteredToolCall('check_scope')[2];
-    });
-
-    it('writes scope signal file with provided notes', async () => {
-      const result = await handler({ notes: 'Scope stayed within intended boundaries.' });
-      expect(result.isError).toBeUndefined();
-      expect(result.content[0].text).toContain('recorded');
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('.check-scope-passed'),
-        expect.stringContaining('notes=Scope stayed'),
-        'utf-8'
-      );
-    });
-
-    it('fails when notes are too short', async () => {
-      const result = await handler({ notes: 'short' });
-      expect(result.isError).toBe(true);
-    });
-  });
-
   describe('submit_turn_complete tool', () => {
     let handler: ToolHandler;
 
@@ -404,11 +349,13 @@ describe('mcp-server (Workflow Enforcer)', () => {
       expect(result.content[0].text).toContain('infer_smoke_checks');
     });
 
-    it('succeeds when all built-in + config signal files are fresh', async () => {
+    it('succeeds when all smokeCheck signal files are fresh', async () => {
       const freshTimestamp = Date.now() - 5 * 60 * 1000;
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-        smokeChecks: [],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
       });
       vi.mocked(fs.readFile).mockResolvedValue(
         `session_id=\ntimestamp=${freshTimestamp}\n` as never
@@ -428,7 +375,9 @@ describe('mcp-server (Workflow Enforcer)', () => {
       const freshTimestamp = Date.now() - 5 * 60 * 1000;
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-        smokeChecks: [],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
       });
       vi.mocked(fs.readFile).mockResolvedValue(
         `session_id=\ntimestamp=${freshTimestamp}\nskipped=true\n` as never
@@ -439,11 +388,12 @@ describe('mcp-server (Workflow Enforcer)', () => {
       expect(result.content[0].text).toContain('complete');
     });
 
-    it('fails when built-in check_hash signal is missing', async () => {
-      // Need at least one configured check so submit proceeds past empty-checks warning
+    it('fails when smokeCheck signal is missing', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-        smokeChecks: [],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
       });
       vi.mocked(fs.readFile).mockRejectedValue(
         Object.assign(new Error('not found'), { code: 'ENOENT' })
@@ -451,14 +401,50 @@ describe('mcp-server (Workflow Enforcer)', () => {
 
       const result = await handler({});
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('check_hash');
+      expect(result.content[0].text).toContain('tests');
     });
 
-    it('fails when built-in signal is stale', async () => {
-      // Need at least one configured check so submit proceeds past empty-checks warning
+    it('skips disabled checks and succeeds when remaining active checks pass', async () => {
+      const freshTimestamp = Date.now() - 5 * 60 * 1000;
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+          { name: 'lint', command: 'npm run lint', signal: '.context/.check-lint-passed', enabled: false },
+        ],
+      });
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `session_id=\ntimestamp=${freshTimestamp}\n` as never
+      );
+
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('complete');
+      // readFile called only once (for the active check, not the disabled one)
+      expect(fs.readFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('warns when all configured checks are disabled', async () => {
+      vi.mocked(loadConfig).mockReturnValue({
+        checks: [],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: false },
+          { name: 'lint', command: 'npm run lint', signal: '.context/.check-lint-passed', enabled: false },
+        ],
+      });
+
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('Warning');
+      expect(result.content[0].text).toContain('disabled');
+    });
+
+    it('fails when smokeCheck signal is stale', async () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-        smokeChecks: [],
+        smokeChecks: [
+          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
+        ],
       });
       const staleTimestamp = Date.now() - 2 * 60 * 60 * 1000;
       vi.mocked(fs.readFile).mockResolvedValue(
@@ -468,22 +454,6 @@ describe('mcp-server (Workflow Enforcer)', () => {
       const result = await handler({});
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('stale');
-    });
-
-    it('fails when config check signal is missing', async () => {
-      vi.mocked(loadConfig).mockReturnValue({
-        checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
-        smokeChecks: [],
-      });
-      const freshTimestamp = Date.now() - 5 * 60 * 1000;
-      vi.mocked(fs.readFile)
-        .mockResolvedValueOnce(`session_id=\ntimestamp=${freshTimestamp}\n` as never) // hash
-        .mockResolvedValueOnce(`session_id=\ntimestamp=${freshTimestamp}\n` as never) // scope
-        .mockRejectedValueOnce(Object.assign(new Error('not found'), { code: 'ENOENT' })); // tests
-
-      const result = await handler({});
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('tests');
     });
   });
 });

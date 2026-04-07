@@ -1,12 +1,12 @@
-export const BUILTIN_SIGNALS = {
-  hash: '.context/.check-hash-passed',
-  scope: '.context/.check-scope-passed',
-} as const;
-
 export const DEFAULTS = {
   configPath: '.context/config.jsonc',
   signalDir: '.context',
   workCompleteFile: '.context/.work-complete',
+} as const;
+
+export const BUILTIN_SIGNALS = {
+  checkHash: '.context/.check-hash-passed',
+  checkScope: '.context/.check-scope-passed',
 } as const;
 
 export const LIMITS = {

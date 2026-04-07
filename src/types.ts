@@ -5,6 +5,7 @@ export interface CheckEntry {
 
 export interface SmokeCheckEntry {
   name: string;
+  enabled?: boolean; // default: true when undefined (backwards compat); false = skip
   command?: string;
   type?: 'command' | 'agent'; // default: 'command'
   prompt?: string; // required when type is 'agent'; PASS/FAIL suffix appended automatically
@@ -26,11 +27,6 @@ export interface ContextConfig {
       strategy: 'off' | 'stop-hook';
     };
   };
-  omx?: {
-    turnEnd?: {
-      strategy?: OmxTurnEndStrategy;
-    };
-  };
   omc?: {
     turnEnd?: {
       strategy: 'off' | 'stop-hook';
@@ -38,5 +34,4 @@ export interface ContextConfig {
   };
 }
 
-export type OmxTurnEndStrategy = 'off' | 'turn-complete-sendkeys';
 export type CodexTurnEndStrategy = 'off' | 'stop-hook';
