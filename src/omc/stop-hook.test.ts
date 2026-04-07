@@ -77,13 +77,12 @@ describe('stop-hook', () => {
     expect(stderr).toContain('submit_turn_complete');
   });
 
-  it('outputs JSON with hookSpecificOutput when .work-complete is missing', async () => {
+  it('outputs decision:block with reason when .work-complete is missing', async () => {
     const { stdout } = await runStopHook(tmpDir);
     const parsed = JSON.parse(stdout);
-    expect(parsed).toHaveProperty('hookSpecificOutput');
-    expect(parsed.hookSpecificOutput.hookEventName).toBe('Stop');
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('submit_turn_complete');
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('TURN END');
+    expect(parsed.decision).toBe('block');
+    expect(parsed.reason).toContain('submit_turn_complete');
+    expect(parsed.reason).toContain('TURN END');
   });
 
   it('exits 0 with empty checks array (no signal files to check)', async () => {
@@ -116,7 +115,7 @@ describe('stop-hook', () => {
     expect(stderr).toContain('tests');
   });
 
-  it('outputs JSON with additionalContext when signal file is missing', async () => {
+  it('outputs systemMessage when signal file is missing', async () => {
     writeFileSync(join(tmpDir, '.context', '.work-complete'), `timestamp=${Date.now()}\n`);
     vi.mocked(loadConfig).mockReturnValue({
       checks: [{ name: 'tests', signal: '.context/.check-tests-passed' }],
@@ -126,8 +125,8 @@ describe('stop-hook', () => {
     });
     const { stdout } = await runStopHook(tmpDir);
     const parsed = JSON.parse(stdout);
-    expect(parsed).toHaveProperty('hookSpecificOutput');
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('tests');
+    expect(parsed).toHaveProperty('systemMessage');
+    expect(parsed.systemMessage).toContain('tests');
   });
 
   it('exits 0 but warns when signal file is stale', async () => {

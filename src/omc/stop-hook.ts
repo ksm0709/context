@@ -14,23 +14,34 @@ function writeJson(output: unknown): void {
   process.stdout.write(JSON.stringify(output));
 }
 
-if (claudeTurnEndStrategy === 'off') {
+// Read stdin to get hook context (stop_hook_active prevents infinite loops)
+let stopHookActive = false;
+try {
+  const isTTY = process.stdin.isTTY;
+  if (!isTTY) {
+    const stdinData = readFileSync('/dev/stdin', 'utf-8');
+    const input = JSON.parse(stdinData) as { stop_hook_active?: boolean };
+    stopHookActive = input.stop_hook_active === true;
+  }
+} catch {
+  // stdin unavailable or not JSON — assume not re-entrant
+}
+
+if (claudeTurnEndStrategy === 'off' || stopHookActive) {
+  // Strategy disabled or re-entrant call — allow stop
   writeJson({});
-  process.exit(0);
 } else if (!existsSync(workCompleteFile)) {
-  // Missing .work-complete: agent hasn't called submit_turn_complete
+  // Agent hasn't called submit_turn_complete — block stopping
   process.stderr.write(
     '[context] Warning: Session ended without submit_turn_complete. Call submit_turn_complete before ending your session.\n'
   );
   writeJson({
-    hookSpecificOutput: {
-      hookEventName: 'Stop',
-      additionalContext:
-        "TURN END. You MUST call the 'submit_turn_complete' MCP tool to verify quality gates and finalize your work. Do not wait for user input.",
-    },
+    decision: 'block',
+    reason:
+      "TURN END. You MUST call the 'submit_turn_complete' MCP tool to verify quality gates and finalize your work. Do not wait for user input.",
   });
-  process.exit(0);
 } else {
+  // .work-complete exists — check staleness and signal file warnings
   try {
     const stat = statSync(workCompleteFile);
     const ageMs = Date.now() - stat.mtimeMs;
@@ -48,12 +59,12 @@ if (claudeTurnEndStrategy === 'off') {
     const now = Date.now();
 
     for (const check of checks) {
+      if (check.enabled === false) continue;
       const signalPath = resolve(projectDir, check.signal);
       if (!existsSync(signalPath)) {
-        warnings.push(`Signal file missing for check "${check.name}": ${check.signal}`);
-        process.stderr.write(
-          `[context] Warning: Signal file missing for check "${check.name}": ${check.signal}\n`
-        );
+        const msg = `Signal file missing for check "${check.name}": ${check.signal}`;
+        warnings.push(msg);
+        process.stderr.write(`[context] Warning: ${msg}\n`);
         continue;
       }
 
@@ -61,10 +72,9 @@ if (claudeTurnEndStrategy === 'off') {
         const raw = readFileSync(signalPath, 'utf-8');
         const timestampMatch = raw.match(/^timestamp=(\d+)$/m);
         if (!timestampMatch) {
-          warnings.push(`Signal file for check "${check.name}" has no valid timestamp.`);
-          process.stderr.write(
-            `[context] Warning: Signal file for check "${check.name}" has no valid timestamp.\n`
-          );
+          const msg = `Signal file for check "${check.name}" has no valid timestamp.`;
+          warnings.push(msg);
+          process.stderr.write(`[context] Warning: ${msg}\n`);
           continue;
         }
         const timestamp = parseInt(timestampMatch[1], 10);
@@ -83,19 +93,12 @@ if (claudeTurnEndStrategy === 'off') {
   }
 
   if (warnings.length > 0) {
-    const additionalContext =
-      "TURN END. You MUST call the 'submit_turn_complete' MCP tool to verify quality gates and finalize your work. Do not wait for user input.\n\nWarnings:\n" +
-      warnings.map((w) => `- ${w}`).join('\n');
-
     writeJson({
-      hookSpecificOutput: {
-        hookEventName: 'Stop',
-        additionalContext,
-      },
+      systemMessage: `[context] Smoke check warnings:\n${warnings.map((w) => `- ${w}`).join('\n')}`,
     });
   } else {
     writeJson({});
   }
-
-  process.exit(0);
 }
+
+process.exit(0);
