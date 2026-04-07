@@ -20,14 +20,17 @@
   ],
 
   // Smoke checks run before submit_turn_complete is accepted.
-  // Set "enabled": true to activate a check. All checks below are disabled by default.
-  // Each check writes a signal file when it passes.
+  // Set "enabled": true to activate a check. All checks are disabled by default.
+  // triggerCommand: exit 0 = run the check, non-zero = auto-skip with signal.
+  // agent checks: PASS/FAIL instruction is auto-injected — omit from prompt.
   "smokeChecks": [
 
     // === TESTING ===
     {
       "name": "tests",
       "enabled": false,
+      // skip if no test script defined in package.json
+      "triggerCommand": "node -e \"require('./package.json').scripts?.test || process.exit(1)\"",
       "command": "npm test",
       "signal": ".context/.check-tests-passed"
     },
@@ -36,18 +39,24 @@
     {
       "name": "typecheck",
       "enabled": false,
+      // skip if no tsconfig.json
+      "triggerCommand": "test -f tsconfig.json",
       "command": "npx tsc --noEmit",
       "signal": ".context/.check-typecheck-passed"
     },
     {
       "name": "build",
       "enabled": false,
+      // skip if no build script defined in package.json
+      "triggerCommand": "node -e \"require('./package.json').scripts?.build || process.exit(1)\"",
       "command": "npm run build",
       "signal": ".context/.check-build-passed"
     },
     {
       "name": "lint",
       "enabled": false,
+      // skip if no ESLint config found
+      "triggerCommand": "ls .eslintrc* eslint.config* 2>/dev/null | head -1 | grep -q .",
       "command": "npm run lint",
       "signal": ".context/.check-lint-passed"
     },
@@ -56,16 +65,21 @@
     {
       "name": "git-clean",
       "enabled": false,
+      // skip if not inside a git repo
+      "triggerCommand": "git rev-parse --is-inside-work-tree",
       "command": "git diff --exit-code && git diff --cached --exit-code",
       "signal": ".context/.check-git-clean-passed"
     },
 
     // === AI AGENT CHECKS (type: agent) ===
+    // PASS/FAIL output instruction is auto-injected by run_smoke_check.
     {
       "name": "code-review",
       "enabled": false,
       "type": "agent",
-      "prompt": "Review the recent git diff (run: git diff HEAD~1) for code quality issues, potential bugs, unclear naming, missing error handling, and SOLID principle violations. Be specific. Output PASS if the code looks good, FAIL if there are significant issues.",
+      // skip if no commits to diff
+      "triggerCommand": "git log -1 --oneline",
+      "prompt": "Review the recent git diff (run: git diff HEAD~1)\nfor code quality issues, potential bugs, unclear naming,\nmissing error handling, and SOLID principle violations.\nBe specific about any issues found.",
       "signal": ".context/.check-code-review-passed",
       "timeout": 120000
     },
@@ -73,7 +87,9 @@
       "name": "scope-review",
       "enabled": false,
       "type": "agent",
-      "prompt": "Review the recent git diff (run: git diff HEAD~1) and compare it against the task description in AGENTS.md or CLAUDE.md. Check if the changes stay within the intended scope and don't include unrelated modifications. Output PASS if scope is maintained, FAIL if there is scope creep.",
+      // skip if no commits to diff
+      "triggerCommand": "git log -1 --oneline",
+      "prompt": "Review the recent git diff (run: git diff HEAD~1)\nand compare it against the task description in AGENTS.md\nor CLAUDE.md. Check if changes stay within the intended\nscope without unrelated modifications.",
       "signal": ".context/.check-scope-review-passed",
       "timeout": 120000
     },
@@ -81,7 +97,9 @@
       "name": "memory-update",
       "enabled": false,
       "type": "agent",
-      "prompt": "Review recent changes (git diff HEAD~1) and check if any important architectural decisions, patterns, or context has been added that should be documented in AGENTS.md or CLAUDE.md. If documentation is up to date, output PASS. If important context is missing from the docs, output FAIL and describe what should be added.",
+      // skip if no commits to diff
+      "triggerCommand": "git log -1 --oneline",
+      "prompt": "Review recent changes (run: git diff HEAD~1) and check\nif any important architectural decisions, patterns, or\ncontext should be documented in AGENTS.md or CLAUDE.md.\nIf the docs are up to date, that is fine. Otherwise\ndescribe what is missing.",
       "signal": ".context/.check-memory-update-passed",
       "timeout": 120000
     }

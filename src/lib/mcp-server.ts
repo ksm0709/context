@@ -341,6 +341,14 @@ export function startMcpServer() {
 
       if (smokeChecks.length === 0) {
         // No smoke checks configured — warn but allow submission
+        try {
+          const dirPath = path.resolve(process.cwd(), '.context');
+          const filePath = path.join(dirPath, '.work-complete');
+          await fs.mkdir(dirPath, { recursive: true });
+          await fs.writeFile(filePath, `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`, 'utf-8');
+        } catch {
+          /* ignore write errors in warning path */
+        }
         return {
           content: [
             {
@@ -353,6 +361,14 @@ export function startMcpServer() {
 
       if (activeChecks.length === 0) {
         // All checks are disabled — warn but allow submission
+        try {
+          const dirPath = path.resolve(process.cwd(), '.context');
+          const filePath = path.join(dirPath, '.work-complete');
+          await fs.mkdir(dirPath, { recursive: true });
+          await fs.writeFile(filePath, `session_id=${SESSION_ID}\ntimestamp=${Date.now()}\n`, 'utf-8');
+        } catch {
+          /* ignore write errors in warning path */
+        }
         return {
           content: [
             {
