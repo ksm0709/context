@@ -1,6 +1,6 @@
 import { join, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
-import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
@@ -109,6 +109,50 @@ function resolveBunPath(): string {
   }
 }
 
+/**
+ * Remove context-mcp from omx's unified MCP registry so omx stops syncing
+ * it into ~/.codex/config.toml. Called during native codex install/update
+ * to prevent duplicate [mcp_servers.context-mcp] entries.
+ *
+ * Also removes from mcp-registry-state.json so omx doesn't interpret the
+ * removal as a signal to delete context-mcp from ~/.claude/settings.json.
+ */
+function pruneContextMcpFromOmcRegistry(): void {
+  const omcHome = process.env['OMC_HOME']?.trim() ?? join(homedir(), '.omc');
+  const registryPath = join(omcHome, 'mcp-registry.json');
+  const statePath = join(omcHome, 'mcp-registry-state.json');
+
+  let pruned = false;
+
+  if (existsSync(registryPath)) {
+    try {
+      const raw = JSON.parse(readFileSync(registryPath, 'utf-8')) as Record<string, unknown>;
+      if ('context-mcp' in raw) {
+        delete raw['context-mcp'];
+        writeFileSync(registryPath, JSON.stringify(raw, null, 2) + '\n');
+        pruned = true;
+      }
+    } catch { /* ignore parse/write errors */ }
+  }
+
+  if (existsSync(statePath)) {
+    try {
+      const raw = JSON.parse(readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+      const managed = raw['managedServers'];
+      if (Array.isArray(managed) && (managed as unknown[]).includes('context-mcp')) {
+        raw['managedServers'] = (managed as string[]).filter((s) => s !== 'context-mcp');
+        writeFileSync(statePath, JSON.stringify(raw, null, 2) + '\n');
+      }
+    } catch { /* ignore parse/write errors */ }
+  }
+
+  if (pruned) {
+    process.stdout.write(
+      'Removed context-mcp from omx MCP registry (~/.omc/mcp-registry.json) to prevent duplicate codex config entries\n'
+    );
+  }
+}
+
 export function installCodex(
   projectDir: string,
   sessionStartSource: string,
@@ -157,6 +201,10 @@ export function installCodex(
   if (ensureContextMcpRegistered(bunPath, resolveMcpPath())) {
     process.stdout.write('Successfully registered context-mcp in ~/.codex/config.toml\n');
   }
+
+  // Remove context-mcp from omx's unified registry so omx no longer syncs
+  // it into ~/.codex/config.toml, preventing duplicate mcp_servers entries.
+  pruneContextMcpFromOmcRegistry();
 
   if (pruneStaleMockMcpServer()) {
     process.stdout.write(
