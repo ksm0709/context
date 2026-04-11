@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { injectIntoAgentsMd } from './agents-md.js';
+import { injectIntoAgentsMd, removeFromAgentsMd } from './agents-md.js';
 
 export type CliTool = 'claude' | 'codex';
 
@@ -28,4 +28,9 @@ export function getGlobalInstructionPath(tool: CliTool): string {
 export function injectIntoGlobalInstructions(tool: CliTool, content: string): void {
   const path = getGlobalInstructionPath(tool);
   injectIntoAgentsMd(path, content);
+}
+
+export function removeFromGlobalInstructions(tool: CliTool): void {
+  const path = getGlobalInstructionPath(tool);
+  removeFromAgentsMd(path);
 }

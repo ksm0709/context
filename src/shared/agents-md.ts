@@ -60,3 +60,31 @@ export function injectIntoAgentsMd(agentsMdPath: string, content: string): void 
 
   writeFileAtomically(agentsMdPath, nextContent);
 }
+
+export function removeFromAgentsMd(agentsMdPath: string): void {
+  if (!existsSync(agentsMdPath)) {
+    return;
+  }
+
+  const existingContent = readFileSync(agentsMdPath, 'utf-8');
+  const startIndex = existingContent.indexOf(START_MARKER);
+  const endIndex = existingContent.indexOf(END_MARKER, startIndex + START_MARKER.length);
+
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    return;
+  }
+
+  let before = existingContent.slice(0, startIndex);
+  let after = existingContent.slice(endIndex + END_MARKER.length);
+
+  // Clean up trailing newlines from before if after also has newlines
+  if (before.endsWith('\n\n') && after.startsWith('\n')) {
+    before = before.slice(0, -1);
+  } else if (before.endsWith('\n') && after === '') {
+    before = before.slice(0, -1);
+  } else if (before === '' && after.startsWith('\n')) {
+    after = after.slice(1);
+  }
+
+  writeFileAtomically(agentsMdPath, `${before}${after}`);
+}
