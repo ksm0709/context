@@ -11,9 +11,10 @@ import {
   registerMcpServer,
   removeMcpServer,
   registerHook,
+  removeHook,
   type McpServerEntry,
   type HookRule,
-} from './claude-settings';
+} from './claude-settings.js';
 
 let tmpDir: string;
 
@@ -227,5 +228,48 @@ describe('registerHook', () => {
     // Same basename "session-start-hook.js" → replaced, not duplicated
     expect(settings.hooks?.['SessionStart']).toHaveLength(1);
     expect(settings.hooks?.['SessionStart'][0].hooks[0].command).toContain('/home/dev/repo/');
+  });
+});
+
+describe('removeHook', () => {
+  it('removes a hook by its script basename without affecting other hooks', () => {
+    setupTmpSettings();
+    const ruleContext: HookRule = {
+      hooks: [{ type: 'command', command: '/usr/bin/bun /path/to/session-start-hook.js' }],
+    };
+    const ruleOther: HookRule = {
+      hooks: [{ type: 'command', command: 'echo some other hook' }],
+    };
+
+    registerHook('SessionStart', ruleContext);
+    registerHook('SessionStart', ruleOther);
+
+    let settings = readClaudeSettings();
+    expect(settings.hooks?.['SessionStart']).toHaveLength(2);
+
+    removeHook('SessionStart', 'session-start-hook.js');
+
+    settings = readClaudeSettings();
+    expect(settings.hooks?.['SessionStart']).toHaveLength(1);
+    expect(settings.hooks?.['SessionStart'][0].hooks[0].command).toBe('echo some other hook');
+  });
+
+  it('removes the event key entirely if no rules remain', () => {
+    setupTmpSettings();
+    const ruleContext: HookRule = {
+      hooks: [{ type: 'command', command: '/usr/bin/bun /path/to/session-start-hook.js' }],
+    };
+
+    registerHook('SessionStart', ruleContext);
+
+    removeHook('SessionStart', 'session-start-hook.js');
+
+    const settings = readClaudeSettings();
+    expect(settings.hooks?.['SessionStart']).toBeUndefined();
+  });
+
+  it('does nothing if hook or event does not exist', () => {
+    setupTmpSettings();
+    expect(() => removeHook('NonExistentEvent', 'some-hook.js')).not.toThrow();
   });
 });

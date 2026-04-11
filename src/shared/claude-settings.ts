@@ -108,6 +108,44 @@ export function removeMcpServer(name: string): void {
   }
 }
 
+export function removeHook(event: string, scriptName: string): void {
+  const settings = readClaudeSettings();
+  if (!settings.hooks || !settings.hooks[event]) {
+    return;
+  }
+
+  const rules = settings.hooks[event];
+  const scriptBasename = (cmd: string): string => {
+    const parts = cmd.trim().split(/\s+/);
+    const last = parts[parts.length - 1];
+    return last.split('/').pop() ?? last;
+  };
+
+  let changed = false;
+  const newRules = rules.filter((rule) => {
+    const hasHook = rule.hooks.some((h) => scriptBasename(h.command) === scriptName);
+    if (hasHook) {
+      changed = true;
+      return false;
+    }
+    return true;
+  });
+
+  if (changed) {
+    if (newRules.length === 0) {
+      delete settings.hooks[event];
+    } else {
+      settings.hooks[event] = newRules;
+    }
+
+    if (Object.keys(settings.hooks).length === 0) {
+      delete settings.hooks;
+    }
+
+    writeClaudeSettings(settings);
+  }
+}
+
 export function normalizeContextMcpServer(): boolean {
   const settings = readClaudeSettings();
   if (!settings.mcpServers) {
