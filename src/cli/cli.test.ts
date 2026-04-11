@@ -8,7 +8,6 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 vi.mock('./commands/install.js', () => ({
-  installOmc: vi.fn(),
   installOpenCode: vi.fn(),
   installClaude: vi.fn(),
   installCodex: vi.fn(),
@@ -29,8 +28,8 @@ describe('printHelp', () => {
     expect(output).toContain('update claude [path]');
     expect(output).toContain('update codex [path]');
     expect(output).toContain('update plugin [version]');
+    expect(output).toContain('migrate');
     expect(output).not.toContain('install omc');
-    expect(output).not.toContain('migrate');
   });
 });
 
@@ -121,14 +120,14 @@ describe('runCli', () => {
     expect(out.join('')).toMatch(/Updated \d+ file\(s\)/);
   });
 
-  it('install codex alias routes through update codex', () => {
+  it('install codex routes through update codex', () => {
     const out: string[] = [];
     vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
       out.push(String(s));
       return true;
     });
 
-    runCli(['install', 'omx', tmpDir]);
+    runCli(['install', 'codex', tmpDir]);
     expect(out.join('')).toMatch(/Updated \d+ file\(s\)|up to date/);
   });
 

@@ -78,7 +78,10 @@ describe('opencode-global-settings', () => {
       registerOpenCodeMcp(['/usr/local/bin/bun', '/path/to/mcp.js']);
 
       const config = readOpenCodeGlobalConfig();
-      expect(config.mcp?.['context-mcp']?.command).toEqual(['/usr/local/bin/bun', '/path/to/mcp.js']);
+      expect(config.mcp?.['context-mcp']?.command).toEqual([
+        '/usr/local/bin/bun',
+        '/path/to/mcp.js',
+      ]);
     });
   });
 

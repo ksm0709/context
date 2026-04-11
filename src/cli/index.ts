@@ -1,7 +1,5 @@
 #!/usr/bin/env bun
 import { runUpdate } from './commands/update.js';
-import { runMigrate } from './commands/migrate.js';
-import { runInstall } from './commands/install.js';
 import { runRemove } from './commands/remove.js';
 import pkg from '../../package.json';
 
@@ -85,10 +83,6 @@ export function printHelp(out?: (s: string) => void): void {
   write('  update codex [path]        Reinstall Codex integrations only\n');
   write('  update plugin [version]    Update @ksm0709/context package\n');
   write('  migrate [path] [--keep]    Migrate .opencode/context/ → .context/\n');
-  write('  install omx                Install OMX hook plugin to .omx/hooks/\n');
-  write('  install omc                Install OMC hooks/MCP to Claude settings\n');
-  write('  remove omx                 Remove OMX hook plugin\n');
-  write('  remove omc                 Remove OMC hooks/MCP from Claude settings\n');
   write('\n');
 }
 
@@ -106,12 +100,12 @@ export function runCli(argv: string[]): void {
       runUpdate(rest);
       break;
     case 'install':
-      if (rest[0] === 'codex' || rest[0] === 'omx') {
+      if (rest[0] === 'codex') {
         runUpdate(['codex', ...rest.slice(1)]);
         return;
       }
 
-      if (rest[0] === 'omc' || rest[0] === 'claude') {
+      if (rest[0] === 'claude') {
         runUpdate(['claude', ...rest.slice(1)]);
         return;
       }

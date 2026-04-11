@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installCodex, installOmc, resolveCodexHookSource } from './install.js';
+import { installCodex, installClaude, resolveCodexHookSource } from './install.js';
 
 vi.mock('../../shared/claude-settings.js', () => ({
   normalizeContextMcpServer: vi.fn(),
@@ -20,7 +20,9 @@ vi.mock('../../shared/agents-md.js', () => ({
 vi.mock('../../shared/codex-hooks.js', () => ({
   registerCodexHook: vi.fn(),
   getCodexHooksDir: vi.fn(() => {
+    // eslint-disable-next-line no-undef
     const { tmpdir } = require('node:os');
+    // eslint-disable-next-line no-undef
     return require('node:path').join(tmpdir(), '.codex', 'hooks');
   }),
 }));
@@ -51,10 +53,7 @@ vi.mock('node:os', async (importOriginal) => {
   };
 });
 
-import {
-  normalizeContextMcpServer,
-  removeMcpServer,
-} from '../../shared/claude-settings.js';
+import { normalizeContextMcpServer, removeMcpServer } from '../../shared/claude-settings.js';
 import {
   ensureContextMcpRegistered,
   pruneStaleMockMcpServer,
@@ -63,7 +62,10 @@ import { execSync } from 'node:child_process';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
 import { registerCodexHook } from '../../shared/codex-hooks.js';
-import { registerOpenCodeMcp, removeOpenCodePlugin } from '../../shared/opencode-global-settings.js';
+import {
+  registerOpenCodeMcp,
+  removeOpenCodePlugin,
+} from '../../shared/opencode-global-settings.js';
 
 describe('installCodex', () => {
   let tmpDir: string;
@@ -209,14 +211,14 @@ describe('resolveCodexHookSource', () => {
   });
 });
 
-describe('installOmc', () => {
+describe('installClaude', () => {
   let tmpDir: string;
   let stdout: string[];
 
   beforeEach(() => {
     tmpDir = join(
       tmpdir(),
-      `install-omc-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      `install-claude-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
     );
     mkdirSync(tmpDir, { recursive: true });
 
@@ -238,14 +240,14 @@ describe('installOmc', () => {
   });
 
   it('scaffolds project and injects into AGENTS.md', () => {
-    installOmc(tmpDir);
+    installClaude(tmpDir);
 
     expect(scaffoldIfNeeded).toHaveBeenCalledWith(tmpDir);
     expect(injectIntoAgentsMd).toHaveBeenCalledWith(join(tmpDir, 'AGENTS.md'), expect.any(String));
   });
 
   it('removes old MCP entries and registers via claude mcp add', () => {
-    installOmc(tmpDir);
+    installClaude(tmpDir);
 
     expect(normalizeContextMcpServer).toHaveBeenCalled();
     expect(removeMcpServer).toHaveBeenCalledWith('context_mcp');
@@ -259,18 +261,18 @@ describe('installOmc', () => {
   });
 
   it('does not register SessionStart or Stop hooks', () => {
-    installOmc(tmpDir);
+    installClaude(tmpDir);
 
-    // registerHook was removed from installOmc — hooks are managed externally
+    // registerHook was removed from installClaude — hooks are managed externally
     // Verify no hook-related calls were made to claude-settings
     expect(normalizeContextMcpServer).toHaveBeenCalled();
     // The mock for claude-settings does not include registerHook, so this passes by construction
   });
 
   it('prints success message', () => {
-    installOmc(tmpDir);
+    installClaude(tmpDir);
 
-    expect(stdout.join('')).toContain('Successfully installed context (omc) plugin.');
+    expect(stdout.join('')).toContain('Successfully installed context (claude) plugin.');
   });
 });
 

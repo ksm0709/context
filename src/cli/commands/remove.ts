@@ -1,25 +1,23 @@
 import { join } from 'node:path';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync, readdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { removeMcpServer, removeHook } from '../../shared/claude-settings.js';
 import { removeFromGlobalInstructions } from '../../shared/global-instructions.js';
 import { removeFromAgentsMd } from '../../shared/agents-md.js';
 
-export function uninstallOmx(projectDir: string): void {
-  const targetDir = join(projectDir, '.omx', 'hooks');
+export function uninstallCodex(projectDir: string): void {
+  const targetDir = join(projectDir, '.codex', 'hooks');
   const targetFile = join(targetDir, 'context.mjs');
 
   if (existsSync(targetFile)) {
     rmSync(targetFile, { force: true });
-    process.stdout.write(`Removed OMX hook from ${targetFile}\n`);
+    process.stdout.write(`Removed Codex hook from ${targetFile}\n`);
   } else {
-    process.stdout.write(`OMX hook not found at ${targetFile}\n`);
+    process.stdout.write(`Codex hook not found at ${targetFile}\n`);
   }
 
   try {
-    const hooksDirContent = existsSync(targetDir)
-      ? Array.from(require('node:fs').readdirSync(targetDir))
-      : [];
+    const hooksDirContent = existsSync(targetDir) ? Array.from(readdirSync(targetDir)) : [];
     if (hooksDirContent.length === 0 && existsSync(targetDir)) {
       rmSync(targetDir, { recursive: true, force: true });
     }
@@ -30,10 +28,10 @@ export function uninstallOmx(projectDir: string): void {
   removeFromGlobalInstructions('codex');
   process.stdout.write('Removed workflow context from ~/.codex/instructions.md\n');
 
-  process.stdout.write('Successfully uninstalled context (omx) plugin.\n');
+  process.stdout.write('Successfully uninstalled context (codex) plugin.\n');
 }
 
-export function uninstallOmc(projectDir: string): void {
+export function uninstallClaude(projectDir: string): void {
   // 1. Remove AGENTS.md injections
   const agentsMdPath = join(projectDir, 'AGENTS.md');
   removeFromAgentsMd(agentsMdPath);
@@ -56,23 +54,21 @@ export function uninstallOmc(projectDir: string): void {
   removeFromGlobalInstructions('claude');
   process.stdout.write('Removed workflow context from ~/.claude/CLAUDE.md\n');
 
-  process.stdout.write('Successfully uninstalled context (omc) plugin.\n');
+  process.stdout.write('Successfully uninstalled context (claude) plugin.\n');
 }
 
 export function runRemove(args: string[]): void {
   const [subcommand] = args;
 
   switch (subcommand) {
-    case 'omx':
     case 'codex':
-      uninstallOmx(process.cwd());
+      uninstallCodex(process.cwd());
       break;
-    case 'omc':
     case 'claude':
-      uninstallOmc(process.cwd());
+      uninstallClaude(process.cwd());
       break;
     case undefined:
-      process.stderr.write('Missing remove target. Usage: context remove <omx|omc|claude|codex>\n');
+      process.stderr.write('Missing remove target. Usage: context remove <claude|codex>\n');
       process.exit(1);
       break;
     default:

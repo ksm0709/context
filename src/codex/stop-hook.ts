@@ -46,7 +46,9 @@ if (existsSync(workCompleteFile)) {
       unlinkSync(workCompleteFile);
       staleFile = true;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   if (!staleFile) {
     const content = readFileSync(workCompleteFile, 'utf8');
@@ -55,9 +57,17 @@ if (existsSync(workCompleteFile)) {
     const sessionMismatch = currentSessionId && fileSessionId && fileSessionId !== currentSessionId;
 
     if (sessionMismatch) {
-      try { unlinkSync(workCompleteFile); } catch { /* ignore */ }
+      try {
+        unlinkSync(workCompleteFile);
+      } catch {
+        /* ignore */
+      }
     } else {
-      try { unlinkSync(workCompleteFile); } catch { /* ignore */ }
+      try {
+        unlinkSync(workCompleteFile);
+      } catch {
+        /* ignore */
+      }
       process.stdout.write(JSON.stringify({ continue: true }));
       process.exit(0);
     }

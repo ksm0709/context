@@ -1,6 +1,6 @@
 import { join, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
-import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
@@ -10,16 +10,16 @@ import { registerCodexHook, getCodexHooksDir } from '../../shared/codex-hooks.js
 import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
 import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
-import { registerOpenCodeMcp, removeOpenCodePlugin } from '../../shared/opencode-global-settings.js';
+import {
+  registerOpenCodeMcp,
+  removeOpenCodePlugin,
+} from '../../shared/opencode-global-settings.js';
 import { resolveWorkspacePackageRoot } from '../../shared/package-root.js';
 import {
   ensureContextMcpRegistered,
   pruneStaleMockMcpServer,
 } from '../../shared/codex-settings.js';
-import {
-  normalizeContextMcpServer,
-  removeMcpServer,
-} from '../../shared/claude-settings.js';
+import { normalizeContextMcpServer, removeMcpServer } from '../../shared/claude-settings.js';
 
 function resolveCommandsDistDir(): string | null {
   const workspaceRoot = resolveWorkspacePackageRoot();
@@ -50,7 +50,9 @@ function resolveCommandsDistDir(): string | null {
 function installSlashCommands(): void {
   const sourceDir = resolveCommandsDistDir();
   if (!sourceDir) {
-    process.stderr.write('Warning: Could not find dist/commands/ — skipping slash command install.\n');
+    process.stderr.write(
+      'Warning: Could not find dist/commands/ — skipping slash command install.\n'
+    );
     return;
   }
 
@@ -109,50 +111,6 @@ function resolveBunPath(): string {
   }
 }
 
-/**
- * Remove context-mcp from omx's unified MCP registry so omx stops syncing
- * it into ~/.codex/config.toml. Called during native codex install/update
- * to prevent duplicate [mcp_servers.context-mcp] entries.
- *
- * Also removes from mcp-registry-state.json so omx doesn't interpret the
- * removal as a signal to delete context-mcp from ~/.claude/settings.json.
- */
-function pruneContextMcpFromOmcRegistry(): void {
-  const omcHome = process.env['OMC_HOME']?.trim() ?? join(homedir(), '.omc');
-  const registryPath = join(omcHome, 'mcp-registry.json');
-  const statePath = join(omcHome, 'mcp-registry-state.json');
-
-  let pruned = false;
-
-  if (existsSync(registryPath)) {
-    try {
-      const raw = JSON.parse(readFileSync(registryPath, 'utf-8')) as Record<string, unknown>;
-      if ('context-mcp' in raw) {
-        delete raw['context-mcp'];
-        writeFileSync(registryPath, JSON.stringify(raw, null, 2) + '\n');
-        pruned = true;
-      }
-    } catch { /* ignore parse/write errors */ }
-  }
-
-  if (existsSync(statePath)) {
-    try {
-      const raw = JSON.parse(readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
-      const managed = raw['managedServers'];
-      if (Array.isArray(managed) && (managed as unknown[]).includes('context-mcp')) {
-        raw['managedServers'] = (managed as string[]).filter((s) => s !== 'context-mcp');
-        writeFileSync(statePath, JSON.stringify(raw, null, 2) + '\n');
-      }
-    } catch { /* ignore parse/write errors */ }
-  }
-
-  if (pruned) {
-    process.stdout.write(
-      'Removed context-mcp from omx MCP registry (~/.omc/mcp-registry.json) to prevent duplicate codex config entries\n'
-    );
-  }
-}
-
 export function installCodex(
   projectDir: string,
   sessionStartSource: string,
@@ -202,10 +160,6 @@ export function installCodex(
     process.stdout.write('Successfully registered context-mcp in ~/.codex/config.toml\n');
   }
 
-  // Remove context-mcp from omx's unified registry so omx no longer syncs
-  // it into ~/.codex/config.toml, preventing duplicate mcp_servers entries.
-  pruneContextMcpFromOmcRegistry();
-
   if (pruneStaleMockMcpServer()) {
     process.stdout.write(
       'Removed stale mock-mcp from ~/.codex/config.toml because its target file is missing\n'
@@ -217,7 +171,7 @@ export function installCodex(
   process.stdout.write('Injected workflow context into ~/.codex/instructions.md\n');
 }
 
-export function installOmc(projectDir: string): void {
+export function installClaude(projectDir: string): void {
   // 1. Scaffold project context directory
   scaffoldIfNeeded(projectDir);
 
@@ -265,11 +219,7 @@ export function installOmc(projectDir: string): void {
   injectIntoGlobalInstructions('claude', STATIC_WORKFLOW_CONTEXT);
   process.stdout.write('Injected workflow context into ~/.claude/CLAUDE.md\n');
 
-  process.stdout.write('Successfully installed context (omc) plugin.\n');
-}
-
-export function installClaude(projectDir: string): void {
-  installOmc(projectDir);
+  process.stdout.write('Successfully installed context (claude) plugin.\n');
 }
 
 export function installOpenCode(projectDir: string): void {
@@ -294,8 +244,7 @@ export function runInstall(args: string[]): void {
   const [subcommand] = args;
 
   switch (subcommand) {
-    case 'codex':
-    case 'omx': {
+    case 'codex': {
       const sessionStartSource = resolveCodexHookSource('session-start-hook.js');
       const stopSource = resolveCodexHookSource('stop-hook.js');
       if (!sessionStartSource || !stopSource) {
@@ -307,7 +256,6 @@ export function runInstall(args: string[]): void {
       break;
     }
     case 'claude':
-    case 'omc':
       installClaude(process.cwd());
       break;
     case undefined:

@@ -34,7 +34,6 @@ function validateConfig(config: ContextConfig): void {
       );
     }
   }
-
 }
 
 function getDefaultConfig(): ContextConfig {
@@ -61,9 +60,7 @@ function getDefaultConfig(): ContextConfig {
 
 function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
   const defaults = getDefaultConfig();
-  const codexStrategy =
-    partial.codex?.turnEnd?.strategy ??
-    defaults.codex?.turnEnd?.strategy;
+  const codexStrategy = partial.codex?.turnEnd?.strategy ?? defaults.codex?.turnEnd?.strategy;
   const claudeStrategy =
     partial.claude?.turnEnd?.strategy ??
     partial.omc?.turnEnd?.strategy ??

@@ -111,7 +111,12 @@ describe('loadConfig - checks and smokeChecks', () => {
       join(configDir, 'config.jsonc'),
       JSON.stringify({
         smokeChecks: [
-          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: false },
+          {
+            name: 'tests',
+            command: 'npm test',
+            signal: '.context/.check-tests-passed',
+            enabled: false,
+          },
         ],
       })
     );
@@ -126,7 +131,12 @@ describe('loadConfig - checks and smokeChecks', () => {
       join(configDir, 'config.jsonc'),
       JSON.stringify({
         smokeChecks: [
-          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: true },
+          {
+            name: 'tests',
+            command: 'npm test',
+            signal: '.context/.check-tests-passed',
+            enabled: true,
+          },
         ],
       })
     );

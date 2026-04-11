@@ -82,10 +82,6 @@ const plugin: Plugin = async ({ directory, client }) => {
       };
     },
     'experimental.chat.messages.transform': async (_input, output) => {
-      // OMX 환경에서는 messages.transform을 통한 주입을 건너뜁니다.
-      // (OMX는 onSessionStart에서 AGENTS.md에 주입하고, onTurnComplete에서 tmux send-keys로 turn-end를 주입합니다)
-      if (process.env.OMX_HOOK_PLUGINS) return;
-
       if (output.messages.length === 0) return;
 
       const lastUserMsg = output.messages.filter((m) => m.info.role === 'user').at(-1);
@@ -113,7 +109,9 @@ const plugin: Plugin = async ({ directory, client }) => {
           const configChecks = (config.checks ?? []).filter(
             (c) => !triggerCommandNames.has(c.name)
           );
-          const builtinChecks = Object.values(BUILTIN_SIGNALS).map((signal: string) => ({ signal }));
+          const builtinChecks = Object.values(BUILTIN_SIGNALS).map((signal: string) => ({
+            signal,
+          }));
           writeSkipSignals(
             projectRoot,
             [...builtinChecks, ...configChecks],

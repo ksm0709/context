@@ -171,8 +171,10 @@ export function startMcpServer() {
           const escaped = fullPrompt.replace(/'/g, "'\\''");
           const agentCli = entry.cli ?? 'claude';
           // Validate cli field against allowlist pattern
-          if (!/^[a-zA-Z0-9_\-\/\.]+$/.test(agentCli)) {
-            throw new Error(`Invalid cli field value: "${agentCli}". Only alphanumeric characters, hyphens, underscores, dots, and slashes are allowed.`);
+          if (!/^[\w/.-]+$/.test(agentCli)) {
+            throw new Error(
+              `Invalid cli field value: "${agentCli}". Only alphanumeric characters, hyphens, underscores, dots, and slashes are allowed.`
+            );
           }
           cmd = `${agentCli} -p '${escaped}' 2>&1 | tail -5 | grep -q 'PASS'`;
         } else {
@@ -350,7 +352,11 @@ export function startMcpServer() {
           const dirPath = path.resolve(process.cwd(), '.context');
           const filePath = path.join(dirPath, '.work-complete');
           await fs.mkdir(dirPath, { recursive: true });
-          await fs.writeFile(filePath, `session_id=${SESSION_ID}\npid=${process.ppid}\ntimestamp=${Date.now()}\n`, 'utf-8');
+          await fs.writeFile(
+            filePath,
+            `session_id=${SESSION_ID}\npid=${process.ppid}\ntimestamp=${Date.now()}\n`,
+            'utf-8'
+          );
         } catch {
           /* ignore write errors in warning path */
         }
@@ -370,7 +376,11 @@ export function startMcpServer() {
           const dirPath = path.resolve(process.cwd(), '.context');
           const filePath = path.join(dirPath, '.work-complete');
           await fs.mkdir(dirPath, { recursive: true });
-          await fs.writeFile(filePath, `session_id=${SESSION_ID}\npid=${process.ppid}\ntimestamp=${Date.now()}\n`, 'utf-8');
+          await fs.writeFile(
+            filePath,
+            `session_id=${SESSION_ID}\npid=${process.ppid}\ntimestamp=${Date.now()}\n`,
+            'utf-8'
+          );
         } catch {
           /* ignore write errors in warning path */
         }

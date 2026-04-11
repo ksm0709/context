@@ -15,11 +15,6 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./omx": {
-      "import": "./dist/omx/index.mjs",
-      "types": "./dist/omx/index.d.ts",
-      "default": "./dist/omx/index.mjs"
     }
   },
   "repository": {
@@ -30,10 +25,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs && bun build ./src/omc/session-start-hook.ts --outdir dist/omc --target bun && bun build ./src/omc/stop-hook.ts --outdir dist/omc --target bun && bun build ./src/codex/session-start-hook.ts --outdir dist/codex --target bun && bun build ./src/codex/stop-hook.ts --outdir dist/codex --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/",
+    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/codex/session-start-hook.ts --outdir dist/codex --target bun && bun build ./src/codex/stop-hook.ts --outdir dist/codex --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/omx/index.ts --outdir dist/omx --target node --format esm --external jsonc-parser && mv dist/omx/index.js dist/omx/index.mjs && bun build ./src/omc/session-start-hook.ts --outdir dist/omc --target bun && bun build ./src/omc/stop-hook.ts --outdir dist/omc --target bun && bun build ./src/codex/session-start-hook.ts --outdir dist/codex --target bun && bun build ./src/codex/stop-hook.ts --outdir dist/codex --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/"
+    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/codex/session-start-hook.ts --outdir dist/codex --target bun && bun build ./src/codex/stop-hook.ts --outdir dist/codex --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/"
   },
   "files": [
     "dist"

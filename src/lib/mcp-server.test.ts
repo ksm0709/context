@@ -256,7 +256,12 @@ describe('mcp-server (Workflow Enforcer)', () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [],
         smokeChecks: [
-          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: false },
+          {
+            name: 'tests',
+            command: 'npm test',
+            signal: '.context/.check-tests-passed',
+            enabled: false,
+          },
         ],
       });
 
@@ -415,7 +420,12 @@ describe('mcp-server (Workflow Enforcer)', () => {
         checks: [],
         smokeChecks: [
           { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed' },
-          { name: 'lint', command: 'npm run lint', signal: '.context/.check-lint-passed', enabled: false },
+          {
+            name: 'lint',
+            command: 'npm run lint',
+            signal: '.context/.check-lint-passed',
+            enabled: false,
+          },
         ],
       });
       vi.mocked(fs.readFile).mockResolvedValue(
@@ -433,8 +443,18 @@ describe('mcp-server (Workflow Enforcer)', () => {
       vi.mocked(loadConfig).mockReturnValue({
         checks: [],
         smokeChecks: [
-          { name: 'tests', command: 'npm test', signal: '.context/.check-tests-passed', enabled: false },
-          { name: 'lint', command: 'npm run lint', signal: '.context/.check-lint-passed', enabled: false },
+          {
+            name: 'tests',
+            command: 'npm test',
+            signal: '.context/.check-tests-passed',
+            enabled: false,
+          },
+          {
+            name: 'lint',
+            command: 'npm run lint',
+            signal: '.context/.check-lint-passed',
+            enabled: false,
+          },
         ],
       });
 
