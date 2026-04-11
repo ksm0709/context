@@ -25,10 +25,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/codex/session-start-hook.ts --outdir dist/codex --target bun && bun build ./src/codex/stop-hook.ts --outdir dist/codex --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/",
+    "build": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/hooks/session-start-hook.ts --outdir dist/hooks --target bun && bun build ./src/hooks/stop-hook.ts --outdir dist/hooks --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/codex/session-start-hook.ts --outdir dist/codex --target bun && bun build ./src/codex/stop-hook.ts --outdir dist/codex --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/"
+    "prepublishOnly": "bun build ./src/index.ts --outdir dist --target bun && bun build ./src/mcp.ts --outdir dist --target bun && bun build ./src/cli/index.ts --outdir dist/cli --target bun && bun build ./src/hooks/session-start-hook.ts --outdir dist/hooks --target bun && bun build ./src/hooks/stop-hook.ts --outdir dist/hooks --target bun && mkdir -p dist/commands && cp src/commands/*.md dist/commands/"
   },
   "files": [
     "dist"

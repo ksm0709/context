@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installCodex, installClaude, resolveCodexHookSource } from './install.js';
+import { installCodex, installClaude, resolveHookSource } from './install.js';
 
 vi.mock('../../shared/claude-settings.js', () => ({
   normalizeContextMcpServer: vi.fn(),
+  registerHook: vi.fn(),
   removeMcpServer: vi.fn(),
 }));
 
@@ -53,7 +54,11 @@ vi.mock('node:os', async (importOriginal) => {
   };
 });
 
-import { normalizeContextMcpServer, removeMcpServer } from '../../shared/claude-settings.js';
+import {
+  normalizeContextMcpServer,
+  removeMcpServer,
+  registerHook,
+} from '../../shared/claude-settings.js';
 import {
   ensureContextMcpRegistered,
   pruneStaleMockMcpServer,
@@ -103,30 +108,6 @@ describe('installCodex', () => {
     vi.restoreAllMocks();
   });
 
-  it('copies hook sources to ~/.codex/hooks/', () => {
-    const projectDir = join(tmpDir, 'project');
-    mkdirSync(projectDir, { recursive: true });
-
-    installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
-
-    const globalHooksDir = join(tmpdir(), '.codex', 'hooks');
-    expect(existsSync(join(globalHooksDir, 'context-session-start-hook.js'))).toBe(true);
-    expect(existsSync(join(globalHooksDir, 'context-stop-hook.js'))).toBe(true);
-    expect(stdout.join('')).toContain(
-      'Installed context hooks to ~/.codex/hooks/ and ~/.codex/hooks.json'
-    );
-  });
-
-  it('auto-creates ~/.codex/hooks/ when directory does not exist', () => {
-    const projectDir = join(tmpDir, 'project');
-    mkdirSync(projectDir, { recursive: true });
-
-    const globalHooksDir = join(tmpdir(), '.codex', 'hooks');
-    installCodex(projectDir, sessionStartSourceFile, stopSourceFile);
-
-    expect(existsSync(globalHooksDir)).toBe(true);
-  });
-
   it('registers SessionStart and Stop hooks in ~/.codex/hooks.json', () => {
     const projectDir = join(tmpDir, 'project');
     mkdirSync(projectDir, { recursive: true });
@@ -141,6 +122,7 @@ describe('installCodex', () => {
       'Stop',
       expect.objectContaining({ hooks: expect.any(Array) })
     );
+    expect(stdout.join('')).toContain('Installed context hooks to ~/.codex/hooks.json');
   });
 
   it('registers context-mcp in ~/.codex/config.toml', () => {
@@ -166,35 +148,24 @@ describe('installCodex', () => {
     expect(pruneStaleMockMcpServer).toHaveBeenCalledTimes(1);
     expect(stdout.join('')).toContain('Removed stale mock-mcp from ~/.codex/config.toml');
   });
-
-  it('exits with error when source file not found', () => {
-    const projectDir = join(tmpDir, 'project');
-    mkdirSync(projectDir, { recursive: true });
-
-    installCodex(projectDir, '/nonexistent/path/start.js', '/nonexistent/path/stop.js');
-
-    expect(stderr.join('')).toContain('Could not find Codex hook source files');
-    expect(process.exit).toHaveBeenCalledWith(1);
-    expect(existsSync(join(projectDir, '.codex', 'hooks', 'context-stop-hook.js'))).toBe(false);
-  });
 });
 
-describe('resolveCodexHookSource', () => {
+describe('resolveHookSource', () => {
   let tmpDir: string;
   let originalCwd: string;
 
   beforeEach(() => {
     tmpDir = join(
       tmpdir(),
-      `resolve-codex-hook-source-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      `resolve-hook-source-${Date.now()}-${Math.random().toString(36).slice(2)}`
     );
-    mkdirSync(join(tmpDir, 'dist', 'codex'), { recursive: true });
+    mkdirSync(join(tmpDir, 'dist', 'hooks'), { recursive: true });
     writeFileSync(
       join(tmpDir, 'package.json'),
       JSON.stringify({ name: '@ksm0709/context', version: '9.9.9' }),
       'utf8'
     );
-    writeFileSync(join(tmpDir, 'dist', 'codex', 'stop-hook.js'), 'console.log("workspace");');
+    writeFileSync(join(tmpDir, 'dist', 'hooks', 'stop-hook.js'), 'console.log("workspace");');
     originalCwd = process.cwd();
     process.chdir(tmpDir);
   });
@@ -205,15 +176,15 @@ describe('resolveCodexHookSource', () => {
   });
 
   it('prefers workspace dist files over the globally installed package', () => {
-    expect(resolveCodexHookSource('stop-hook.js')).toBe(
-      join(tmpDir, 'dist', 'codex', 'stop-hook.js')
-    );
+    expect(resolveHookSource('stop-hook.js')).toBe(join(tmpDir, 'dist', 'hooks', 'stop-hook.js'));
   });
 });
 
 describe('installClaude', () => {
   let tmpDir: string;
   let stdout: string[];
+  let stopSourceFile: string;
+  let sessionStartSourceFile: string;
 
   beforeEach(() => {
     tmpDir = join(
@@ -221,6 +192,13 @@ describe('installClaude', () => {
       `install-claude-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
     );
     mkdirSync(tmpDir, { recursive: true });
+
+    const sourceDir = join(tmpDir, 'source');
+    mkdirSync(sourceDir, { recursive: true });
+    stopSourceFile = join(sourceDir, 'stop-hook.js');
+    sessionStartSourceFile = join(sourceDir, 'session-start-hook.js');
+    writeFileSync(stopSourceFile, 'console.log("stop");');
+    writeFileSync(sessionStartSourceFile, 'console.log("start");');
 
     stdout = [];
     vi.spyOn(process.stdout, 'write').mockImplementation((s) => {
@@ -240,14 +218,14 @@ describe('installClaude', () => {
   });
 
   it('scaffolds project and injects into AGENTS.md', () => {
-    installClaude(tmpDir);
+    installClaude(tmpDir, sessionStartSourceFile, stopSourceFile);
 
     expect(scaffoldIfNeeded).toHaveBeenCalledWith(tmpDir);
     expect(injectIntoAgentsMd).toHaveBeenCalledWith(join(tmpDir, 'AGENTS.md'), expect.any(String));
   });
 
   it('removes old MCP entries and registers via claude mcp add', () => {
-    installClaude(tmpDir);
+    installClaude(tmpDir, sessionStartSourceFile, stopSourceFile);
 
     expect(normalizeContextMcpServer).toHaveBeenCalled();
     expect(removeMcpServer).toHaveBeenCalledWith('context_mcp');
@@ -260,17 +238,21 @@ describe('installClaude', () => {
     expect(calls.find((c) => c.includes('claude mcp add -s user context-mcp'))).toBeTruthy();
   });
 
-  it('does not register SessionStart or Stop hooks', () => {
-    installClaude(tmpDir);
+  it('registers native Claude hooks (SessionStart and Stop)', () => {
+    installClaude(tmpDir, sessionStartSourceFile, stopSourceFile);
 
-    // registerHook was removed from installClaude — hooks are managed externally
-    // Verify no hook-related calls were made to claude-settings
-    expect(normalizeContextMcpServer).toHaveBeenCalled();
-    // The mock for claude-settings does not include registerHook, so this passes by construction
+    expect(registerHook).toHaveBeenCalledWith(
+      'SessionStart',
+      expect.objectContaining({ matcher: 'startup' })
+    );
+    expect(registerHook).toHaveBeenCalledWith(
+      'Stop',
+      expect.objectContaining({ hooks: expect.any(Array) })
+    );
   });
 
   it('prints success message', () => {
-    installClaude(tmpDir);
+    installClaude(tmpDir, sessionStartSourceFile, stopSourceFile);
 
     expect(stdout.join('')).toContain('Successfully installed context (claude) plugin.');
   });

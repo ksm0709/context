@@ -18,16 +18,7 @@ export interface SmokeCheckEntry {
 export interface ContextConfig {
   checks?: CheckEntry[];
   smokeChecks?: SmokeCheckEntry[];
-  codex?: {
-    turnEnd?: {
-      strategy?: CodexTurnEndStrategy;
-    };
-  };
-  claude?: {
-    turnEnd?: {
-      strategy: 'off' | 'stop-hook';
-    };
+  turnEnd?: {
+    strategy: 'off' | 'stop-hook';
   };
 }
-
-export type CodexTurnEndStrategy = 'off' | 'stop-hook';

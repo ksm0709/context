@@ -21,7 +21,7 @@ describe('loadConfig - defaults', () => {
     expect(config).toBeDefined();
     expect(config.checks).toEqual([]);
     expect(config.smokeChecks).toEqual([]);
-    expect(config.omc?.turnEnd?.strategy).toBe('stop-hook');
+    expect(config.turnEnd?.strategy).toBe('stop-hook');
   });
 
   it('returns default config on malformed JSON', () => {
@@ -358,15 +358,15 @@ describe('loadConfig - Codex/Claude strategy', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('parses custom codex turn-end strategy off', () => {
+  it('parses custom turn-end strategy off', () => {
     const configDir = join(tmpDir, '.context');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(
       join(configDir, 'config.jsonc'),
-      JSON.stringify({ codex: { turnEnd: { strategy: 'off' } } })
+      JSON.stringify({ turnEnd: { strategy: 'off' } })
     );
     const config = loadConfig(tmpDir);
-    expect(config.codex?.turnEnd?.strategy).toBe('off');
+    expect(config.turnEnd?.strategy).toBe('off');
   });
 });
 

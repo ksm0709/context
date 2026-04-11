@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { scaffoldIfNeeded } from '../../lib/scaffold.js';
 import { injectIntoAgentsMd } from '../../shared/agents-md.js';
-import { registerCodexHook, getCodexHooksDir } from '../../shared/codex-hooks.js';
+import { registerCodexHook } from '../../shared/codex-hooks.js';
 import { injectIntoGlobalInstructions } from '../../shared/global-instructions.js';
 import { STATIC_WORKFLOW_CONTEXT } from '../../shared/workflow-context.js';
 import { resolveMcpPath } from '../../shared/mcp-path.js';
@@ -19,7 +19,11 @@ import {
   ensureContextMcpRegistered,
   pruneStaleMockMcpServer,
 } from '../../shared/codex-settings.js';
-import { normalizeContextMcpServer, removeMcpServer } from '../../shared/claude-settings.js';
+import {
+  normalizeContextMcpServer,
+  registerHook,
+  removeMcpServer,
+} from '../../shared/claude-settings.js';
 
 function resolveCommandsDistDir(): string | null {
   const workspaceRoot = resolveWorkspacePackageRoot();
@@ -77,17 +81,17 @@ function installSlashCommands(): void {
   }
 }
 
-export function resolveCodexHookSource(fileName: string): string | null {
+export function resolveHookSource(fileName: string): string | null {
   const workspaceRoot = resolveWorkspacePackageRoot();
   if (workspaceRoot) {
-    const workspaceSource = join(workspaceRoot, 'dist', 'codex', fileName);
+    const workspaceSource = join(workspaceRoot, 'dist', 'hooks', fileName);
     if (existsSync(workspaceSource)) return workspaceSource;
   }
 
   try {
     const cliDir = dirname(fileURLToPath(import.meta.url));
     const pkgRoot = resolve(cliDir, '..', '..');
-    const source = join(pkgRoot, 'dist', 'codex', fileName);
+    const source = join(pkgRoot, 'dist', 'hooks', fileName);
     if (existsSync(source)) return source;
   } catch {
     /* dirname resolution unavailable */
@@ -96,7 +100,7 @@ export function resolveCodexHookSource(fileName: string): string | null {
   try {
     const req = createRequire(import.meta.url);
     const packageRoot = dirname(req.resolve('@ksm0709/context/package.json'));
-    const source = join(packageRoot, 'dist', 'codex', fileName);
+    const source = join(packageRoot, 'dist', 'hooks', fileName);
     return existsSync(source) ? source : null;
   } catch {
     return null;
@@ -116,22 +120,7 @@ export function installCodex(
   sessionStartSource: string,
   stopSource: string
 ): void {
-  if (!existsSync(sessionStartSource) || !existsSync(stopSource)) {
-    process.stderr.write(
-      `Could not find Codex hook source files: ${sessionStartSource}, ${stopSource}\n`
-    );
-    process.exit(1);
-    return;
-  }
-
   scaffoldIfNeeded(projectDir);
-
-  const targetDir = getCodexHooksDir();
-  mkdirSync(targetDir, { recursive: true });
-  const sessionStartTarget = join(targetDir, 'context-session-start-hook.js');
-  const stopTarget = join(targetDir, 'context-stop-hook.js');
-  copyFileSync(sessionStartSource, sessionStartTarget);
-  copyFileSync(stopSource, stopTarget);
 
   const bunPath = resolveBunPath();
   registerCodexHook('SessionStart', {
@@ -139,7 +128,7 @@ export function installCodex(
     hooks: [
       {
         type: 'command',
-        command: `${bunPath} ${sessionStartTarget}`,
+        command: `${bunPath} ${sessionStartSource}`,
         statusMessage: 'Initializing context plugin...',
       },
     ],
@@ -148,13 +137,13 @@ export function installCodex(
     hooks: [
       {
         type: 'command',
-        command: `${bunPath} ${stopTarget}`,
+        command: `${bunPath} ${stopSource}`,
         timeout: 30,
       },
     ],
   });
 
-  process.stdout.write('Installed context hooks to ~/.codex/hooks/ and ~/.codex/hooks.json\n');
+  process.stdout.write('Installed context hooks to ~/.codex/hooks.json\n');
 
   if (ensureContextMcpRegistered(bunPath, resolveMcpPath())) {
     process.stdout.write('Successfully registered context-mcp in ~/.codex/config.toml\n');
@@ -171,7 +160,11 @@ export function installCodex(
   process.stdout.write('Injected workflow context into ~/.codex/instructions.md\n');
 }
 
-export function installClaude(projectDir: string): void {
+export function installClaude(
+  projectDir: string,
+  sessionStartSource: string,
+  stopSource: string
+): void {
   // 1. Scaffold project context directory
   scaffoldIfNeeded(projectDir);
 
@@ -179,12 +172,7 @@ export function installClaude(projectDir: string): void {
   injectIntoAgentsMd(join(projectDir, 'AGENTS.md'), STATIC_WORKFLOW_CONTEXT);
 
   // 3. Resolve bun path
-  let bunPath = 'bun';
-  try {
-    bunPath = execSync('which bun', { encoding: 'utf-8' }).trim();
-  } catch {
-    /* fallback to 'bun' */
-  }
+  const bunPath = resolveBunPath();
 
   // 4. Resolve MCP path
   const mcpPath = resolveMcpPath();
@@ -212,7 +200,29 @@ export function installClaude(projectDir: string): void {
 
   normalizeContextMcpServer();
 
-  // 6. Install slash commands
+  registerHook('SessionStart', {
+    matcher: 'startup',
+    hooks: [
+      {
+        type: 'command',
+        command: `${bunPath} ${sessionStartSource}`,
+        timeout: 15,
+        statusMessage: 'Initializing context plugin...',
+      },
+    ],
+  });
+
+  registerHook('Stop', {
+    hooks: [
+      {
+        type: 'command',
+        command: `${bunPath} ${stopSource}`,
+        timeout: 30,
+        statusMessage: 'Checking turn completion...',
+      },
+    ],
+  });
+
   installSlashCommands();
 
   // Inject into Claude Code's global CLAUDE.md for non-git directory support
@@ -245,19 +255,27 @@ export function runInstall(args: string[]): void {
 
   switch (subcommand) {
     case 'codex': {
-      const sessionStartSource = resolveCodexHookSource('session-start-hook.js');
-      const stopSource = resolveCodexHookSource('stop-hook.js');
+      const sessionStartSource = resolveHookSource('session-start-hook.js');
+      const stopSource = resolveHookSource('stop-hook.js');
       if (!sessionStartSource || !stopSource) {
-        process.stderr.write('Could not find Codex hook source files (dist/codex/*).\n');
+        process.stderr.write('Could not find hook source files (dist/hooks/*).\n');
         process.exit(1);
         return;
       }
       installCodex(process.cwd(), sessionStartSource, stopSource);
       break;
     }
-    case 'claude':
-      installClaude(process.cwd());
+    case 'claude': {
+      const sessionStartSource = resolveHookSource('session-start-hook.js');
+      const stopSource = resolveHookSource('stop-hook.js');
+      if (!sessionStartSource || !stopSource) {
+        process.stderr.write('Could not find hook source files (dist/hooks/*).\n');
+        process.exit(1);
+        return;
+      }
+      installClaude(process.cwd(), sessionStartSource, stopSource);
       break;
+    }
     case undefined:
       process.stderr.write('Missing install target. Usage: context install <codex|claude>\n');
       process.exit(1);

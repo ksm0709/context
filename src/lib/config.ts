@@ -40,50 +40,21 @@ function getDefaultConfig(): ContextConfig {
   return {
     checks: [],
     smokeChecks: [],
-    codex: {
-      turnEnd: {
-        strategy: 'stop-hook',
-      },
-    },
-    claude: {
-      turnEnd: {
-        strategy: 'stop-hook',
-      },
-    },
-    omc: {
-      turnEnd: {
-        strategy: 'stop-hook',
-      },
+    turnEnd: {
+      strategy: 'stop-hook',
     },
   };
 }
 
 function mergeWithDefaults(partial: Partial<ContextConfig>): ContextConfig {
   const defaults = getDefaultConfig();
-  const codexStrategy = partial.codex?.turnEnd?.strategy ?? defaults.codex?.turnEnd?.strategy;
-  const claudeStrategy =
-    partial.claude?.turnEnd?.strategy ??
-    partial.omc?.turnEnd?.strategy ??
-    defaults.claude?.turnEnd?.strategy ??
-    'stop-hook';
+  const strategy = partial.turnEnd?.strategy ?? defaults.turnEnd?.strategy ?? 'stop-hook';
 
   return {
     checks: partial.checks ?? defaults.checks,
     smokeChecks: partial.smokeChecks ?? defaults.smokeChecks,
-    codex: {
-      turnEnd: {
-        strategy: codexStrategy,
-      },
-    },
-    claude: {
-      turnEnd: {
-        strategy: claudeStrategy,
-      },
-    },
-    omc: {
-      turnEnd: {
-        strategy: claudeStrategy,
-      },
+    turnEnd: {
+      strategy,
     },
   };
 }
